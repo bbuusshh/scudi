@@ -24,7 +24,7 @@ If not, see <https://www.gnu.org/licenses/>.
 """
 from PySide2 import QtCore
 import copy as cp
-
+from qudi.logic.scanning_probe_interface import ScanningProbeLogic
 from qudi.core.module import LogicBase
 from qudi.util.mutex import RecursiveMutex
 from qudi.core.connector import Connector
@@ -33,7 +33,7 @@ from qudi.core.statusvariable import StatusVar
 from qudi.util.datastorage import TextDataStorage
 from qudi.util.datafitting import FitContainer, FitConfigurationsModel
 
-class PLEScannerLogic(LogicBase):
+class PLEScannerLogic(ScanningProbeLogic):
 
     """This logic module controls scans of DC voltage on the fourth analog
     output channel of the NI Card.  It collects countrate as a function of voltage.
