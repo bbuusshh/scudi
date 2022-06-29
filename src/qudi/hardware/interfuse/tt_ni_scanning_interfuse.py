@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Interfuse of Ni Finite Sampling IO and NI AO HardwareFiles to make a confocal scanner.
+Interfuse of Ni Finite Sampling IO and TimeTagger counter hardware to make a confocal scanner.
 
 
 Copyright (c) 2021, the qudi developers. See the AUTHORS.md file at the top-level directory of this
@@ -45,14 +45,11 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         module.Class: 'interfuse.ni_scanning_probe_interfuse.NiScanningProbeInterfuse'
         connect:
             scan_hardware: 'ni_finite_sampling_io'
-            analog_output: 'ni_ao'
+            counter: 'tt'
         ni_channel_mapping:
             x: 'ao0'
             y: 'ao1'
             z: 'ao2'
-            APD1: 'PFI8'
-            APD2: 'PFI9'
-            AI0: 'ai0'
         position_ranges: # in m
             x: [-100e-6, 100e-6]
             y: [0, 200e-6]
@@ -66,9 +63,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
             y: [1, 10000]
             z: [2, 1000]
         input_channel_units:
-            APD1: 'c/s'
-            APD2: 'c/s'
-            AI0: 'V'
+            APD: 'c/s'
         backwards_line_resolution: 50 # optional
         move_velocity: 400e-6 #m/s; This speed is used for scanner movements and avoids jumps from position to position.
     """
@@ -77,13 +72,14 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
     # TODO Bool indicators deprecated; Change in scanning probe toolchain
 
     _ni_finite_sampling_io = Connector(name='scan_hardware', interface='FiniteSamplingIOInterface')
-    _ni_ao = Connector(name='analog_output', interface='ProcessSetpointInterface')
+    _tt = Connector(name='counter', interface='TimeTaggerHW')
 
     _ni_channel_mapping = ConfigOption(name='ni_channel_mapping', missing='error')
     _position_ranges = ConfigOption(name='position_ranges', missing='error')
     _frequency_ranges = ConfigOption(name='frequency_ranges', missing='error')
     _resolution_ranges = ConfigOption(name='resolution_ranges', missing='error')
     _input_channel_units = ConfigOption(name='input_channel_units', missing='error')
+    _counter_combine_channels = ConfigOption(name='counter_combine_channels', missing='error')
 
     __backwards_line_resolution = ConfigOption(name='backwards_line_resolution', default=50)
     __max_move_velocity = ConfigOption(name='maximum_move_velocity', default=400e-6)
@@ -120,23 +116,6 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
 
     def on_activate(self):
 
-        # Sanity checks for ni_ao and ni finite sampling io
-        # TODO check that config values within fsio range?
-        assert set(self._position_ranges) == set(self._frequency_ranges) == set(self._resolution_ranges), \
-            f'Channels in position ranges, frequency ranges and resolution ranges do not coincide'
-
-        assert set(self._input_channel_units).union(self._position_ranges) == set(self._ni_channel_mapping), \
-            f'Not all specified channels are mapped to an ni card physical channel'
-
-        # TODO: Any case where ni_ao and ni_fio potentially don't have the same channels?
-        specified_ni_finite_io_channels_set = set(self._ni_finite_sampling_io().constraints.input_channel_units).union(
-            set(self._ni_finite_sampling_io().constraints.output_channel_units))
-        mapped_channels = set([val.lower() for val in self._ni_channel_mapping.values()])
-
-        assert set(mapped_channels).issubset(specified_ni_finite_io_channels_set), \
-            f'Channel mapping does not coincide with ni finite sampling io.'
-
-        # Constraints
         axes = list()
         for axis in self._position_ranges:
             axes.append(ScannerAxis(name=axis,
@@ -264,7 +243,6 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
                 try:
                     self._ni_finite_sampling_io().set_sample_rate(frequency)
                     self._ni_finite_sampling_io().set_active_channels(
-                        input_channels=(self._ni_channel_mapping[in_ch] for in_ch in self._input_channel_units),
                         output_channels=(self._ni_channel_mapping[ax] for ax in axes)
                         # TODO Use all axes and keep the unused constant? basically just constants in ni scan dict.
                     )
