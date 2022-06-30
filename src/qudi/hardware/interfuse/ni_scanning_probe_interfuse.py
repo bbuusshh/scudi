@@ -680,16 +680,6 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         except Exception as e:
             self.log.error(e)
 
-    # def _abort_movement(self):
-    #     """
-    #     Abort the movement, stop the timer and reset interval, release memory and frees ni_ao resources
-    #     """
-    #     with self._thread_lock:
-    #         self.__stop_ao_write_timer()
-    #         self.__write_queue = dict()
-    #         self.__ni_ao_write_timer.setInterval(self._default_timer_interval)
-    #         self._ni_ao().set_activity_state(False)
-
     def _move_to_and_start_scan(self, position):
         self._prepare_movement(position, scan_start_indicator=True)
 
@@ -777,3 +767,12 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
             self._ni_ao().set_activity_state(False)
 
 
+    # def _abort_movement(self):
+    #     """
+    #     Abort the movement, stop the timer and reset interval, release memory and frees ni_ao resources
+    #     """
+    #     with self._thread_lock:
+    #         self.__stop_ao_write_timer()
+    #         self.__write_queue = dict()
+    #         self.__ni_ao_write_timer.setInterval(self._default_timer_interval)
+    #         self._ni_ao().set_activity_state(False)
