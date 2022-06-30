@@ -30,18 +30,7 @@ from qudi.interface.scanning_probe_interface import ScanData
 from qudi.core.module import GuiBase
 from qudi.logic.scanning_optimize_logic import OptimizerScanSequence
 
-
-class PLEScanMainWindow(QtWidgets.QMainWindow):
-    def __init__(self):
-        # Get the path to the *.ui file
-        this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ple_gui.ui')
-
-        # Load it
-        super(PLEScanMainWindow, self).__init__()
-        uic.loadUi(ui_file, self)
-        self.show()
-
+from qudi.gui.ple.ple_ui_window import PLEScanMainWindow
 
 class PLEScanGui(GuiBase):
     """
@@ -62,10 +51,6 @@ class PLEScanGui(GuiBase):
         """
         self._scan_logic = self.scannerlogic()
         self._mw = PLEScanMainWindow()
-        self._mw.show()
-
-    def show(self):
-        """Make window visible and put it above all other windows. """
         self._mw.show()
         self._mw.activateWindow()
         self._mw.raise_()

@@ -110,7 +110,7 @@
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
-       <widget class="QWidget" name="layoutWidget">
+       <widget class="QWidget" name="layoutWidget_2">
         <layout class="QGridLayout" name="gridLayout_2">
          <item row="0" column="0" colspan="2">
           <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -127,7 +127,7 @@
            <item>
             <layout class="QHBoxLayout" name="horizontalLayout_2">
              <item>
-              <widget class="ScienDSpinBox" name="startDoubleSpinBox">
+              <widget class="QDoubleSpinBox" name="startDoubleSpinBox">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                  <horstretch>0</horstretch>
@@ -161,7 +161,7 @@
               </widget>
              </item>
              <item>
-              <widget class="ScienDSpinBox" name="stopDoubleSpinBox">
+              <widget class="QSpinBox" name="stopSpinBox">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
                  <horstretch>0</horstretch>
@@ -173,18 +173,6 @@
                  <width>70</width>
                  <height>0</height>
                 </size>
-               </property>
-               <property name="suffix">
-                <string> MHz</string>
-               </property>
-               <property name="decimals">
-                <number>2</number>
-               </property>
-               <property name="minimum">
-                <double>-99.000000000000000</double>
-               </property>
-               <property name="maximum">
-                <double>100000000.000000000000000</double>
                </property>
               </widget>
              </item>
@@ -205,7 +193,7 @@
             </widget>
            </item>
            <item>
-            <widget class="ScienDSpinBox" name="constDoubleSpinBox">
+            <widget class="QDoubleSpinBox" name="constDoubleSpinBox">
              <property name="minimumSize">
               <size>
                <width>70</width>
@@ -248,7 +236,7 @@
          </item>
         </layout>
        </widget>
-       <widget class="QWidget" name="layoutWidget">
+       <widget class="QWidget" name="layoutWidget_7">
         <layout class="QVBoxLayout" name="verticalLayout_7">
          <item>
           <layout class="QVBoxLayout" name="verticalLayout_5">
@@ -263,7 +251,7 @@
             </widget>
            </item>
            <item>
-            <widget class="ScienDSpinBox" name="speedDoubleSpinBox">
+            <widget class="QDoubleSpinBox" name="speedDoubleSpinBox">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
                <horstretch>0</horstretch>
@@ -302,7 +290,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QSpinBox" name="resolutionSpinBox">
+            <widget class="QDoubleSpinBox" name="resolutionDoubleSpinBox">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
                <horstretch>0</horstretch>
@@ -315,25 +303,13 @@
                <height>0</height>
               </size>
              </property>
-             <property name="suffix">
-              <string> px</string>
-             </property>
-             <property name="minimum">
-              <number>1</number>
-             </property>
-             <property name="maximum">
-              <number>999999</number>
-             </property>
-             <property name="value">
-              <number>100</number>
-             </property>
             </widget>
            </item>
           </layout>
          </item>
         </layout>
        </widget>
-       <widget class="QWidget" name="layoutWidget">
+       <widget class="QWidget" name="layoutWidget_10">
         <layout class="QVBoxLayout" name="verticalLayout_10">
          <item>
           <layout class="QVBoxLayout" name="verticalLayout_9">
@@ -360,12 +336,6 @@
                <width>50</width>
                <height>0</height>
               </size>
-             </property>
-             <property name="minimum">
-              <number>1</number>
-             </property>
-             <property name="maximum">
-              <number>999999</number>
              </property>
             </widget>
            </item>
@@ -440,45 +410,6 @@
         <layout class="QHBoxLayout" name="horizontalLayout">
          <item>
           <layout class="QGridLayout" name="gridLayout">
-           <item row="4" column="0" colspan="2">
-            <widget class="QSpinBox" name="voltscan_cb_min_InputWidget">
-             <property name="maximum">
-              <number>999999999</number>
-             </property>
-             <property name="value">
-              <number>100</number>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="0" colspan="2">
-            <widget class="QSpinBox" name="voltscan_cb_max_InputWidget">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimum">
-              <number>0</number>
-             </property>
-             <property name="maximum">
-              <number>999999999</number>
-             </property>
-             <property name="value">
-              <number>100000</number>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="1">
-            <widget class="QSpinBox" name="voltscan_cb_high_centile_InputWidget">
-             <property name="maximum">
-              <number>100</number>
-             </property>
-             <property name="value">
-              <number>100</number>
-             </property>
-            </widget>
-           </item>
            <item row="3" column="0">
             <widget class="QLabel" name="percentLabel1">
              <property name="maximumSize">
@@ -528,13 +459,6 @@
              </attribute>
             </widget>
            </item>
-           <item row="3" column="1">
-            <widget class="QSpinBox" name="voltscan_cb_low_centile_InputWidget">
-             <property name="maximum">
-              <number>100</number>
-             </property>
-            </widget>
-           </item>
            <item row="2" column="0" colspan="2">
             <widget class="PlotWidget" name="voltscan_cb_ViewWidget">
              <property name="maximumSize">
@@ -544,6 +468,25 @@
               </size>
              </property>
             </widget>
+           </item>
+           <item row="0" column="0" colspan="2">
+            <widget class="QDoubleSpinBox" name="voltscan_cb_max_InputWidget">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QDoubleSpinBox" name="voltscan_cb_high_centile_InputWidget"/>
+           </item>
+           <item row="3" column="1">
+            <widget class="QDoubleSpinBox" name="voltscan_cb_low_centile_InputWidget"/>
+           </item>
+           <item row="4" column="0" colspan="2">
+            <widget class="QDoubleSpinBox" name="voltscan_cb_min_InputWidget"/>
            </item>
           </layout>
          </item>
@@ -611,15 +554,10 @@
    <extends>QGraphicsView</extends>
    <header>pyqtgraph</header>
   </customwidget>
-  <customwidget>
-   <class>ScienDSpinBox</class>
-   <extends>QDoubleSpinBox</extends>
-   <header>qtwidgets.scientific_spinbox.h</header>
-  </customwidget>
  </customwidgets>
  <tabstops>
   <tabstop>lines_to_scan_SpinBox</tabstop>
-  <tabstop>resolutionSpinBox</tabstop>
+  <tabstop>resolutionDoubleSpinBox</tabstop>
   <tabstop>speedDoubleSpinBox</tabstop>
   <tabstop>constDoubleSpinBox</tabstop>
   <tabstop>voltscan_cb_max_InputWidget</tabstop>
