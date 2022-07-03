@@ -51,7 +51,7 @@ class PLEScannerLogic(ScanningProbeLogic):
     _scan_frequency = StatusVar(name='scan_frequency', default=None)
 
     _number_of_repeats = StatusVar(default=10)
-
+    
     # config options
 
     _fit_config = StatusVar(name='fit_config', default=dict())

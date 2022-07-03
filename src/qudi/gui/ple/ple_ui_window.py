@@ -11,14 +11,25 @@ try:
     importlib.reload(ple_data_widget)
 except NameError:
     import qudi.gui.ple.ple_data_widget as ple_data_widget
+try:
+    importlib.reload(matrix_widget)
+except NameError:
+    import qudi.gui.ple.matrix_widget as matrix_widget
+    
 
 
 class PLEScanMainWindow(QtWidgets.QMainWindow):
-    def __init__(self):
+
+    def __init__(self,
+                *args, 
+                **kwargs):
+        super().__init__(*args, **kwargs)
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
         ui_file = os.path.join(this_dir, 'ple_gui.ui')
-
+        # axes_constr = self._scanning_logic().scanner_axes
+        # axes_constr = tuple(axes_constr[ax] for ax in axes)
+        # channel_constr = list(self._scanning_logic().scanner_channels.values())
         # Load it
         super(PLEScanMainWindow, self).__init__()
         uic.loadUi(ui_file, self)
@@ -29,6 +40,9 @@ class PLEScanMainWindow(QtWidgets.QMainWindow):
         # self.data_dockwidget = AdvancedDockWidget('PLE Data', parent=self)
         self.ple_data_dockWidget.setWidget(self.ple_widget)
 
+        self.matrix_widget = matrix_widget.PLE2DWidget()
+        
+        self.ple_matrix_dockWidget.setWidget(self.matrix_widget)
         # self.fit_widget = FitWidget()
         # self.fit_dockWidgetContents.addWidget(self.fit_widget)
         

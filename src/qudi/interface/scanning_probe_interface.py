@@ -140,7 +140,7 @@ class ScanData:
     def __init__(self, channels, scan_axes, scan_range, scan_resolution, scan_frequency,
                  target_at_start=None, position_feedback_axes=None):
         """
-
+        
         @param ScannerChannel[] channels: ScannerChannel objects involved in this scan
         @param ScannerAxis[] scan_axes: ScannerAxis instances involved in the scan
         @param float[][2] scan_range: inclusive range for each scan axis
@@ -193,6 +193,7 @@ class ScanData:
         self._data = None
         self._position_data = None
         self._target_at_start = target_at_start
+
         # TODO: Automatic interpolation onto rectangular grid needs to be implemented (for position feedback HW)
         return
 
