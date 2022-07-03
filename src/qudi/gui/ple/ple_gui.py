@@ -113,7 +113,7 @@ class PLEScanGui(GuiBase):
         self.scan_state_updated(self._scanning_logic().module_state() != 'idle')
 
     def toggle_scan(self):
-        self.sigToggleScan.emit(self._mw.actionToggle_scan.isChecked(), ["a"], self.module_uuid)
+        self.sigToggleScan.emit(self._mw.actionToggle_scan.isChecked(), ["z"], self.module_uuid)
 
     def show(self):
         """Make window visible and put it above all other windows. """
@@ -170,7 +170,7 @@ class PLEScanGui(GuiBase):
         # self.scanner_settings_toggle_gui_lock(is_running)
 
         if scan_data is not None:
-            self.actionToggle_scan.setChecked(is_running)
+            self._mw.actionToggle_scan.setChecked(is_running)
             self._update_scan_data(scan_data)
         return
     

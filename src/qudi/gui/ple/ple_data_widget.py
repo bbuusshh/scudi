@@ -72,7 +72,7 @@ class PLEDataWidget(QtWidgets.QWidget):
         self.fit_curve = self.plot_widget.plot()
         self.fit_curve.setPen(palette.c2, width=2)
 
-        self.fit_region = pg.LinearRegionItem(values=(0, 1),
+        self.fit_region = pg.LinearRegionItem(values=(0,1),
                                               brush=pg.mkBrush(122, 122, 122, 30),
                                               hoverBrush=pg.mkBrush(196, 196, 196, 30))
         self.plot_widget.addItem(self.fit_region)
@@ -87,7 +87,10 @@ class PLEDataWidget(QtWidgets.QWidget):
         self.plot_widget.setLabel('bottom', 'Wavelength', units='m')
         self.plot_widget.setMinimumHeight(200)
         main_layout.addWidget(self.plot_widget, 2, 0, 1, 3)
-    
+
+
+        self._scan_data = None
+
     def set_scan_data(self, data: ScanData) -> None:
         # Save reference for channel changes
         update_range = (self._scan_data is None) or (self._scan_data.scan_range != data.scan_range) \
@@ -105,15 +108,18 @@ class PLEDataWidget(QtWidgets.QWidget):
 
     #!! TODO choose CHANNEL
     def _update_scan_data(self, update_range: bool) -> None:
+        current_channel = "fluorescence" #or APD events ?? or time tagger #!TODO!
         if (self._scan_data is None) or (self._scan_data.data is None):
             self.data_curve.clear()
         else:
             if update_range:
                 x_data = np.linspace(*self._scan_data.scan_range[0],
                                      self._scan_data.scan_resolution[0])
-                self.data_curve.setData(y=self._scan_data.data[0], x=x_data)
+                self.data_curve.setData(y=self._scan_data.data[current_channel], x=x_data)
+                self.fit_region.setRegion(self._scan_data.scan_range[0])
+                self.target_point.setValue(np.array(self._scan_data.scan_range[0]).sum()/2)
             else:
-                self.data_curve.setData(y=self._scan_data.data[0],
+                self.data_curve.setData(y=self._scan_data.data[current_channel],
                                        x=self.data_curve.xData)
 
 class CustomAxis(pg.AxisItem):

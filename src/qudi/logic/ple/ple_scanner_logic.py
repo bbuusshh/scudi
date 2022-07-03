@@ -91,7 +91,7 @@ class PLEScannerLogic(ScanningProbeLogic):
         self._fit_config_model.load_configs(self._fit_config)
         self._fit_container = FitContainer(parent=self, config_model=self._fit_config_model)
         self.fit_region = self._fit_region
-        print(f"Scanner settings at startup, type {self._scan_ranges} {self._scan_ranges, self._scan_resolution}")
+       
         
         """ Initialisation performed during activation of the module.
         """
@@ -99,8 +99,6 @@ class PLEScannerLogic(ScanningProbeLogic):
 
         self._scan_saved_to_hist = True
 
-
-        print(f"Scanner settings at startup, type {self._scan_ranges} {self._scan_ranges, self._scan_resolution}")
         self.log.debug(f"Scanner settings at startup, type {type(self._scan_ranges)} {self._scan_ranges, self._scan_resolution}")
         # scanner settings loaded from StatusVar or defaulted
         new_settings = self.check_sanity_scan_settings(self.scan_settings)
@@ -117,7 +115,6 @@ class PLEScannerLogic(ScanningProbeLogic):
         if not isinstance(self._scan_frequency, dict):
             self._scan_frequency = {ax.name: ax.max_frequency for ax in constr.axes.values()}
         """
-        print(f"Scanner settings at startup, type {self._scan_ranges} {self._scan_ranges, self._scan_resolution}")
 
         self.__scan_poll_interval = 0
         self.__scan_stop_requested = True
