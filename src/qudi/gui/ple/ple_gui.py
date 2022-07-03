@@ -96,9 +96,24 @@ class PLEScanGui(GuiBase):
             self._scanning_logic().set_scan_settings, QtCore.Qt.QueuedConnection
         )
         self.sigToggleScan.connect(self._scanning_logic().toggle_scan, QtCore.Qt.QueuedConnection)
+        self._mw.actionToggle_scan.triggered.connect(self.toggle_scan, QtCore.Qt.QueuedConnection)
+        
+        self._scanning_logic().sigScanStateChanged.connect(
+            self.scan_state_updated, QtCore.Qt.QueuedConnection
+        )
+        self._scanning_logic().sigScannerTargetChanged.connect(
+            self.scanner_target_updated, QtCore.Qt.QueuedConnection
+        )
         # self.sigToggleOptimize.connect(
         #     self._optimize_logic().toggle_optimize, QtCore.Qt.QueuedConnection
         # )
+        # Initialize widget data
+        # self.scanner_settings_updated()
+        self.scanner_target_updated()
+        self.scan_state_updated(self._scanning_logic().module_state() != 'idle')
+
+    def toggle_scan(self):
+        self.sigToggleScan.emit(self._mw.actionToggle_scan.isChecked(), ["a"], self.module_uuid)
 
     def show(self):
         """Make window visible and put it above all other windows. """
@@ -106,15 +121,64 @@ class PLEScanGui(GuiBase):
         self._mw.activateWindow()
         self._mw.raise_()
 
-    def run_stop(self, is_checked):
-        """ Manages what happens if scan is started/stopped """
-        self._mw.action_run_stop.setEnabled(False)
-        if is_checked:
-            pass
 
-    def scan_started(self):
-        self._mw.action_run_stop.setEnabled(True)
+    @QtCore.Slot(dict)
+    def set_scanner_target_position(self, target_pos):
+        """
+        Issues new target to logic and updates gui.
 
-    def scan_stopped(self):
-        self._mw.action_run_stop.setEnabled(True)
-        self._mw.action_run_stop.setChecked(False)
+        @param dict target_pos:
+        """
+        if not self._scanner_settings_locked:
+            self.sigScannerTargetChanged.emit(target_pos, self.module_uuid)
+            # update gui with target, not actual logic values
+            # we can not rely on the execution order of the above emit
+            self.scanner_target_updated(pos_dict=target_pos, caller_id=None)
+        else:
+            # refresh gui with stored values
+            self.scanner_target_updated(pos_dict=None, caller_id=None)
+
+    def scanner_target_updated(self, pos_dict=None, caller_id=None):
+        """
+        Updates the scanner target and set widgets accordingly.
+
+        @param dict pos_dict: The scanner position dict to update each axis position.
+                              If None (default) read the scanner position from logic and update.
+        @param int caller_id: The qudi module object id responsible for triggering this update
+        """
+
+        # If this update has been issued by this module, do not update display.
+        # This has already been done before notifying the logic.
+        if caller_id is self.module_uuid:
+            return
+
+        if not isinstance(pos_dict, dict):
+            pos_dict = self._scanning_logic().scanner_target
+
+        #! self._update_scan_markers(pos_dict)
+        # self.scanner_control_dockwidget.set_target(pos_dict)
+
+    @QtCore.Slot(bool, object, object)
+    def scan_state_updated(self, is_running, scan_data=None, caller_id=None):
+        scan_axes = scan_data.scan_axes if scan_data is not None else None
+        # self._toggle_enable_scan_buttons(not is_running, exclude_scan=scan_axes)
+        # if not self._optimizer_state['is_running']:
+        #     self._toggle_enable_actions(not is_running)
+        # else:
+        #     self._toggle_enable_actions(not is_running, exclude_action=self._mw.action_optimize_position)
+        # self._toggle_enable_scan_crosshairs(not is_running)
+        # self.scanner_settings_toggle_gui_lock(is_running)
+
+        if scan_data is not None:
+            self.actionToggle_scan.setChecked(is_running)
+            self._update_scan_data(scan_data)
+        return
+    
+    @QtCore.Slot(object)
+    def _update_scan_data(self, scan_data):
+        """
+        @param ScanData scan_data:
+        """
+        axes = scan_data.scan_axes
+        
+        self._mw.ple_widget.set_scan_data(scan_data)
