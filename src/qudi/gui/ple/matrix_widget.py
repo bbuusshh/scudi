@@ -40,7 +40,8 @@ class PLE2DWidget(QtWidgets.QWidget):
 
         # disable buggy pyqtgraph 'Export..' context menu
         self.image_widget.plot_widget.getPlotItem().vb.scene().contextMenu[0].setVisible(False)
-
+        
+        self.number_of_repeats=None
         self._scan_data = None
         self._scan_data_accumulated = None
 
@@ -74,7 +75,12 @@ class PLE2DWidget(QtWidgets.QWidget):
             # current_channel = self.channel_selection_combobox.currentText()
             current_channel = "fluorescence" #or APD events ?? or time tagger #!TODO!
             self._scan_data_accumulated = np.vstack((self._scan_data_accumulated, self._scan_data.data[current_channel])) if self._scan_data_accumulated is not None else self._scan_data.data[current_channel]
-            self.image_widget.set_image(self._scan_data_accumulated)
+            
+            if self.number_of_repeats is not None:
+                self.image_widget.set_image(self._scan_data_accumulated[:, :-self.number_of_repeats])
+            else:
+                self.image_widget.set_image(self._scan_data_accumulated)    
+            
             self.image_widget.set_image_extent(self._scan_data.scan_range,
                                                adjust_for_px_size=True)
             self.image_widget.autoRange()
