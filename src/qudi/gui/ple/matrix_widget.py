@@ -33,10 +33,11 @@ class PLE2DWidget(QtWidgets.QWidget):
         self.image_widget.set_axis_label('bottom', label='Wavelength', unit='m')
         self.image_widget.set_axis_label('left', label='Scan number', unit='#')
         # self.image_widget.set_data_label(label=channels[0].name, unit=channels[0].unit)
-
+        
         self.layout().addWidget(self.image_widget)
 
         # disable buggy pyqtgraph 'Export..' context menu
+        self.image_widget.plot_widget.setAspectLocked(lock=False, ratio=1.0)
         self.image_widget.plot_widget.getPlotItem().vb.scene().contextMenu[0].setVisible(False)
         
         self.number_of_repeats=None
@@ -75,8 +76,7 @@ class PLE2DWidget(QtWidgets.QWidget):
         # self.set_plot_range(x_range= self._scan_data.scan_range[0],
         #                     y_range = self._scan_data.scan_range[0])
         self.image_widget.set_image(self._scan_data.accumulated_data[current_channel].T)    
-        # self.image_widget.set_image_extent([(0, self._scan_data.scan_resolution[0]), (0, self._scan_data.accumulated_data[current_channel].shape[0])],
-                        # adjust_for_px_size=True)
+        matrix_range = (self._scan_data.scan_range[0], (0, self._scan_data.accumulated_data[current_channel].shape[0]))
+        self.image_widget.set_image_extent(matrix_range,
+                        adjust_for_px_size=True)
         self.image_widget.autoRange()
-
-        
