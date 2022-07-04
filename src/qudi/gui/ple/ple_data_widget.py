@@ -47,15 +47,15 @@ class PLEDataWidget(QtWidgets.QWidget):
 
         fit_region_group_box = QtWidgets.QGroupBox('Fit Region')
  
-        axis_type_label = QtWidgets.QLabel('Axis Type:')
-        axis_type_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        self.axis_type = ToggleSwitch(state_names=('Wavelength', 'Frequency'))
+        # axis_type_label = QtWidgets.QLabel('Axis Type:')
+        # axis_type_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        # self.axis_type = ToggleSwitch(state_names=('Wavelength', 'Frequency'))
 
-        h_layout = QtWidgets.QHBoxLayout()
-        h_layout.addWidget(axis_type_label)
-        h_layout.addWidget(self.axis_type)
-        h_layout.addStretch()
-        main_layout.addLayout(h_layout, 1, 0, 1, 2)
+        # h_layout = QtWidgets.QHBoxLayout()
+        # h_layout.addWidget(axis_type_label)
+        # h_layout.addWidget(self.axis_type)
+        # h_layout.addStretch()
+        # main_layout.addLayout(h_layout, 1, 0, 1, 2)
 
         self.plot_widget = pg.PlotWidget(
             axisItems={'bottom': CustomAxis(orientation='bottom'),
@@ -72,21 +72,21 @@ class PLEDataWidget(QtWidgets.QWidget):
         self.fit_curve = self.plot_widget.plot()
         self.fit_curve.setPen(palette.c2, width=2)
 
-        self.fit_region = pg.LinearRegionItem(values=(0,1),
+        self.fit_region = pg.LinearRegionItem(
                                               brush=pg.mkBrush(122, 122, 122, 30),
                                               hoverBrush=pg.mkBrush(196, 196, 196, 30))
         self.plot_widget.addItem(self.fit_region)
 
-        self.target_point = pg.InfiniteLine(pos=0,
+        self.target_point = pg.InfiniteLine(
                                             angle=90,
                                             movable=True,
                                             pen=pg.mkPen(color='green', width=2))
         self.plot_widget.addItem(self.target_point)
 
         self.plot_widget.setLabel('left', 'Intensity', units='arb.u.')
-        self.plot_widget.setLabel('bottom', 'Wavelength', units='m')
+        self.plot_widget.setLabel('bottom' ,'Frequency', units='Hz')#, 'Wavelength', units='m')
         self.plot_widget.setMinimumHeight(200)
-        main_layout.addWidget(self.plot_widget, 2, 0, 1, 3)
+        main_layout.addWidget(self.plot_widget)
 
 
         self._scan_data = None

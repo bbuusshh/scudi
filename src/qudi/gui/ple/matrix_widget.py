@@ -30,7 +30,7 @@ class PLE2DWidget(QtWidgets.QWidget):
         # self.image_widget.sigZoomAreaApplied.connect(self._zoom_applied)
         # self.plot_widget.setLabel('bottom', 'Wavelength', units='m')
         # self.plot_widget.setLabel('left', 'Scan number', units='#')
-        self.image_widget.set_axis_label('bottom', label='Wavelength', unit='m')
+        self.image_widget.set_axis_label('bottom', label='Frequency', unit='Hz')
         self.image_widget.set_axis_label('left', label='Scan number', unit='#')
         # self.image_widget.set_data_label(label=channels[0].name, unit=channels[0].unit)
         

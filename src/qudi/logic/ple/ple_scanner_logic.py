@@ -22,6 +22,12 @@ See the GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License along with qudi.
 If not, see <https://www.gnu.org/licenses/>.
 """
+
+#TODO when scan stopped plot the last complete scan. 
+#TODO refresh matrix when settings change
+#TODO resolution
+#!ValueError: all the input array dimensions for the concatenation axis must match exactly, but along dimension 1, the array at index 0 has size 50 and the array at index 1 has size 100
+
 from PySide2 import QtCore
 import copy as cp
 from qudi.logic.scanning_probe_logic import ScanningProbeLogic

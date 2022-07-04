@@ -88,6 +88,8 @@ class PLEScanGui(GuiBase):
         self._mw = PLEScanMainWindow()
         self._mw.show()
 
+        self.scan_axis = self._scanning_logic()._scan_axis
+
         # Connect signals
         self.sigScannerTargetChanged.connect(
             self._scanning_logic().set_target_position, QtCore.Qt.QueuedConnection
@@ -109,11 +111,44 @@ class PLEScanGui(GuiBase):
         # )
         # Initialize widget data
         # self.scanner_settings_updated()
+
+        # self._mw.ple_widget.fit_region.sigRegionChangeFinished.connect(self.fit_region_value_changed)
+        # self._mw.ple_widget.axis_type.sigStateChanged.connect(self.axis_type_changed)
+        self._mw.ple_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
+        self._mw.ple_widget.fit_region.sigRegionChangeFinished.connect(self.region_value_changed)
         self.scanner_target_updated()
         self.scan_state_updated(self._scanning_logic().module_state() != 'idle')
 
+        self._init_ranges()
+        # self._init_ui_connectors()
+    
+    # def _init_ui_connectors(self):
+        # self._mw.startDoubleSpinBox.editingFinished.connect()
+        # self._mw.stopDoubleSpinBox.editingFinished.connect()
+        # self._mw.speedDoubleSpinBox.editingFinished.connect()
+        # self._mw.resolutionDoubleSpinBox.editingFinished.connect(
+        #     lambda: self.sigScanSettingsChanged.emit({'resolution': {self.scan_axis: self._mw.resolutionDoubleSpinBox.value()}})
+        #     ) 
+        #!ValueError: all the input array dimensions for the concatenation axis must match exactly, but along dimension 1, the array at index 0 has size 50 and the array at index 1 has size 100
+        # self._mw.number_of_repeats_SpinBox.editingFinished.connect()
+
+
+    def _init_ranges(self):
+        # self._scanning_logic().scan_ranges[self.scan_axis]
+        x_range = self._scanning_logic().scan_ranges[self.scan_axis]
+        y_range =  (0, self._scanning_logic()._number_of_repeats)
+        self._mw.matrix_widget.set_plot_range(x_range = x_range, y_range = y_range)
+        matrix_range = (x_range, y_range)
+        self._mw.matrix_widget.image_widget.set_image_extent(matrix_range,
+                        adjust_for_px_size=True)
+        self._mw.matrix_widget.image_widget.autoRange()
+        self._mw.ple_widget.fit_region.setRegion(x_range)
+        self._mw.ple_widget.plot_widget.setRange(xRange = x_range)
+
+        self._mw.constDoubleSpinBox.setRange(*x_range)
+
     def toggle_scan(self):
-        self.sigToggleScan.emit(self._mw.actionToggle_scan.isChecked(), ["z"], self.module_uuid)
+        self.sigToggleScan.emit(self._mw.actionToggle_scan.isChecked(), [self.scan_axis], self.module_uuid)
 
     def show(self):
         """Make window visible and put it above all other windows. """
@@ -121,22 +156,24 @@ class PLEScanGui(GuiBase):
         self._mw.activateWindow()
         self._mw.raise_()
 
+    @QtCore.Slot()
+    def region_value_changed(self):
+        region = self._mw.ple_widget.fit_region.getRegion()
+        self.sigScanSettingsChanged.emit({'range': {self.scan_axis: region}})
+        self._mw.startDoubleSpinBox.setValue(region[0])
+        self._mw.stopDoubleSpinBox.setValue(region[1])
 
     @QtCore.Slot(dict)
-    def set_scanner_target_position(self, target_pos):
+    def set_scanner_target_position(self, target_pos=None):
         """
         Issues new target to logic and updates gui.
 
         @param dict target_pos:
         """
-        if not self._scanner_settings_locked:
-            self.sigScannerTargetChanged.emit(target_pos, self.module_uuid)
-            # update gui with target, not actual logic values
-            # we can not rely on the execution order of the above emit
-            self.scanner_target_updated(pos_dict=target_pos, caller_id=None)
-        else:
-            # refresh gui with stored values
-            self.scanner_target_updated(pos_dict=None, caller_id=None)
+        target = self._mw.ple_widget.target_point.value()
+        target_pos = {self._scanning_logic()._scan_axis: target}
+        self._mw.constDoubleSpinBox.setValue(target)
+        self.scanner_target_updated(pos_dict=target_pos, caller_id=None)
 
     def scanner_target_updated(self, pos_dict=None, caller_id=None):
         """
@@ -151,24 +188,15 @@ class PLEScanGui(GuiBase):
         # This has already been done before notifying the logic.
         if caller_id is self.module_uuid:
             return
-
         if not isinstance(pos_dict, dict):
             pos_dict = self._scanning_logic().scanner_target
-
-        #! self._update_scan_markers(pos_dict)
+            
+        self._mw.ple_widget.target_point.setValue(pos_dict[self._scanning_logic()._scan_axis])
         # self.scanner_control_dockwidget.set_target(pos_dict)
 
     @QtCore.Slot(bool, object, object)
     def scan_state_updated(self, is_running, scan_data=None, caller_id=None):
         scan_axes = scan_data.scan_axes if scan_data is not None else None
-        # self._toggle_enable_scan_buttons(not is_running, exclude_scan=scan_axes)
-        # if not self._optimizer_state['is_running']:
-        #     self._toggle_enable_actions(not is_running)
-        # else:
-        #     self._toggle_enable_actions(not is_running, exclude_action=self._mw.action_optimize_position)
-        # self._toggle_enable_scan_crosshairs(not is_running)
-        # self.scanner_settings_toggle_gui_lock(is_running)
-
         if scan_data is not None:
             self._mw.actionToggle_scan.setChecked(is_running)
             self._update_scan_data(scan_data)
