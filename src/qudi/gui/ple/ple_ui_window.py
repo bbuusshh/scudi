@@ -23,7 +23,7 @@ class PLEScanMainWindow(QtWidgets.QMainWindow):
     def __init__(self,
                 *args, 
                 **kwargs):
-        super().__init__(*args, **kwargs)
+        # super().__init__(*args, **kwargs)
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
         ui_file = os.path.join(this_dir, 'ple_gui.ui')
@@ -37,19 +37,12 @@ class PLEScanMainWindow(QtWidgets.QMainWindow):
 
         self.centralwidget.hide()
         self.ple_widget = ple_data_widget.PLEDataWidget()
-        # self.data_dockwidget = AdvancedDockWidget('PLE Data', parent=self)
         self.ple_data_dockWidget.setWidget(self.ple_widget)
 
         self.matrix_widget = matrix_widget.PLE2DWidget()
         
         self.ple_matrix_dockWidget.setWidget(self.matrix_widget)
-        # self.fit_widget = FitWidget()
-        # self.fit_dockWidgetContents.addWidget(self.fit_widget)
-        
-        # self.data_dockwidget.show()
-        # self.data_dockwidget.setFloating(False)
-        # self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.data_dockwidget)
-    
+
     def restore_view(self):
         # Resize main window
         # screen_size = QtWidgets.QApplication.instance().desktop().availableGeometry(self).size()

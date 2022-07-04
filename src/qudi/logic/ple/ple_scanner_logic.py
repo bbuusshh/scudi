@@ -35,7 +35,7 @@ from qudi.util.widgets.fitting import FitConfigurationDialog, FitWidget
 
 from qudi.util.datastorage import TextDataStorage
 from qudi.util.datafitting import FitContainer, FitConfigurationsModel
-
+import numpy as np
 class PLEScannerLogic(ScanningProbeLogic):
 
     """This logic module controls scans of DC voltage on the fourth analog
@@ -51,13 +51,15 @@ class PLEScannerLogic(ScanningProbeLogic):
     _scan_frequency = StatusVar(name='scan_frequency', default=None)
 
     _number_of_repeats = StatusVar(default=10)
-    
+    _repeated = 0
     # config options
 
     _fit_config = StatusVar(name='fit_config', default=dict())
     _fit_region = StatusVar(name='fit_region', default=[0, 1])
 
-  
+    accumulated_data = None
+    sigRepeatScan = QtCore.Signal(bool, tuple)
+
     def __init__(self, config, **kwargs):
         super(PLEScannerLogic, self).__init__(config=config, **kwargs)
         """ Create VoltageScanningLogic object with connectors.
@@ -80,7 +82,7 @@ class PLEScannerLogic(ScanningProbeLogic):
         self.__scan_poll_timer = None
         self.__scan_poll_interval = 0
         self.__scan_stop_requested = True
-
+        self.data_accumulated = None
 
 
     def on_activate(self):
@@ -115,6 +117,8 @@ class PLEScannerLogic(ScanningProbeLogic):
         if not isinstance(self._scan_frequency, dict):
             self._scan_frequency = {ax.name: ax.max_frequency for ax in constr.axes.values()}
         """
+        self.sigRepeatScan.connect(self.toggle_scan, QtCore.Qt.QueuedConnection)
+
 
         self.__scan_poll_interval = 0
         self.__scan_stop_requested = True
@@ -139,6 +143,24 @@ class PLEScannerLogic(ScanningProbeLogic):
             self._scanner().stop_scan()
         return  
     
+    def stack_data(self):
+        if (self.scan_data is not None) and (self.scan_data.scan_dimension == 1):
+            if self.accumulated_data is None:
+                self.accumulated_data = {channel: data_i[np.newaxis, :] for channel, data_i in self.scan_data.data.items()}
+            else:
+                self.accumulated_data = {channel : np.vstack((self.accumulated_data[channel], data_i))[-self._number_of_repeats:] for channel, data_i in self.scan_data.data.items()}
+            self.scan_data._accumulated_data = self.accumulated_data
+            self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)
+
+
+    @QtCore.Slot(bool, tuple)
+    @QtCore.Slot(bool, tuple, object)
+    def toggle_scan(self, start, scan_axes, caller_id=None):
+        self._toggled_scan_axes = scan_axes
+        with self._thread_lock:
+            if start:
+                return self.start_scan(self._toggled_scan_axes, caller_id)
+            return self.stop_scan()
 
     @QtCore.Slot(tuple)
     @QtCore.Slot(tuple, object)
@@ -194,7 +216,6 @@ class PLEScannerLogic(ScanningProbeLogic):
                 self.module_state.unlock()
                 self.sigScanStateChanged.emit(False, None, self._curr_caller_id)
                 return -1
-
             self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)
             self.__start_timer()
             return 0
@@ -207,7 +228,6 @@ class PLEScannerLogic(ScanningProbeLogic):
                 return 0
 
             self.__stop_timer()
-
             err = self._scanner().stop_scan() if self._scanner().module_state() != 'idle' else 0
 
             self.module_state.unlock()
@@ -217,7 +237,6 @@ class PLEScannerLogic(ScanningProbeLogic):
                 self.sigScanStateChanged.emit(False, self.scan_data, self.module_uuid)
             else:
                 self.sigScanStateChanged.emit(False, self.scan_data, self._curr_caller_id)
-
             return err
 
     @QtCore.Slot()
@@ -228,6 +247,12 @@ class PLEScannerLogic(ScanningProbeLogic):
 
             if self._scanner().module_state() == 'idle':
                 self.stop_scan()
+                self._repeated += 1
+                if self._number_of_repeats > self._repeated:
+                    self.stack_data()
+                    self.sigRepeatScan.emit(True, self._toggled_scan_axes)
+                else:
+                    self._repeated = 0 
                 return
             # TODO Added the following line as a quick test; Maybe look at it with more caution if correct
             self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)

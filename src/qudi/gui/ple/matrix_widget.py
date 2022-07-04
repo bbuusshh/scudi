@@ -25,25 +25,22 @@ class PLE2DWidget(QtWidgets.QWidget):
         matrix_group_box = QtWidgets.QGroupBox('Matrix Region')
  
         self.image_widget = ImageWidget()
-        self.image_widget.set_selection_mutable(True)
-        self.image_widget.add_region_selection(span=((-0.5, 0.5), (-0.5, 0.5)),
-                                               mode=self.image_widget.SelectionMode.XY)
         self.image_item = self.image_widget.image_item
-        self.image_widget.sigRegionSelectionChanged.connect(self._region_changed)
-        self.channel_selection_combobox.currentIndexChanged.connect(self._data_channel_changed)
-        self.image_widget.sigZoomAreaApplied.connect(self._zoom_applied)
-        self.plot_widget.setLabel('bottom', 'Wavelength', units='m')
-        self.plot_widget.setLabel('left', 'Scan number', units='#')
+        # self.channel_selection_combobox.currentIndexChanged.connect(self._data_channel_changed)
+        # self.image_widget.sigZoomAreaApplied.connect(self._zoom_applied)
+        # self.plot_widget.setLabel('bottom', 'Wavelength', units='m')
+        # self.plot_widget.setLabel('left', 'Scan number', units='#')
+        self.image_widget.set_axis_label('bottom', label='Wavelength', unit='m')
+        self.image_widget.set_axis_label('left', label='Scan number', unit='#')
         # self.image_widget.set_data_label(label=channels[0].name, unit=channels[0].unit)
 
-        self.layout().addWidget(self.image_widget, 1, 0, 1, 4)
+        self.layout().addWidget(self.image_widget)
 
         # disable buggy pyqtgraph 'Export..' context menu
         self.image_widget.plot_widget.getPlotItem().vb.scene().contextMenu[0].setVisible(False)
         
         self.number_of_repeats=None
         self._scan_data = None
-        self._scan_data_accumulated = None
 
 
     def set_plot_range(self,
@@ -69,18 +66,17 @@ class PLE2DWidget(QtWidgets.QWidget):
         self._update_scan_data()
 
     def _update_scan_data(self) -> None:
-        if (self._scan_data is None) or (self._scan_data.data is None):
-            self.image_widget.set_image(None)
-        else:
+        # if (self._scan_data is None) or (self._scan_data._accumulated_data is None):
+        #     # self.image_widget.set_image(None)
+        #     pass
+        # else:
             # current_channel = self.channel_selection_combobox.currentText()
-            current_channel = "fluorescence" #or APD events ?? or time tagger #!TODO!
-            self._scan_data_accumulated = np.vstack((self._scan_data_accumulated, self._scan_data.data[current_channel])) if self._scan_data_accumulated is not None else self._scan_data.data[current_channel]
-            
-            if self.number_of_repeats is not None:
-                self.image_widget.set_image(self._scan_data_accumulated[:, :-self.number_of_repeats])
-            else:
-                self.image_widget.set_image(self._scan_data_accumulated)    
-            
-            self.image_widget.set_image_extent(self._scan_data.scan_range,
-                                               adjust_for_px_size=True)
-            self.image_widget.autoRange()
+        current_channel = "fluorescence" #or APD events ?? or time tagger #!TODO!
+        # self.set_plot_range(x_range= self._scan_data.scan_range[0],
+        #                     y_range = self._scan_data.scan_range[0])
+        self.image_widget.set_image(self._scan_data.accumulated_data[current_channel].T)    
+        # self.image_widget.set_image_extent([(0, self._scan_data.scan_resolution[0]), (0, self._scan_data.accumulated_data[current_channel].shape[0])],
+                        # adjust_for_px_size=True)
+        self.image_widget.autoRange()
+
+        

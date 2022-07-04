@@ -79,7 +79,7 @@ class PLEScanGui(GuiBase):
         self.sigScannerTargetChanged.disconnect()
         self.sigScanSettingsChanged.disconnect()
         self.sigToggleScan.disconnect()
-        self.sigToggleOptimize.disconnect()
+        # self.sigToggleOptimize.disconnect()
         return 0
 
     def on_activate(self):
@@ -182,3 +182,8 @@ class PLEScanGui(GuiBase):
         axes = scan_data.scan_axes
         
         self._mw.ple_widget.set_scan_data(scan_data)
+        if scan_data.accumulated_data is not None:
+            self._mw.matrix_widget.set_scan_data(scan_data)
+
+
+
