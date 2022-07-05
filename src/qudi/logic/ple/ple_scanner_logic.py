@@ -172,6 +172,9 @@ class PLEScannerLogic(ScanningProbeLogic):
                 self._scan_saved_to_hist = settings['save_to_history']
             # self.reset_accumulated()
 
+    def update_number_of_repeats(self, number_of_repeats):
+        print(self._number_of_repeats)
+        self._number_of_repeats = number_of_repeats
 
     @QtCore.Slot(bool, tuple)
     @QtCore.Slot(bool, tuple, object)
@@ -272,11 +275,13 @@ class PLEScannerLogic(ScanningProbeLogic):
 
             if self._scanner().module_state() == 'idle':
                 self.stop_scan()
-                self._repeated += 1
+                
                 if self._number_of_repeats > self._repeated:
                     self.stack_data()
                     self.sigRepeatScan.emit(True, self._toggled_scan_axes)
+                    self._repeated += 1
                 else:
+                    self.sigRepeatScan.emit(False, self._toggled_scan_axes)
                     self._repeated = 0 
                 return
             # TODO Added the following line as a quick test; Maybe look at it with more caution if correct
