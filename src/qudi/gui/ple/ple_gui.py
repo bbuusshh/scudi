@@ -54,22 +54,7 @@ class PLEScanGui(GuiBase):
     sigSaveScan = QtCore.Signal(object, object)
     sigSaveFinished = QtCore.Signal()
     sigShowSaveDialog = QtCore.Signal(bool)
-# def save_view(self):
-#         """Saves the current GUI state as a QbyteArray.
-#            The .data() function will transform it to a bytearray, 
-#            which can be saved as a StatusVar and read by the load_view method. 
-#         """
-#         self._save_display_view = self._mw.saveState().data() 
-        
 
-#     def load_view(self):
-#         """Loads the saved state from the GUI and can read a QbyteArray
-#             or a simple byteArray aswell.
-#         """
-#         if self._save_display_view is None:
-#             pass
-#         else:
-#             self._mw.restoreState(self._save_display_view)
     def on_deactivate(self):
         """ Reverse steps of activation
         @return int: error code (0:OK, -1:error)
@@ -87,7 +72,6 @@ class PLEScanGui(GuiBase):
         """
         self._mw = PLEScanMainWindow()
         self._mw.show()
-
         self.scan_axis = self._scanning_logic()._scan_axis
 
         # Connect signals
@@ -99,12 +83,16 @@ class PLEScanGui(GuiBase):
         )
         self.sigToggleScan.connect(self._scanning_logic().toggle_scan, QtCore.Qt.QueuedConnection)
         self._mw.actionToggle_scan.triggered.connect(self.toggle_scan, QtCore.Qt.QueuedConnection)
+        self._scanning_logic().sigRepeatScan.connect(self.scan_repeated, QtCore.Qt.QueuedConnection)
         
         self._scanning_logic().sigScanStateChanged.connect(
             self.scan_state_updated, QtCore.Qt.QueuedConnection
         )
         self._scanning_logic().sigScannerTargetChanged.connect(
             self.scanner_target_updated, QtCore.Qt.QueuedConnection
+        )
+        self._scanning_logic().sigScanSettingsChanged.connect(
+            self.scanner_settings_updated, QtCore.Qt.QueuedConnection
         )
         # self.sigToggleOptimize.connect(
         #     self._optimize_logic().toggle_optimize, QtCore.Qt.QueuedConnection
@@ -120,16 +108,22 @@ class PLEScanGui(GuiBase):
         self.scan_state_updated(self._scanning_logic().module_state() != 'idle')
 
         self._init_ranges()
-        # self._init_ui_connectors()
+        self._init_ui_connectors()
     
-    # def _init_ui_connectors(self):
-        # self._mw.startDoubleSpinBox.editingFinished.connect()
-        # self._mw.stopDoubleSpinBox.editingFinished.connect()
-        # self._mw.speedDoubleSpinBox.editingFinished.connect()
-        # self._mw.resolutionDoubleSpinBox.editingFinished.connect(
-        #     lambda: self.sigScanSettingsChanged.emit({'resolution': {self.scan_axis: self._mw.resolutionDoubleSpinBox.value()}})
-        #     ) 
-        #!ValueError: all the input array dimensions for the concatenation axis must match exactly, but along dimension 1, the array at index 0 has size 50 and the array at index 1 has size 100
+    def _init_ui_connectors(self):
+        new_scan_range = lambda: self.sigScanSettingsChanged.emit({'range': {self.scan_axis: (self._mw.startDoubleSpinBox.value(), self._mw.stopDoubleSpinBox.value())}})
+        self._mw.startDoubleSpinBox.editingFinished.connect(new_scan_range)
+        self._mw.stopDoubleSpinBox.editingFinished.connect(new_scan_range)
+        self._mw.frequencyDoubleSpinBox.editingFinished.connect(
+            lambda: self.sigScanSettingsChanged.emit({'frequency': {self.scan_axis: self._mw.frequencyDoubleSpinBox.value()}})
+        )
+        self._mw.resolutionDoubleSpinBox.editingFinished.connect(
+            lambda: self.sigScanSettingsChanged.emit({'resolution': {self.scan_axis: self._mw.resolutionDoubleSpinBox.value()}})
+            ) 
+        self._mw.actionFull_range.triggered.connect(
+            self._scanning_logic().set_full_scan_ranges, QtCore.Qt.QueuedConnection
+        )
+        # !ValueError: all the input array dimensions for the concatenation axis must match exactly, but along dimension 1, the array at index 0 has size 50 and the array at index 1 has size 100
         # self._mw.number_of_repeats_SpinBox.editingFinished.connect()
 
 
@@ -143,9 +137,11 @@ class PLEScanGui(GuiBase):
                         adjust_for_px_size=True)
         self._mw.matrix_widget.image_widget.autoRange()
         self._mw.ple_widget.fit_region.setRegion(x_range)
+        self._mw.ple_widget.target_point.setValue((x_range[0] + x_range[1])/2)
         self._mw.ple_widget.plot_widget.setRange(xRange = x_range)
 
         self._mw.constDoubleSpinBox.setRange(*x_range)
+
 
     def toggle_scan(self):
         self.sigToggleScan.emit(self._mw.actionToggle_scan.isChecked(), [self.scan_axis], self.module_uuid)
@@ -162,6 +158,67 @@ class PLEScanGui(GuiBase):
         self.sigScanSettingsChanged.emit({'range': {self.scan_axis: region}})
         self._mw.startDoubleSpinBox.setValue(region[0])
         self._mw.stopDoubleSpinBox.setValue(region[1])
+
+    @QtCore.Slot()
+    def restore_scanner_settings(self):
+        """ ToDo: Document
+        """
+        self.scanner_settings_updated({'frequency': self._scanning_logic().scan_frequency})
+
+
+    @QtCore.Slot(dict)
+    def scanner_settings_updated(self, settings=None):
+        """
+        Update scanner settings from logic and set widgets accordingly.
+
+        @param dict settings: Settings dict containing the scanner settings to update.
+                              If None (default) read the scanner setting from logic and update.
+        """
+        if not isinstance(settings, dict):
+            settings = self._scanning_logic().scan_settings
+
+        # if self._scanner_settings_locked:
+        #     return
+        # ToDo: Handle all remaining settings
+        # ToDo: Implement backwards scanning functionality
+
+        if 'resolution' in settings:
+            self._mw.resolutionDoubleSpinBox.setValue(settings['resolution'][self.scan_axis])
+        if 'range' in settings:
+            x_range = settings['range'][self.scan_axis]
+            self._mw.startDoubleSpinBox.setValue(x_range[0])
+            self._mw.stopDoubleSpinBox.setValue(x_range[1])
+            self._mw.constDoubleSpinBox.setRange(*x_range)
+            
+
+            y_range =  (0, self._scanning_logic()._number_of_repeats)
+            self._mw.matrix_widget.set_plot_range(x_range = x_range, y_range = y_range)
+            matrix_range = (x_range, y_range)
+            self._mw.matrix_widget.image_widget.set_image_extent(matrix_range,
+                            adjust_for_px_size=True)
+            self._mw.matrix_widget.image_widget.autoRange()
+            
+        if 'frequency' in settings:
+            self._mw.freqDoubleSpinBox.setValue(settings['frequency'][self.scan_axis])
+        
+        self._scanning_logic().reset_accumulated()
+        # self._mw.number_of_repeats_SpinBox
+        
+
+    @QtCore.Slot(bool, tuple)
+    def scan_repeated(self, start, scan_axes):
+        self._mw.elapsed_lines_DisplayWidget.display(self._scanning_logic()._repeated)
+
+# self._mw.startDoubleSpinBox.editingFinished.connect()
+        # self._mw.stopDoubleSpinBox.editingFinished.connect()
+        # self._mw.speedDoubleSpinBox.editingFinished.connect()
+        # self._mw.resolutionDoubleSpinBox.editingFinished.connect(
+        #     lambda: self.sigScanSettingsChanged.emit({'resolution': {self.scan_axis: self._mw.resolutionDoubleSpinBox.value()}})
+        #     ) 
+        #!ValueError: all the input array dimensions for the concatenation axis must match exactly, but along dimension 1, the array at index 0 has size 50 and the array at index 1 has size 100
+        # self._mw.number_of_repeats_SpinBox.editingFinished.connect()
+
+
 
     @QtCore.Slot(dict)
     def set_scanner_target_position(self, target_pos=None):
@@ -214,4 +271,20 @@ class PLEScanGui(GuiBase):
             self._mw.matrix_widget.set_scan_data(scan_data)
 
 
+    def save_view(self):
+        """Saves the current GUI state as a QbyteArray.
+           The .data() function will transform it to a bytearray, 
+           which can be saved as a StatusVar and read by the load_view method. 
+        """
+        self._save_display_view = self._mw.saveState().data() 
+        
+
+    def load_view(self):
+        """Loads the saved state from the GUI and can read a QbyteArray
+            or a simple byteArray aswell.
+        """
+        if self._save_display_view is None:
+            pass
+        else:
+            self._mw.restoreState(self._save_display_view)
 

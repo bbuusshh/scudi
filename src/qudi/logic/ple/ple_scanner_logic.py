@@ -159,6 +159,20 @@ class PLEScannerLogic(ScanningProbeLogic):
             self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)
 
 
+    @QtCore.Slot(dict)
+    def set_scan_settings(self, settings):
+        with self._thread_lock:
+            if 'range' in settings:
+                self.set_scan_range(settings['range'])
+            if 'resolution' in settings:
+                self.set_scan_resolution(settings['resolution'])
+            if 'frequency' in settings:
+                self.set_scan_frequency(settings['frequency'])
+            if 'save_to_history' in settings:
+                self._scan_saved_to_hist = settings['save_to_history']
+            # self.reset_accumulated()
+
+
     @QtCore.Slot(bool, tuple)
     @QtCore.Slot(bool, tuple, object)
     def toggle_scan(self, start, scan_axes, caller_id=None):
@@ -244,6 +258,11 @@ class PLEScannerLogic(ScanningProbeLogic):
             else:
                 self.sigScanStateChanged.emit(False, self.scan_data, self._curr_caller_id)
             return err
+
+    def reset_accumulated(self):
+        self.accumulated_data = None
+        if self.scan_data is not None:
+            self.scan_data._accumulated_data = None
 
     @QtCore.Slot()
     def __scan_poll_loop(self):
