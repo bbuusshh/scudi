@@ -15,7 +15,10 @@ try:
     importlib.reload(matrix_widget)
 except NameError:
     import qudi.gui.ple.matrix_widget as matrix_widget
-    
+try:
+    importlib.reload(fit_widget)
+except NameError:
+    import qudi.gui.ple.fit_dockwidget as fit_widget
 
 
 class PLEScanMainWindow(QtWidgets.QMainWindow):
@@ -42,6 +45,7 @@ class PLEScanMainWindow(QtWidgets.QMainWindow):
         self.matrix_widget = matrix_widget.PLE2DWidget()
         
         self.ple_matrix_dockWidget.setWidget(self.matrix_widget)
+
 
     def restore_view(self):
         # Resize main window

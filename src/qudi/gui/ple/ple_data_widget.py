@@ -19,7 +19,7 @@ You should have received a copy of the GNU Lesser General Public License along w
 If not, see <https://www.gnu.org/licenses/>.
 """
 
-__all__ = ['SpectrometerDataWidget']
+__all__ = ['PLEDataWidget']
 
 import pyqtgraph as pg
 from PySide2 import QtCore
@@ -65,6 +65,9 @@ class PLEDataWidget(QtWidgets.QWidget):
         self.plot_widget.getAxis('left').nudge = 0
         self.plot_widget.showGrid(x=True, y=True, alpha=0.5)
 
+        self._fit_data_item = pg.PlotDataItem(pen=pg.mkPen(palette.c2))
+        self.plot_widget.addItem(self._fit_data_item)
+
         # Create an empty plot curve to be filled later, set its pen
         self.data_curve = self.plot_widget.plot()
         self.data_curve.setPen(palette.c1, width=2)
@@ -104,7 +107,11 @@ class PLEDataWidget(QtWidgets.QWidget):
 #         self._target_x = self._mw.data_widget.target_x.value()
 #         self._mw.data_widget.target_point.setPos(self._target_x)
 #         self.target_changed()
-
+    def set_fit_data(self, frequency, data):
+        if data is None:
+            self._fit_data_item.clear()
+        else:
+            self._fit_data_item.setData(y=data, x=frequency)
 
     #!! TODO choose CHANNEL
     def _update_scan_data(self, update_range: bool) -> None:

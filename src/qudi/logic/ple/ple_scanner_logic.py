@@ -59,12 +59,35 @@ class PLEScannerLogic(ScanningProbeLogic):
     _number_of_repeats = StatusVar(default=10)
     _repeated = 0
     # config options
-
     _fit_config = StatusVar(name='fit_config', default=dict())
     _fit_region = StatusVar(name='fit_region', default=[0, 1])
 
+    __default_fit_configs = (
+        {'name'             : 'Gaussian Dip',
+         'model'            : 'Gaussian',
+         'estimator'        : 'Dip',
+         'custom_parameters': None},
+
+        {'name'             : 'Two Gaussian Dips',
+         'model'            : 'DoubleGaussian',
+         'estimator'        : 'Dips',
+         'custom_parameters': None},
+
+        {'name'             : 'Lorentzian Dip',
+         'model'            : 'Lorentzian',
+         'estimator'        : 'Dip',
+         'custom_parameters': None},
+
+        {'name'             : 'Two Lorentzian Dips',
+         'model'            : 'DoubleLorentzian',
+         'estimator'        : 'Dips',
+         'custom_parameters': None},
+    )
+
     accumulated_data = None
     sigRepeatScan = QtCore.Signal(bool, tuple)
+    sigFitUpdated = QtCore.Signal(object, str)
+
 
     def __init__(self, config, **kwargs):
         super(PLEScannerLogic, self).__init__(config=config, **kwargs)
@@ -75,11 +98,11 @@ class PLEScannerLogic(ScanningProbeLogic):
         #Took some from the spectrometer program, beacuse it's graaape
         self.refractive_index_air = 1.00028823
         self.speed_of_light = 2.99792458e8 / self.refractive_index_air
-        self._fit_config_model = None
         self._fit_container = None
+        self._fit_config_model = None
+        self._fit_results = None
 
         self._wavelength = None
-        self._fit_results = None
         self._fit_method = ''
         # self.__scan_poll_interval = 0
         # self.__scan_stop_requested = True
@@ -89,6 +112,9 @@ class PLEScannerLogic(ScanningProbeLogic):
         self.__scan_poll_interval = 0
         self.__scan_stop_requested = True
         self.data_accumulated = None
+
+        self._fit_results = dict()
+        self._fit_results['fluorescence'] = [None] * 1
 
 
     def on_activate(self):
@@ -148,7 +174,62 @@ class PLEScannerLogic(ScanningProbeLogic):
         if self.module_state() != 'idle':
             self._scanner().stop_scan()
         return  
-    
+
+    @QtCore.Slot(str, str)
+    def do_fit(self, fit_config, channel):
+        """
+        Execute the currently configured fit on the measurement data. Optionally on passed data
+        """
+        print(fit_config)
+        if fit_config != 'No Fit' and fit_config not in self._fit_config_model.configuration_names:
+            self.log.error(f'Unknown fit configuration "{fit_config}" encountered.')
+            return
+
+        if self.scan_data is None:
+            return
+        y_data = self.scan_data.data[channel]
+        x_range = self.scan_ranges[self._scan_axis]
+        x_data = np.linspace(*x_range, self.scan_resolution[self._scan_axis])
+        try:
+            fit_config, fit_result = self._fit_container.fit_data(fit_config, x_data, y_data)
+        except:
+            self.log.exception('Data fitting failed:')
+            return
+        
+        if fit_result is not None:
+            self._fit_results[channel] = (fit_config, fit_result)
+        else:
+            self._fit_results[channel] = None
+        print(self._fit_results[channel])
+        self.sigFitUpdated.emit(self._fit_results[channel], channel)
+
+    @_fit_config.representer
+    def __repr_fit_configs(self, value):
+        configs = self.fit_config_model.dump_configs()
+        if len(configs) < 1:
+            configs = None
+        return configs
+
+    @_fit_config.constructor
+    def __constr_fit_configs(self, value):
+        if not value:
+            return self.__default_fit_configs
+        return value
+
+    @property
+    def fit_results(self):
+        return self._fit_results.copy()
+    @property
+    def fit_config_model(self):
+        return self._fit_config_model
+
+    @property
+    def fit_container(self):
+        return self._fit_container
+
+    @property
+    def fit_results(self):
+        return self._fit_results.copy()
     def stack_data(self):
         if (self.scan_data is not None) and (self.scan_data.scan_dimension == 1):
             if self.accumulated_data is None:
@@ -173,7 +254,6 @@ class PLEScannerLogic(ScanningProbeLogic):
             # self.reset_accumulated()
 
     def update_number_of_repeats(self, number_of_repeats):
-        print(self._number_of_repeats)
         self._number_of_repeats = number_of_repeats
 
     @QtCore.Slot(bool, tuple)

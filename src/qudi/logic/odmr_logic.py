@@ -117,11 +117,11 @@ class OdmrLogic(LogicBase):
         self._start_time = 0.0
         self._fit_container = None
         self._fit_config_model = None
-
+        
         self._raw_data = None
         self._signal_data = None
         self._frequency_data = None
-        self._fit_results = None
+        
 
     def on_activate(self):
         """
