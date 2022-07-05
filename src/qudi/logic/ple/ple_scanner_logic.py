@@ -63,24 +63,19 @@ class PLEScannerLogic(ScanningProbeLogic):
     _fit_region = StatusVar(name='fit_region', default=[0, 1])
 
     __default_fit_configs = (
-        {'name'             : 'Gaussian Dip',
-         'model'            : 'Gaussian',
-         'estimator'        : 'Dip',
-         'custom_parameters': None},
-
-        {'name'             : 'Two Gaussian Dips',
-         'model'            : 'DoubleGaussian',
-         'estimator'        : 'Dips',
-         'custom_parameters': None},
-
-        {'name'             : 'Lorentzian Dip',
+        {'name'             : 'Lorentzian',
          'model'            : 'Lorentzian',
-         'estimator'        : 'Dip',
+         'estimator'        : 'Peak',
          'custom_parameters': None},
 
-        {'name'             : 'Two Lorentzian Dips',
-         'model'            : 'DoubleLorentzian',
-         'estimator'        : 'Dips',
+        {'name'             : 'Gaussian',
+         'model'            : 'Gaussian',
+         'estimator'        : 'Peak',
+         'custom_parameters': None},
+
+        {'name'             : 'Multiple lorentzian',
+         'model'            : 'multiple_lorentzian',
+         'estimator'        : 'Peaks',
          'custom_parameters': None},
     )
 
