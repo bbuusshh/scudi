@@ -1,20 +1,24 @@
 from qtpy import QtCore
 import sys, os
 import numpy as np
-from core.connector import Connector
-from core.configoption import ConfigOption
-from logic.generic_logic import GenericLogic
+from qudi.core.connector import Connector
+from qudi.core.configoption import ConfigOption
+from qudi.core.module import LogicBase
+from qudi.util.mutex import Mutex, RecursiveMutex
 import yaml
+from qtpy import QtCore
 
-class TimeTaggerLogic(GenericLogic):
+class TimeTaggerLogic(LogicBase):
     """ Logic module agreggating multiple hardware switches.
     """
 
     timetagger = Connector(interface='TT')
-    savelogic = Connector(interface='SaveLogic')
-
     queryInterval = ConfigOption('query_interval', 500)
     
+    sigCounterDataChanged = QtCore.Signal(object)
+    sigCorrDataChanged = QtCore.Signal(object)
+    sigHistDataChanged = QtCore.Signal(object)
+
     sigUpdate = QtCore.Signal()
     sigNewMeasurement = QtCore.Signal()
     sigHistRefresh = QtCore.Signal(float)
@@ -26,120 +30,134 @@ class TimeTaggerLogic(GenericLogic):
         """
         super().__init__(**kwargs)
 
-
         # locking for thread safety
+        self.threadlock = Mutex()
         self.stopRequested = False
-        self.fit_x = []
-        self.fit_y = []
-        self.plot_x = []
-        self.plot_y = []
-        self.refresh_time = 1000
-        self.load_params()
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
         self._timetagger = self.timetagger()
-        self._save_logic = self.savelogic()
-                # Initialie data matrix
+        self._constraints = self._timetagger._constraints
         self.stopRequested = False
 
-        self.sigNewMeasurement.connect(self.new_measurement)
-        self.sigHistRefresh.connect(self.set_hist_refresh_time)
+        self._counter_poll_timer = QtCore.QTimer()
+        self._counter_poll_timer.setSingleShot(False)
+        self._counter_poll_timer.timeout.connect(self.acquire_data_block, QtCore.Qt.QueuedConnection)
+        self._counter_poll_timer.setInterval(50)
+
+        self._corr_poll_timer = QtCore.QTimer()
+        self._corr_poll_timer.setSingleShot(False)
+        self._corr_poll_timer.timeout.connect(self.acquire_corr_block, QtCore.Qt.QueuedConnection)
+        self._corr_poll_timer.setInterval(50)
+
+        self._hist_poll_timer = QtCore.QTimer()
+        self._hist_poll_timer.setSingleShot(False)
+        self._hist_poll_timer.timeout.connect(self.acquire_hist_block, QtCore.Qt.QueuedConnection)
+        self._hist_poll_timer.setInterval(50)
+
+        self.counter = None
+        self.trace_data = {}
         self.counter_params = self._timetagger._counter
         self.hist_params = self._timetagger._hist
         self.corr_params  = self._timetagger._corr
-        
-        self.init_plots()
-
-        # delay timer for querying laser
-        self.queryTimer = QtCore.QTimer()
-        self.queryTimer.setInterval(self.queryInterval)
-        self.queryTimer.setSingleShot(True)
-        self.queryTimer.timeout.connect(self.loop_body, QtCore.Qt.QueuedConnection)     
-        self.queryTimer.start(self.queryInterval)
-        self.sigHistRefresh.emit(self.refresh_time)
-        
-
-        self.sigUpdate.emit()
-
-    @QtCore.Slot(float)
-    def set_hist_refresh_time(self, refresh_time):
-        self.hist_update_timer = QtCore.QTimer()
-        self.hist_update_timer.setInterval(refresh_time)
-        self.hist_update_timer.setSingleShot(True)
-        self.hist_update_timer.timeout.connect(self.refresh_hist_loop, QtCore.Qt.QueuedConnection)     
-        self.hist_update_timer.start(refresh_time)
-        self.refresh_time = refresh_time
-
-
-    @QtCore.Slot(str, str, int)
-    def update_tt_params(self, curve, param, value):
-        curve_d = next((k for k in self.__dict__.keys() if curve in k), None) 
-        self.__dict__[f"{curve_d}_params"][param] = value
-        # self.hist_params = 
-
-    @QtCore.Slot()
-    def init_plots(self):
-        self.time_counter = np.linspace(0, self.counter_params['n_values']*self.counter_params['bins_width']/1000, self.counter_params['n_values'])
-        self.time_hist = np.linspace(0, self.hist_params['number_of_bins']*self.hist_params['bins_width']/1000, self.hist_params['number_of_bins'])
-        self.time_corr = np.linspace(-0.5*self.corr_params['number_of_bins']*self.corr_params['bins_width']/1000,
-                                        0.5*self.corr_params['number_of_bins']*self.corr_params['bins_width']/1000,
-                                        self.corr_params['number_of_bins'])
-
-        self.hist_tt = self._timetagger.histogram(**self.hist_params)
-        self.corr_tt = self._timetagger.correlation(**self.corr_params)
-        self.counter_tt = self._timetagger.counter(**self.counter_params)
-
-
-    @QtCore.Slot()
-    def load_params(self):
-        dir_ = os.path.dirname(sys.argv[0])
-        # with open(os.path.join(dir_, "params.yaml"), 'r') as param_file:
-        #     try:
-        #         self.tt_params = yaml.safe_load(param_file)
-        #     except yaml.YAMLError as exc:
-        #         print(exc)
-        # for key in self.tt_params:
-        #     setattr(self, f"{key}_params", self.tt_params[key])
-        self.sigNewMeasurement.emit()
-        self.sigUpdateGuiParams.emit()
-
-    @QtCore.Slot()
-    def save_params(self):
-        dir_ = os.path.dirname(sys.argv[0])
-        # with open(os.path.join(dir_, "params.yaml"), 'w') as param_file:
-        #     # for key in self.tt_params:
-        #         key = key.split("_params")[0]
-        #         self.tt_params[key] = getattr(self, key, 0)
-        #     try:
-        #         yaml.dump(self.tt_params, param_file)
-        #     except yaml.YAMLError as exc:
-        #         print(exc)        
-
-    @QtCore.Slot(int)
-    def change_hist_channel(self, channel):
-        self.hist_params['channel'] = channel
-        self.sigNewMeasurement.emit()
-
-    # @thread_safety
-    @QtCore.Slot()
-    def loop_body(self):
-        self.queryTimer.start(self.queryInterval)
-        self.sigUpdate.emit()
-
-    @QtCore.Slot()
-    def refresh_hist_loop(self):
-        pass
-        # self.hist_tt.clear()
-
-    @QtCore.Slot()
-    def new_measurement(self):
-        self.init_plots()
-        self.sigUpdate.emit()
     
-    @QtCore.Slot(str, int, int)
-    def update_params(self, attr, num, width):
-        getattr(self, f'{attr}_params')['number_of_bins'] = num
-        getattr(self, f'{attr}_params')['bins_width'] = width
-        self.new_measurement()
+    def on_deactivate(self):
+        pass
+    
+    def configure_counter(self, data):
+        self.counter_freq, self.counter_length, self.counter_channels, self.counter_toggle, self.display_channel = data['counter']
+
+        with self.threadlock:
+            bin_width = int(1/self.counter_freq*1e12)
+            n_values = int(self.counter_length*1e12/bin_width)
+            self.toggled_channels = []
+            self.display_channel_number = 0
+            for ch in self.counter_channels:
+                if self.counter_channels[ch]:
+                    self.toggled_channels.append(ch)
+                    if self.display_channel == f'Channel {ch}':
+                        self.display_channel_number = ch
+
+            if self.toggled_channels and self.counter_toggle:
+                self.counter = self._timetagger.counter(channels = self.toggled_channels, bin_width = bin_width, n_values = n_values)
+        
+                self._counter_poll_timer.start()
+    
+    def configure_corr(self, data):
+        self.corr_bin_width, self.corr_record_length, self.corr_toggled = data['corr']
+        self.corr_record_length *= 1e6
+        with self.threadlock:
+            if self.corr_toggled:
+                self.corr = self._timetagger.correlation(channel_start = self._constraints['corr']['channel_start'], 
+                                                        channel_stop = self._constraints['corr']['channel_stop'], 
+                                                        bin_width = int(self.corr_bin_width), 
+                                                        number_of_bins = int(self.corr_record_length/self.corr_bin_width))
+        
+                self._corr_poll_timer.start()
+    
+    def configure_hist(self, data):
+        self.hist_bin_width, self.hist_record_length, self.hist_channel, self.hist_toggled = data['hist']
+        self.hist_record_length *= 1e6
+
+        if self.hist_toggled:
+            self.hist = self._timetagger.histogram(channel = self.hist_channel, 
+                                                   trigger_channel = self._constraints['hist']['trigger_channel'], 
+                                                   bin_width = int(self.hist_bin_width), 
+                                                   number_of_bins = int(self.hist_record_length/self.hist_bin_width))
+
+            self._hist_poll_timer.start()
+
+
+    def acquire_data_block(self):
+        """
+        This method gets the available data from the hardware.
+
+        It runs repeatedly by being connected to a QTimer timeout signal.
+        """
+        with self.threadlock:
+            if not self.counter_toggle or not self.counter:
+                self._counter_poll_timer.stop()
+                return
+            self.trace_data = {}
+            counter_sum = None
+            raw = self.counter.getDataNormalized()
+            index = self.counter.getIndex()/1e12
+            # raw = np.random.random(100)
+            # index = np.arange(100)
+            counter_sum = np.zeros_like(raw[0])
+            for i, ch in enumerate(self.toggled_channels):
+                self.trace_data[ch] = (index, raw[i])
+                if self.display_channel_number==0:
+                    counter_sum += raw[i]
+                elif self.display_channel_number==ch:
+                    counter_sum += raw[i]
+
+            self.sigCounterDataChanged.emit({'trace_data':self.trace_data, 'sum': np.mean(np.nan_to_num(counter_sum))})
+        return
+    
+    def acquire_corr_block(self):
+        with self.threadlock:
+            if not self.corr_toggled:
+                self._corr_poll_timer.stop()
+                return
+            raw = self.corr.getDataNormalized()
+            index = self.corr.getIndex()/1e12
+            # raw = np.random.random(100)
+            # index = np.arange(100)
+            self.corr_data = (index, np.nan_to_num(raw))
+            self.sigCorrDataChanged.emit({'corr_data':self.corr_data})
+        return   
+    
+    def acquire_hist_block(self):
+        with self.threadlock:
+            if not self.hist_toggled:
+                self._hist_poll_timer.stop()
+                return
+            raw = self.hist.getData()
+            index = self.hist.getIndex()/1e12
+            # raw = np.random.random(100)
+            # index = np.arange(100)
+            self.hist_data = (index, np.nan_to_num(raw))
+            self.sigHistDataChanged.emit({'hist_data':self.hist_data})
+        return

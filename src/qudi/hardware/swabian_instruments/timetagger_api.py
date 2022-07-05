@@ -2,8 +2,8 @@
 from os.path import join, getsize, isfile
 import numpy as np
 from TimeTagger import createTimeTagger, Dump, Correlation, Histogram, Counter, CountBetweenMarkers, FileWriter, Countrate, Combiner, TimeDifferences
-from core.configoption import ConfigOption
-from core.module import Base
+from qudi.core.configoption import ConfigOption
+from qudi.core.module import Base
 
 
 class TT(Base):
@@ -11,9 +11,39 @@ class TT(Base):
     _corr = ConfigOption('corr', False, missing='warn')
     _combiner = ConfigOption('combiner', False, missing='warn')
     _counter = ConfigOption('counter', False, missing='warn')
-    _combiner = ConfigOption('combiner', False, missing='warn')
-    _test_channels = ConfigOption('test_channels', False, missing='warn')
-    _channels_params = ConfigOption('channels_params', False, missing='warn')
+
+    """
+    Example config.
+
+    tagger:
+        module.Class: 'swabian_instruments.timetagger_api.TT'
+        counter:
+            channels: [1,2]
+            bin_width: 1000000000000
+            n_values: 100
+
+        hist:
+            channel: 2
+            trigger_channel: 5
+            bins_width: 1000
+            number_of_bins: 500
+
+        corr:
+            channel_start: 1
+            channel_stop: 2
+            bin_width: 1000
+            number_of_bins: 1000
+
+        combiner:
+            channels: [1,2]
+
+        test_channels: [] #[1,2,3,4,5,6,7]#[1,2, 4, -4]
+
+        channels_params:
+            six: # cwave internal scanner
+                delay: 0
+                trigger_level: 3
+        """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -22,27 +52,15 @@ class TT(Base):
         self.channel_codes = dict(zip(chan_alphabet, list(range(1,9,1))))
 
     def on_activate(self):
-        self.setup_TT()
-
-    def on_deactivate(self):
-        pass
-
-    def setup_TT(self):
         try:
             self.tagger = createTimeTagger()
-            # self.tagger.reset()
-            print(f"Tagger initialization successful: {self.tagger.getSerial()}")
+            self.log.info(f"Tagger initialization successful: {self.tagger.getSerial()}")
         except:
             self.log.error(f"\nCheck if the TimeTagger device is being used by another instance.")
             Exception(f"\nCheck if the TimeTagger device is being used by another instance.")
 
-        for i in self._test_channels:
-            print(f"RUNNING CHANNEL {i} WITH TEST SIGNAL!")
-            self.tagger.setTestSignal(i, True)
-
-        #Create combine channels:
-
-        self._combined_channels = self.combiner(self._combiner["channels"])
+        # self._combined_channels = self.combiner(self._combiner["channels"])
+        self._constraints = {'hist':self._hist, 'corr':self._corr, 'counter': self._counter}
 
         # # set specified in the params.yaml channels params
         # for channel, params in self._channels_params.items():
@@ -51,6 +69,10 @@ class TT(Base):
         #         self.delay_channel(delay=params['delay'], channel = channel)
         #     if 'triggerLevel' in params.keys():
         #         self.tagger.setTriggerLevel(channel, params['triggerLevel'])
+
+    def on_deactivate(self):
+        pass
+        
 
     def histogram(self, **kwargs):  
         """
@@ -62,14 +84,11 @@ class TT(Base):
 
         get data by hist.getData()
         """
-        for key, value in kwargs.items():
-            if key in self._hist.keys():
-                self._hist.update({key:int(value)})
         return Histogram(self.tagger,
-                            self._hist['channel'],
-                            self._hist['trigger_channel'],
-                            self._hist['bins_width'],
-                            self._hist['number_of_bins'])
+                            kwargs['channel'],
+                            kwargs['trigger_channel'],
+                            kwargs['bin_width'],
+                            kwargs['number_of_bins'])
     
     def correlation(self, **kwargs):  
         """
@@ -81,14 +100,11 @@ class TT(Base):
 
         get data by corr.getData()
         """
-        for key, value in kwargs.items():
-            if key in self._corr.keys():
-                self._corr.update({key:value})
         return Correlation(self.tagger,
-                            self._corr['channel_start'],
-                            self._corr['channel_stop'],
-                            self._corr['bins_width'],
-                            self._corr['number_of_bins'])
+                            kwargs['channel_start'],
+                            kwargs['channel_stop'],
+                            kwargs['bin_width'],
+                            kwargs['number_of_bins'])
 
 
     def delay_channel(self, channel, delay):
@@ -117,15 +133,10 @@ class TT(Base):
         refresh_rate - number of samples per second:
 
         """
-        for key, value in kwargs.items():
-            if key in self._counter.keys():
-                self._counter.update({key:value})
-            if key == 'refresh_rate' and value != None:
-                self._counter['bins_width'] = int(1e12/value)
         return Counter(self.tagger,
-                                self._counter['channels'],
-                                self._counter['bins_width'],
-                                self._counter['n_values'])
+                                kwargs['channels'],
+                                kwargs['bin_width'],
+                                kwargs['n_values'])
 
     def time_differences(click_channel, start_channel, next_channel, binwidth, n_bins,n_histograms):
         return TimeDifferences(self.tagger, 
