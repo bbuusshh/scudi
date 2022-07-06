@@ -28,7 +28,6 @@ import numpy as np
 from qudi.util.colordefs import QudiPalettePale as palette
 from qudi.util.widgets.toggle_switch import ToggleSwitch
 from qudi.util.widgets.scientific_spinbox import ScienDSpinBox
-from qudi.util.widgets.fitting import FitWidget
 from qudi.interface.scanning_probe_interface import ScanData, ScannerAxis, ScannerChannel
 
 class PLEDataWidget(QtWidgets.QWidget):
@@ -44,18 +43,6 @@ class PLEDataWidget(QtWidgets.QWidget):
 
         main_layout = QtWidgets.QGridLayout()
         self.setLayout(main_layout)
-
-        fit_region_group_box = QtWidgets.QGroupBox('Fit Region')
- 
-        # axis_type_label = QtWidgets.QLabel('Axis Type:')
-        # axis_type_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        # self.axis_type = ToggleSwitch(state_names=('Wavelength', 'Frequency'))
-
-        # h_layout = QtWidgets.QHBoxLayout()
-        # h_layout.addWidget(axis_type_label)
-        # h_layout.addWidget(self.axis_type)
-        # h_layout.addStretch()
-        # main_layout.addLayout(h_layout, 1, 0, 1, 2)
 
         self.plot_widget = pg.PlotWidget(
             axisItems={'bottom': CustomAxis(orientation='bottom'),
