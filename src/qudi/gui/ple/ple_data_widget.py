@@ -52,20 +52,17 @@ class PLEDataWidget(QtWidgets.QWidget):
         self.plot_widget.getAxis('left').nudge = 0
         self.plot_widget.showGrid(x=True, y=True, alpha=0.5)
 
-        self._fit_data_item = pg.PlotDataItem(pen=pg.mkPen(palette.c2))
-        self.plot_widget.addItem(self._fit_data_item)
+        self._data_item = pg.PlotDataItem(pen=pg.mkPen(palette.c2))
+        self.plot_widget.addItem(self._data_item)
 
         # Create an empty plot curve to be filled later, set its pen
         self.data_curve = self.plot_widget.plot()
         self.data_curve.setPen(palette.c1, width=2)
 
-        self.fit_curve = self.plot_widget.plot()
-        self.fit_curve.setPen(palette.c2, width=2)
-
-        self.fit_region = pg.LinearRegionItem(
+        self.selected_region = pg.LinearRegionItem(
                                               brush=pg.mkBrush(122, 122, 122, 30),
                                               hoverBrush=pg.mkBrush(196, 196, 196, 30))
-        self.plot_widget.addItem(self.fit_region)
+        self.plot_widget.addItem(self.selected_region)
 
         self.target_point = pg.InfiniteLine(
                                             angle=90,
@@ -73,9 +70,9 @@ class PLEDataWidget(QtWidgets.QWidget):
                                             pen=pg.mkPen(color='green', width=2))
         self.plot_widget.addItem(self.target_point)
 
-        self.plot_widget.setLabel('left', 'Intensity', units='arb.u.')
+        self.plot_widget.setLabel('left', 'Fluorescence', units='cts/s')
         self.plot_widget.setLabel('bottom' ,'Frequency', units='Hz')#, 'Wavelength', units='m')
-        self.plot_widget.setMinimumHeight(200)
+        self.plot_widget.setMinimumHeight(50)
         main_layout.addWidget(self.plot_widget)
 
 
@@ -89,16 +86,11 @@ class PLEDataWidget(QtWidgets.QWidget):
         # Set data
         self._update_scan_data(update_range=update_range)
     
-#     @QtCore.Slot(dict)
-#    def target_updated(self):
-#         self._target_x = self._mw.data_widget.target_x.value()
-#         self._mw.data_widget.target_point.setPos(self._target_x)
-#         self.target_changed()
     def set_fit_data(self, frequency, data):
         if data is None:
-            self._fit_data_item.clear()
+            self._data_item.clear()
         else:
-            self._fit_data_item.setData(y=data, x=frequency)
+            self._data_item.setData(y=data, x=frequency)
 
     #!! TODO choose CHANNEL
     def _update_scan_data(self, update_range: bool) -> None:
@@ -110,7 +102,7 @@ class PLEDataWidget(QtWidgets.QWidget):
                 x_data = np.linspace(*self._scan_data.scan_range[0],
                                      self._scan_data.scan_resolution[0])
                 self.data_curve.setData(y=self._scan_data.data[current_channel], x=x_data)
-                self.fit_region.setRegion(self._scan_data.scan_range[0])
+                self.selected_region.setRegion(self._scan_data.scan_range[0])
                 self.target_point.setValue(np.array(self._scan_data.scan_range[0]).sum()/2)
             else:
                 self.data_curve.setData(y=self._scan_data.data[current_channel],

@@ -106,14 +106,14 @@ class PLEScanGui(GuiBase):
         # Initialize widget data
         # self.scanner_settings_updated()
 
-        # self._mw.ple_widget.fit_region.sigRegionChangeFinished.connect(self.fit_region_value_changed)
+        # self._mw.ple_widget.selected_region.sigRegionChangeFinished.connect(self.selected_region_value_changed)
         # self._mw.ple_widget.axis_type.sigStateChanged.connect(self.axis_type_changed)
         
         self._mw.ple_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing)
-        self._mw.ple_widget.fit_region.sigRegionChanged.connect(self.sliders_values_are_changing)
+        self._mw.ple_widget.selected_region.sigRegionChanged.connect(self.sliders_values_are_changing)
 
         self._mw.ple_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
-        self._mw.ple_widget.fit_region.sigRegionChangeFinished.connect(self.region_value_changed) #sigRegionChangeFinished
+        self._mw.ple_widget.selected_region.sigRegionChangeFinished.connect(self.region_value_changed) #sigRegionChangeFinished
         
         
         self.scanner_target_updated()
@@ -195,14 +195,14 @@ class PLEScanGui(GuiBase):
 
     @QtCore.Slot()
     def region_value_changed(self):
-        region = self._mw.ple_widget.fit_region.getRegion()
+        region = self._mw.ple_widget.selected_region.getRegion()
         self.sigScanSettingsChanged.emit({'range': {self.scan_axis: region}})
         self._mw.startDoubleSpinBox.setValue(region[0])
         self._mw.stopDoubleSpinBox.setValue(region[1])
 
     @QtCore.Slot()
     def sliders_values_are_changing(self):
-        region = self._mw.ple_widget.fit_region.getRegion()
+        region = self._mw.ple_widget.selected_region.getRegion()
         self._mw.startDoubleSpinBox.setValue(region[0])
         self._mw.stopDoubleSpinBox.setValue(region[1])
 
@@ -251,7 +251,7 @@ class PLEScanGui(GuiBase):
                             adjust_for_px_size=True)
             self._mw.matrix_widget.image_widget.autoRange()
             
-            self._mw.ple_widget.fit_region.setRegion(x_range)
+            self._mw.ple_widget.selected_region.setRegion(x_range)
             self._mw.ple_widget.target_point.setValue((x_range[0] + x_range[1])/2)
             self._mw.ple_widget.plot_widget.setRange(xRange = x_range)
 
