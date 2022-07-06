@@ -59,10 +59,10 @@ class PLEScannerLogic(ScanningProbeLogic):
     _number_of_repeats = StatusVar(default=10)
     _repeated = 0
     # config options
-    _fit_config = StatusVar(name='fit_config', default=dict())
+    _fit_config = StatusVar(name='fit_config', default=None)
     _fit_region = StatusVar(name='fit_region', default=[0, 1])
 
-    __default_fit_configs = (
+    _default_fit_configs = (
         {'name'             : 'Lorentzian',
          'model'            : 'Lorentzian',
          'estimator'        : 'Peak',
@@ -71,12 +71,8 @@ class PLEScannerLogic(ScanningProbeLogic):
         {'name'             : 'Gaussian',
          'model'            : 'Gaussian',
          'estimator'        : 'Peak',
-         'custom_parameters': None},
-
-        {'name'             : 'Multiple lorentzian',
-         'model'            : 'multiple_lorentzian',
-         'estimator'        : 'Peaks',
-         'custom_parameters': None},
+         'custom_parameters': None}
+         
     )
 
     accumulated_data = None
@@ -208,7 +204,7 @@ class PLEScannerLogic(ScanningProbeLogic):
     @_fit_config.constructor
     def __constr_fit_configs(self, value):
         if not value:
-            return self.__default_fit_configs
+            return self._default_fit_configs
         return value
 
     @property
