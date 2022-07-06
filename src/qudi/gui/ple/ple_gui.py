@@ -108,9 +108,13 @@ class PLEScanGui(GuiBase):
 
         # self._mw.ple_widget.fit_region.sigRegionChangeFinished.connect(self.fit_region_value_changed)
         # self._mw.ple_widget.axis_type.sigStateChanged.connect(self.axis_type_changed)
+        
+        self._mw.ple_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing)
+        self._mw.ple_widget.fit_region.sigRegionChanged.connect(self.sliders_values_are_changing)
+
         self._mw.ple_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
         self._mw.ple_widget.fit_region.sigRegionChangeFinished.connect(self.region_value_changed) #sigRegionChangeFinished
-        self._mw.ple_widget.fit_region.sigRegionChanged.connect(self.region_value_is_changing)
+        
         
         self.scanner_target_updated()
         self.scan_state_updated(self._scanning_logic.module_state() != 'idle')
@@ -174,7 +178,13 @@ class PLEScanGui(GuiBase):
             lambda: self._scanning_logic.update_number_of_repeats(self._mw.number_of_repeats_SpinBox.value())
         )
 
+        self._mw.constDoubleSpinBox.editingFinished.connect(
+            lambda: self.set_scanner_target_position
+        )
+
+
     def toggle_scan(self):
+        self._mw.elapsed_lines_DisplayWidget.display(self._scanning_logic._repeated)
         self.sigToggleScan.emit(self._mw.actionToggle_scan.isChecked(), [self.scan_axis], self.module_uuid)
 
     def show(self):
@@ -191,11 +201,13 @@ class PLEScanGui(GuiBase):
         self._mw.stopDoubleSpinBox.setValue(region[1])
 
     @QtCore.Slot()
-    def region_value_is_changing(self):
+    def sliders_values_are_changing(self):
         region = self._mw.ple_widget.fit_region.getRegion()
         self._mw.startDoubleSpinBox.setValue(region[0])
         self._mw.stopDoubleSpinBox.setValue(region[1])
-        
+
+        value = self._mw.ple_widget.target_point.value()
+        self._mw.constDoubleSpinBox.setValue(value)
 
 
     @QtCore.Slot()
@@ -249,10 +261,11 @@ class PLEScanGui(GuiBase):
         self._scanning_logic.reset_accumulated()
         self._mw.number_of_repeats_SpinBox.setValue(self._scanning_logic._number_of_repeats)
         
+        
 
     @QtCore.Slot(bool, tuple)
     def scan_repeated(self, start, scan_axes):
-        self._mw.elapsed_lines_DisplayWidget.display(self._scanning_logic._repeated)
+        self._mw.elapsed_lines_DisplayWidget.display(self._scanning_logic.display_repeated)
 
     @QtCore.Slot(dict)
     def set_scanner_target_position(self, target_pos=None):

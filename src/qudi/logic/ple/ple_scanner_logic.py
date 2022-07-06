@@ -58,6 +58,7 @@ class PLEScannerLogic(ScanningProbeLogic):
 
     _number_of_repeats = StatusVar(default=10)
     _repeated = 0
+    display_repeated = 0
     # config options
     _fit_config = StatusVar(name='fit_config', default=None)
     _fit_region = StatusVar(name='fit_region', default=[0, 1])
@@ -253,12 +254,15 @@ class PLEScannerLogic(ScanningProbeLogic):
         self._toggled_scan_axes = scan_axes
         with self._thread_lock:
             if start:
+                if self._repeated == 0:
+                    self.display_repeated = 0
                 return self.start_scan(self._toggled_scan_axes, caller_id)
             return self.stop_scan()
 
     @QtCore.Slot(tuple)
     @QtCore.Slot(tuple, object)
     def start_scan(self, scan_axes, caller_id=None):
+        self.display_repeated = self._repeated
         with self._thread_lock:
             if self.module_state() != 'idle':
                 self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)
@@ -317,6 +321,8 @@ class PLEScannerLogic(ScanningProbeLogic):
     @QtCore.Slot()
     def stop_scan(self):
         with self._thread_lock:
+            self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)
+
             if self.module_state() == 'idle':
                 self.sigScanStateChanged.emit(False, self.scan_data, self._curr_caller_id)
                 return 0
@@ -325,7 +331,7 @@ class PLEScannerLogic(ScanningProbeLogic):
             err = self._scanner().stop_scan() if self._scanner().module_state() != 'idle' else 0
 
             self.module_state.unlock()
-
+        
             if self.scan_settings['save_to_history']:
                 # module_uuid signals data-ready to data logic
                 self.sigScanStateChanged.emit(False, self.scan_data, self.module_uuid)
@@ -346,11 +352,13 @@ class PLEScannerLogic(ScanningProbeLogic):
 
             if self._scanner().module_state() == 'idle':
                 self.stop_scan()
-                
-                if self._number_of_repeats > self._repeated:
+                self._repeated += 1
+                self.display_repeated += 1
+                if self._number_of_repeats > self._repeated or self._number_of_repeats == 0:
                     self.stack_data()
                     self.sigRepeatScan.emit(True, self._toggled_scan_axes)
-                    self._repeated += 1
+                    
+                    
                 else:
                     self.sigRepeatScan.emit(False, self._toggled_scan_axes)
                     self._repeated = 0 
