@@ -8,6 +8,10 @@ from qudi.util.widgets.plotting.plot_widget import PlotWidget
 from qudi.util.widgets.plotting.image_widget import ImageWidget
 from qudi.util.widgets.plotting.plot_item import XYPlotItem
 from qudi.util.paths import get_artwork_dir
+
+from qudi.util.colordefs import ColorScaleRdBuRev as ColorScale
+from pyqtgraph import mkPen, mkBrush, PlotWidget, BarGraphItem
+
 from qudi.interface.scanning_probe_interface import ScanData, ScannerAxis, ScannerChannel
 
 class PLE2DWidget(QtWidgets.QWidget):
@@ -24,7 +28,7 @@ class PLE2DWidget(QtWidgets.QWidget):
         self.setLayout(main_layout)
         matrix_group_box = QtWidgets.QGroupBox('Matrix Region')
  
-        self.image_widget = ImageWidget()
+        self.image_widget = ImageWidget(colorscale = ColorScale) #_Colorscale().lut
         self.image_item = self.image_widget.image_item
         # self.channel_selection_combobox.currentIndexChanged.connect(self._data_channel_changed)
         # self.image_widget.sigZoomAreaApplied.connect(self._zoom_applied)
@@ -40,6 +44,12 @@ class PLE2DWidget(QtWidgets.QWidget):
         self.image_widget.plot_widget.setAspectLocked(lock=False, ratio=1.0)
         self.image_widget.plot_widget.getPlotItem().vb.scene().contextMenu[0].setVisible(False)
         
+        # grad = QtGui.QLinearGradient(0, 0, 0, 1)
+        # grad.setCoordinateMode(QtGui.QGradient.ObjectMode)
+        # for stop, color in zip(*ColorScale().colormap.getStops('byte')):
+        #     grad.setColorAt(stop, QtGui.QColor(*color))
+        # self.image_widget.colorbar_widget._cb_brush = mkBrush(QtGui.QBrush(grad))
+
         self.number_of_repeats=None
         self._scan_data = None
 
