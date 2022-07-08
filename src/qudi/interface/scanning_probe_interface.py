@@ -140,7 +140,7 @@ class ScanData:
     def __init__(self, channels, scan_axes, scan_range, scan_resolution, scan_frequency,
                  target_at_start=None, position_feedback_axes=None):
         """
-
+        
         @param ScannerChannel[] channels: ScannerChannel objects involved in this scan
         @param ScannerAxis[] scan_axes: ScannerAxis instances involved in the scan
         @param float[][2] scan_range: inclusive range for each scan axis
@@ -191,8 +191,10 @@ class ScanData:
 
         self._timestamp = None
         self._data = None
+        self._accumulated_data = None
         self._position_data = None
         self._target_at_start = target_at_start
+
         # TODO: Automatic interpolation onto rectangular grid needs to be implemented (for position feedback HW)
         return
 
@@ -208,6 +210,8 @@ class ScanData:
             new_inst._data = self._data.copy()
         if self._position_data is not None:
             new_inst._position_data = self._position_data.copy()
+        if self._accumulated_data is not None:
+            new_inst._accumulated_data = self._accumulated_data.copy()
         return new_inst
 
     def __deepcopy__(self, memodict={}):
@@ -218,7 +222,7 @@ class ScanData:
             raise NotImplemented
 
         attrs = ('_timestamp', '_scan_frequency', '_scan_axes', '_scan_range', '_scan_resolution',
-                 '_channels', '_position_feedback_axes', '_data', '_position_data', '_timestamp')
+                 '_channels', '_position_feedback_axes', '_data', '_accumulated_data', '_position_data', '_timestamp')
         return all(getattr(self, a) == getattr(other, a) for a in attrs)
 
     @property
@@ -264,6 +268,9 @@ class ScanData:
     def data(self):
         return self._data
 
+    @property
+    def accumulated_data(self):
+        return self._accumulated_data
     @property
     def position_data(self):
         return self._position_data

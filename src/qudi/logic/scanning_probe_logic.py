@@ -415,6 +415,7 @@ class ScanningProbeLogic(LogicBase):
     @QtCore.Slot()
     def set_full_scan_ranges(self):
         scan_range = {ax: axis.value_range for ax, axis in self.scanner_constraints.axes.items()}
+        
         return self.set_scan_range(scan_range)
 
     def __start_timer(self):

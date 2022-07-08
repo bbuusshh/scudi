@@ -14,6 +14,8 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
+
+#TODO carefull disconnection
 import os
 import numpy as np
 import copy as cp
@@ -29,194 +31,161 @@ from qudi.core.configoption import ConfigOption
 from qudi.interface.scanning_probe_interface import ScanData
 from qudi.core.module import GuiBase
 from qudi.logic.scanning_optimize_logic import OptimizerScanSequence
+from qudi.util.widgets.fitting import FitConfigurationDialog
+from .fit_dockwidget import PleFitDockWidget
+from qudi.gui.ple.ple_ui_window import PLEScanMainWindow
 
 
-class PLEScanMainWindow(QtWidgets.QMainWindow):
-    def __init__(self):
-        # Get the path to the *.ui file
-        this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ple_gui.ui')
-
-        # Load it
-        super(PLEScanMainWindow, self).__init__()
-        uic.loadUi(ui_file, self)
-        self.show()
-
-
-class PLEScanGui(GUIBase):
+class PLEScanGui(GuiBase):
     """
     """
     
     # declare connectors
-    voltagescannerlogic1 = Connector(interface='LaserScannerLogic')
-    savelogic = Connector(interface='SaveLogic')
+    _scanning_logic = Connector(name='scannerlogic', interface='PLEScannerLogic')
 
-    sigStartScan = QtCore.Signal()
-    sigStopScan = QtCore.Signal()
-    sigChangeVoltage = QtCore.Signal(float)
-    sigChangeRange = QtCore.Signal(list)
-    sigChangeResolution = QtCore.Signal(float)
-    sigChangeSpeed = QtCore.Signal(float)
-    sigChangeLines = QtCore.Signal(int)
-    sigSaveMeasurement = QtCore.Signal(str, list, list)
+
+    # status vars
+    _window_state = StatusVar(name='window_state', default=None)
+    _window_geometry = StatusVar(name='window_geometry', default=None)
+
+    # signals
+    sigScannerTargetChanged = QtCore.Signal(dict, object)
+    sigScanSettingsChanged = QtCore.Signal(dict)
+    sigToggleScan = QtCore.Signal(bool, tuple, object)
+    sigOptimizerSettingsChanged = QtCore.Signal(dict)
+    sigToggleOptimize = QtCore.Signal(bool)
+    sigSaveScan = QtCore.Signal(object, object)
+    sigSaveFinished = QtCore.Signal()
+    sigShowSaveDialog = QtCore.Signal(bool)
+
+    sigDoFit = QtCore.Signal(str, str)
 
     def on_deactivate(self):
         """ Reverse steps of activation
         @return int: error code (0:OK, -1:error)
         """
+        self._save_window_geometry(self._mw)
         self._mw.close()
+        self.sigScannerTargetChanged.disconnect()
+        self.sigScanSettingsChanged.disconnect()
+        self.sigToggleScan.disconnect()
+        # self.sigToggleOptimize.disconnect()
         return 0
 
     def on_activate(self):
         """ 
         """
-        self._voltscan_logic = self.voltagescannerlogic1()
-        self._savelogic = self.savelogic()
-
-        # Use the inherited class 'Ui_VoltagescannerGuiUI' to create now the
-        # GUI element:
-        self._mw = VoltScanMainWindow()
-
-        # Add save file tag input box
-        self._mw.save_tag_LineEdit = QtWidgets.QLineEdit(self._mw)
-        self._mw.save_tag_LineEdit.setMaximumWidth(500)
-        self._mw.save_tag_LineEdit.setMinimumWidth(200)
-        self._mw.save_tag_LineEdit.setToolTip('Enter a nametag which will be\n'
-                                              'added to the filename.')
-        self._mw.toolBar.addWidget(self._mw.save_tag_LineEdit)
-
-        # Get the image from the logic
-        self.scan_matrix_image = pg.ImageItem(
-            self._voltscan_logic.scan_matrix,
-            axisOrder='row-major')
-
-        self.scan_matrix_image.setRect(
-            QtCore.QRectF(
-                self._voltscan_logic.scan_range[0],
-                0,
-                self._voltscan_logic.scan_range[1] - self._voltscan_logic.scan_range[0],
-                self._voltscan_logic.number_of_repeats)
-        )
-
-        self.scan_matrix_image2 = pg.ImageItem(
-            self._voltscan_logic.scan_matrix2,
-            axisOrder='row-major')
-
-        self.scan_matrix_image2.setRect(
-            QtCore.QRectF(
-                self._voltscan_logic.scan_range[0],
-                0,
-                self._voltscan_logic.scan_range[1] - self._voltscan_logic.scan_range[0],
-                self._voltscan_logic.number_of_repeats)
-        )
-
-        self.scan_image = pg.PlotDataItem(
-            self._voltscan_logic.plot_x,
-            self._voltscan_logic.plot_y)
-        
-        self.scan_image_2 = pg.PlotDataItem(
-            self._voltscan_logic.plot_x,
-            self._voltscan_logic.plot_y_2)
-
-        self.scan_image2 = pg.PlotDataItem(
-            self._voltscan_logic.plot_x,
-            self._voltscan_logic.plot_y2)
-
-        self.scan_fit_image = pg.PlotDataItem(
-            self._voltscan_logic.fit_x,
-            self._voltscan_logic.fit_y,
-            pen=QtGui.QPen(QtGui.QColor(255, 255, 255, 255)))
-
-        self.region_cursor = pg.LinearRegionItem([int(self._voltscan_logic.a_range[0]), int(self._voltscan_logic.a_range[1])], swapMode='block')
-        self.region_cursor.setBounds([int(self._voltscan_logic.a_range[0]), int(self._voltscan_logic.a_range[1])])
-        self.main_cursor = pg.InfiniteLine(pos = self._voltscan_logic.get_current_voltage(), angle = 90, movable = True, bounds = [int(self._voltscan_logic.a_range[0]), int(self._voltscan_logic.a_range[1])])
-
-
-
-        # Add the display item to the xy and xz VieWidget, which was defined in
-        # the UI file.
-        self._mw.voltscan_ViewWidget.addItem(self.scan_image)
-        #self._mw.voltscan_ViewWidget.addItem(self.scan_fit_image)
-        self._mw.voltscan_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
-
-        self._mw.voltscan_ViewWidget_2.addItem(self.scan_image_2)
-        #self._mw.voltscan_ViewWidget.addItem(self.scan_fit_image)
-        self._mw.voltscan_ViewWidget_2.showGrid(x=True, y=True, alpha=0.8)
-
-        self._mw.voltscan_matrix_ViewWidget.addItem(self.scan_matrix_image)
-
-
-        self._mw.voltscan2_ViewWidget.addItem(self.scan_image2)
-        #self._mw.voltscan2_ViewWidget.addItem(self.scan_fit_image)
-        self._mw.voltscan2_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
-        self._mw.voltscan_matrix2_ViewWidget.addItem(self.scan_matrix_image2)
-
-        # Get the colorscales at set LUT
-        my_colors = ColorScaleInferno()
-
-        self.scan_matrix_image.setLookupTable(my_colors.lut)
-        self.scan_matrix_image2.setLookupTable(my_colors.lut)
-
-        # Configuration of the Colorbar
-        self.scan_cb = ColorBar(my_colors.cmap_normed, 100, 0, 100000)
-
-        #adding colorbar to ViewWidget
-        self._mw.voltscan_cb_ViewWidget.addItem(self.scan_cb)
-        self._mw.voltscan_cb_ViewWidget.hideAxis('bottom')
-        self._mw.voltscan_cb_ViewWidget.hideAxis('left')
-        self._mw.voltscan_cb_ViewWidget.setLabel('right', 'Fluorescence', units='c/s')
-
-        # Connect the buttons and inputs for colorbar
-        self._mw.voltscan_cb_manual_RadioButton.clicked.connect(self.refresh_matrix)
-        self._mw.voltscan_cb_centiles_RadioButton.clicked.connect(self.refresh_matrix)
-
-        # set initial values
-        self._mw.startDoubleSpinBox.setValue(self._voltscan_logic.scan_range[0])
-        self._mw.speedDoubleSpinBox.setValue(self._voltscan_logic._scan_speed)
-        self._mw.stopDoubleSpinBox.setValue(self._voltscan_logic.scan_range[1])
-        self._mw.constDoubleSpinBox.setValue(self._voltscan_logic.get_current_voltage())
-        self._mw.resolutionSpinBox.setValue(self._voltscan_logic.resolution)
-        self._mw.linesSpinBox.setValue(self._voltscan_logic.number_of_repeats)
-
-        # Update the inputed/displayed numbers if the cursor has left the field:
-        self._mw.startDoubleSpinBox.editingFinished.connect(self.setRegionCursorPosition)
-        self._mw.speedDoubleSpinBox.editingFinished.connect(self.change_speed)
-        self._mw.stopDoubleSpinBox.editingFinished.connect(self.setRegionCursorPosition)
-        self._mw.resolutionSpinBox.editingFinished.connect(self.change_resolution)
-        self._mw.linesSpinBox.editingFinished.connect(self.change_lines)
-        self._mw.constDoubleSpinBox.editingFinished.connect(self.setCursorPosition)
-
-        #
-        self._mw.voltscan_cb_max_InputWidget.valueChanged.connect(self.refresh_matrix)
-        self._mw.voltscan_cb_min_InputWidget.valueChanged.connect(self.refresh_matrix)
-        self._mw.voltscan_cb_high_centile_InputWidget.valueChanged.connect(self.refresh_matrix)
-        self._mw.voltscan_cb_low_centile_InputWidget.valueChanged.connect(self.refresh_matrix)
+        self._mw = PLEScanMainWindow()
+        self._mw.show()
+        self._scanning_logic = self._scanning_logic()
+        self.scan_axis = self._scanning_logic._scan_axis
 
         # Connect signals
-        self._voltscan_logic.sigUpdatePlots.connect(self.refresh_matrix)
-        self._voltscan_logic.sigUpdatePlots.connect(self.refresh_plot)
-        self._voltscan_logic.sigUpdatePlots.connect(self.refresh_lines)
-        self._voltscan_logic.sigScanFinished.connect(self.scan_stopped)
-        self._voltscan_logic.sigScanStarted.connect(self.scan_started)
+        self.sigScannerTargetChanged.connect(
+            self._scanning_logic.set_target_position, QtCore.Qt.QueuedConnection
+        )
+        self.sigScanSettingsChanged.connect(
+            self._scanning_logic.set_scan_settings, QtCore.Qt.QueuedConnection
+        )
+        self.sigToggleScan.connect(self._scanning_logic.toggle_scan, QtCore.Qt.QueuedConnection)
+        self._mw.actionToggle_scan.triggered.connect(self.toggle_scan, QtCore.Qt.QueuedConnection)
+        self._scanning_logic.sigRepeatScan.connect(self.scan_repeated, QtCore.Qt.QueuedConnection)
+        
+        self._scanning_logic.sigScanStateChanged.connect(
+            self.scan_state_updated, QtCore.Qt.QueuedConnection
+        )
+        self._scanning_logic.sigScannerTargetChanged.connect(
+            self.scanner_target_updated, QtCore.Qt.QueuedConnection
+        )
+        self._scanning_logic.sigScanSettingsChanged.connect(
+            self.scanner_settings_updated, QtCore.Qt.QueuedConnection
+        )
+        # self.sigToggleOptimize.connect(
+        #     self._optimize_logic().toggle_optimize, QtCore.Qt.QueuedConnection
+        # )
+        # Initialize widget data
+        # self.scanner_settings_updated()
 
-        self.sigStartScan.connect(self._voltscan_logic.start_scanning)
-        self.sigStopScan.connect(self._voltscan_logic.stop_scanning)
-        self.sigChangeVoltage.connect(self._voltscan_logic.set_voltage)
-        self.sigChangeRange.connect(self._voltscan_logic.set_scan_range)
-        self.sigChangeSpeed.connect(self._voltscan_logic.set_scan_speed)
-        self.sigChangeLines.connect(self._voltscan_logic.set_scan_lines)
-        self.sigChangeResolution.connect(self._voltscan_logic.set_resolution)
-        self.sigSaveMeasurement.connect(self._voltscan_logic.save_data)
+        # self._mw.ple_widget.selected_region.sigRegionChangeFinished.connect(self.selected_region_value_changed)
+        # self._mw.ple_widget.axis_type.sigStateChanged.connect(self.axis_type_changed)
+        
+        self._mw.ple_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing)
+        self._mw.ple_widget.selected_region.sigRegionChanged.connect(self.sliders_values_are_changing)
 
-        self._mw.action_run_stop.triggered.connect(self.run_stop)
-        self._mw.action_Save.triggered.connect(self.save_data)
-        #############
-        self._mw.voltscan_matrix_ViewWidget.addItem(self.region_cursor)
-        self._mw.voltscan_ViewWidget.addItem(self.main_cursor)
-        self.region_cursor.sigRegionChanged.connect(self.updateSweepRange)
-        self.main_cursor.sigPositionChanged.connect(self.updateCursorPosition)
+        self._mw.ple_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
+        self._mw.ple_widget.selected_region.sigRegionChangeFinished.connect(self.region_value_changed) #sigRegionChangeFinished
+        
+        
+        self.scanner_target_updated()
+        self.scan_state_updated(self._scanning_logic.module_state() != 'idle')
 
-        self._mw.show()
+        # self._init_ranges()
+        self.restore_scanner_settings()
+        self._init_ui_connectors()
+
+        self.setup_fit_widget()
+        self.__connect_fit_control_signals()
+
+    def setup_fit_widget(self):
+        self._fit_dockwidget = PleFitDockWidget(parent=self._mw, fit_container=self._scanning_logic._fit_container)
+        self._fit_config_dialog = FitConfigurationDialog(parent=self._mw,
+                                                         fit_config_model=self._scanning_logic._fit_config_model)
+        self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._fit_dockwidget)
+        self.sigDoFit.connect(self._scanning_logic.do_fit, QtCore.Qt.QueuedConnection)
+        self._scanning_logic.sigFitUpdated.connect(self._update_fit_result, QtCore.Qt.QueuedConnection)
+
+    def __connect_fit_control_signals(self):
+        self._fit_dockwidget.fit_widget.sigDoFit.connect(self._fit_clicked)
+        
+    def __disconnect_fit_control_signals(self):
+        self._fit_dockwidget.fit_widget.sigDoFit.disconnect()
+
+
+    def _fit_clicked(self, fit_config):
+        channel = 'fluorescence'#self._scan_control_dockwidget.selected_channel
+        # range_index = #self._scan_control_dockwidget.selected_range
+        self.sigDoFit.emit(fit_config, channel)
+
+    def _update_fit_result(self, fit_cfg_result, channel):
+        current_channel = channel#self._scan_control_dockwidget.selected_channel
+        # current_range_index = self._scan_control_dockwidget.selected_range
+        print(fit_cfg_result)
+        if current_channel == channel:# and current_range_index == range_index:
+            if fit_cfg_result is None:
+                self._fit_dockwidget.fit_widget.update_fit_result('No Fit', None)
+                self._mw.ple_widget.set_fit_data(None, None)
+            else:
+                self._fit_dockwidget.fit_widget.update_fit_result(*fit_cfg_result)
+                self._mw.ple_widget.set_fit_data(*fit_cfg_result[1].high_res_best_fit)
+
+
+
+    def _init_ui_connectors(self):
+        new_scan_range = lambda: self.sigScanSettingsChanged.emit({'range': {self.scan_axis: (self._mw.startDoubleSpinBox.value(), self._mw.stopDoubleSpinBox.value())}})
+        self._mw.startDoubleSpinBox.editingFinished.connect(new_scan_range)
+        self._mw.stopDoubleSpinBox.editingFinished.connect(new_scan_range)
+        self._mw.frequencyDoubleSpinBox.editingFinished.connect(
+            lambda: self.sigScanSettingsChanged.emit({'frequency': {self.scan_axis: self._mw.frequencyDoubleSpinBox.value()}})
+        )
+        self._mw.resolutionDoubleSpinBox.editingFinished.connect(
+            lambda: self.sigScanSettingsChanged.emit({'resolution': {self.scan_axis: self._mw.resolutionDoubleSpinBox.value()}})
+            ) 
+        self._mw.actionFull_range.triggered.connect(
+            self._scanning_logic.set_full_scan_ranges, QtCore.Qt.QueuedConnection
+        )
+        # !ValueError: all the input array dimensions for the concatenation axis must match exactly, but along dimension 1, the array at index 0 has size 50 and the array at index 1 has size 100
+        self._mw.number_of_repeats_SpinBox.editingFinished.connect(
+            lambda: self._scanning_logic.update_number_of_repeats(self._mw.number_of_repeats_SpinBox.value())
+        )
+
+        self._mw.constDoubleSpinBox.editingFinished.connect(
+            lambda: self.set_scanner_target_position
+        )
+
+
+    def toggle_scan(self):
+        self._mw.elapsed_lines_DisplayWidget.display(self._scanning_logic._repeated)
+        self.sigToggleScan.emit(self._mw.actionToggle_scan.isChecked(), [self.scan_axis], self.module_uuid)
 
     def show(self):
         """Make window visible and put it above all other windows. """
@@ -224,208 +193,145 @@ class PLEScanGui(GUIBase):
         self._mw.activateWindow()
         self._mw.raise_()
 
-    def run_stop(self, is_checked):
-        """ Manages what happens if scan is started/stopped """
-        self._mw.action_run_stop.setEnabled(False)
-        if is_checked:
-            self.sigStartScan.emit()
-            self._mw.voltscan_ViewWidget.removeItem(self.scan_fit_image)
-            self._mw.voltscan2_ViewWidget.removeItem(self.scan_fit_image)
-            self._mw.voltscan_matrix_ViewWidget.removeItem(self.region_cursor)
-            self._mw.voltscan_ViewWidget.removeItem(self.main_cursor)
-            self._mw.startDoubleSpinBox.editingFinished.disconnect()
-            self._mw.speedDoubleSpinBox.editingFinished.disconnect()
-            self._mw.stopDoubleSpinBox.editingFinished.disconnect()
-            self._mw.resolutionSpinBox.editingFinished.disconnect()
-            self._mw.linesSpinBox.editingFinished.disconnect()
-            self._mw.constDoubleSpinBox.editingFinished.disconnect()
-            self.region_cursor.sigRegionChanged.disconnect()
-            self.main_cursor.sigPositionChanged.disconnect()
-        else:
-            self.sigStopScan.emit()
+    @QtCore.Slot()
+    def region_value_changed(self):
+        region = self._mw.ple_widget.selected_region.getRegion()
+        self.sigScanSettingsChanged.emit({'range': {self.scan_axis: region}})
+        self._mw.startDoubleSpinBox.setValue(region[0])
+        self._mw.stopDoubleSpinBox.setValue(region[1])
 
-    def scan_started(self):
-        self._mw.action_run_stop.setEnabled(True)
+    @QtCore.Slot()
+    def sliders_values_are_changing(self):
+        region = self._mw.ple_widget.selected_region.getRegion()
+        self._mw.startDoubleSpinBox.setValue(region[0])
+        self._mw.stopDoubleSpinBox.setValue(region[1])
 
-    def scan_stopped(self):
-        self._mw.action_run_stop.setEnabled(True)
-        self._mw.action_run_stop.setChecked(False)
-        self.refresh_plot()
-        self.refresh_matrix()
-        self.refresh_lines()
-        self._mw.constDoubleSpinBox.setValue(self._voltscan_logic.get_current_voltage())
-        self._mw.voltscan_matrix_ViewWidget.addItem(self.region_cursor)
-        self._mw.voltscan_ViewWidget.addItem(self.main_cursor)
-        self._mw.startDoubleSpinBox.editingFinished.connect(self.setRegionCursorPosition)
-        self._mw.speedDoubleSpinBox.editingFinished.connect(self.change_speed)
-        self._mw.stopDoubleSpinBox.editingFinished.connect(self.setRegionCursorPosition)
-        self._mw.resolutionSpinBox.editingFinished.connect(self.change_resolution)
-        self._mw.linesSpinBox.editingFinished.connect(self.change_lines)
-        self._mw.constDoubleSpinBox.editingFinished.connect(self.setCursorPosition)
-        self.region_cursor.sigRegionChanged.connect(self.updateSweepRange)
-        self.main_cursor.sigPositionChanged.connect(self.updateCursorPosition)
-        self._mw.constDoubleSpinBox.editingFinished.emit()
+        value = self._mw.ple_widget.target_point.value()
+        self._mw.constDoubleSpinBox.setValue(value)
 
+
+    @QtCore.Slot()
+    def restore_scanner_settings(self):
+        """ ToDo: Document
+        """
+        self.scanner_settings_updated({'frequency': self._scanning_logic.scan_frequency,
+        'resolution': self._scanning_logic.scan_resolution,
+        'range': self._scanning_logic.scan_ranges})
+
+
+    @QtCore.Slot(dict)
+    def scanner_settings_updated(self, settings=None):
+        """
+        Update scanner settings from logic and set widgets accordingly.
+
+        @param dict settings: Settings dict containing the scanner settings to update.
+                              If None (default) read the scanner setting from logic and update.
+        """
+        if not isinstance(settings, dict):
+            settings = self._scanning_logic.scan_settings
+
+        # if self._scanner_settings_locked:
+        #     return
+        # ToDo: Handle all remaining settings
+        # ToDo: Implement backwards scanning functionality
+
+        if 'resolution' in settings:
+            self._mw.resolutionDoubleSpinBox.setValue(settings['resolution'][self.scan_axis])
+        if 'range' in settings:
+            x_range = settings['range'][self.scan_axis]
+            self._mw.startDoubleSpinBox.setValue(x_range[0])
+            self._mw.stopDoubleSpinBox.setValue(x_range[1])
+            self._mw.constDoubleSpinBox.setRange(*x_range)
+            
+
+            y_range =  (0, self._scanning_logic._number_of_repeats)
+            self._mw.matrix_widget.set_plot_range(x_range = x_range, y_range = y_range)
+            matrix_range = (x_range, y_range)
+            self._mw.matrix_widget.image_widget.set_image_extent(matrix_range,
+                            adjust_for_px_size=True)
+            self._mw.matrix_widget.image_widget.autoRange()
+            
+            self._mw.ple_widget.selected_region.setRegion(x_range)
+            self._mw.ple_widget.target_point.setValue((x_range[0] + x_range[1])/2)
+            self._mw.ple_widget.plot_widget.setRange(xRange = x_range)
+
+        if 'frequency' in settings:
+            self._mw.frequencyDoubleSpinBox.setValue(settings['frequency'][self.scan_axis])
+        
+        self._scanning_logic.reset_accumulated()
+        self._mw.number_of_repeats_SpinBox.setValue(self._scanning_logic._number_of_repeats)
+        
+        
+
+    @QtCore.Slot(bool, tuple)
+    def scan_repeated(self, start, scan_axes):
+        self._mw.elapsed_lines_DisplayWidget.display(self._scanning_logic.display_repeated)
+
+    @QtCore.Slot(dict)
+    def set_scanner_target_position(self, target_pos=None):
+        """
+        Issues new target to logic and updates gui.
+
+        @param dict target_pos:
+        """
+        target = self._mw.ple_widget.target_point.value()
+        target_pos = {self._scanning_logic._scan_axis: target}
+        self._mw.constDoubleSpinBox.setValue(target)
+        self.scanner_target_updated(pos_dict=target_pos, caller_id=None)
+
+    def scanner_target_updated(self, pos_dict=None, caller_id=None):
+        """
+        Updates the scanner target and set widgets accordingly.
+
+        @param dict pos_dict: The scanner position dict to update each axis position.
+                              If None (default) read the scanner position from logic and update.
+        @param int caller_id: The qudi module object id responsible for triggering this update
+        """
+
+        # If this update has been issued by this module, do not update display.
+        # This has already been done before notifying the logic.
+        if caller_id is self.module_uuid:
+            return
+        if not isinstance(pos_dict, dict):
+            pos_dict = self._scanning_logic.scanner_target
+            
+        self._mw.ple_widget.target_point.setValue(pos_dict[self._scanning_logic._scan_axis])
+        # self.scanner_control_dockwidget.set_target(pos_dict)
+
+    @QtCore.Slot(bool, object, object)
+    def scan_state_updated(self, is_running, scan_data=None, caller_id=None):
+        scan_axes = scan_data.scan_axes if scan_data is not None else None
+        if scan_data is not None:
+            self._mw.actionToggle_scan.setChecked(is_running)
+            self._update_scan_data(scan_data)
+        return
     
-
-    def refresh_plot(self):
-        """ Refresh the xy-plot image """
-        self.scan_image.setData(self._voltscan_logic.plot_x, self._voltscan_logic.plot_y)
-        self.scan_image_2.setData(self._voltscan_logic.plot_x, self._voltscan_logic.plot_y_2)
-        self.scan_image2.setData(self._voltscan_logic.plot_x, self._voltscan_logic.plot_y2)
-
-    def refresh_matrix(self):
-        """ Refresh the xy-matrix image """
-        self.scan_matrix_image.setImage(self._voltscan_logic.scan_matrix, axisOrder='row-major')
-        self.scan_matrix_image.setRect(
-            QtCore.QRectF(
-                self._voltscan_logic.scan_range[0],
-                0,
-                self._voltscan_logic.scan_range[1] - self._voltscan_logic.scan_range[0],
-                self._voltscan_logic.number_of_repeats)
-            )
-        self.scan_matrix_image2.setImage(self._voltscan_logic.scan_matrix2, axisOrder='row-major')
-        self.scan_matrix_image2.setRect(
-            QtCore.QRectF(
-                self._voltscan_logic.scan_range[0],
-                0,
-                self._voltscan_logic.scan_range[1] - self._voltscan_logic.scan_range[0],
-                self._voltscan_logic.number_of_repeats)
-        )
-        self.refresh_scan_colorbar()
-
-        scan_image_data = self._voltscan_logic.scan_matrix
-
-        # If "Centiles" is checked, adjust colour scaling automatically to centiles.
-        # Otherwise, take user-defined values.
-        if self._mw.voltscan_cb_centiles_RadioButton.isChecked():
-            low_centile = self._mw.voltscan_cb_low_centile_InputWidget.value()
-            high_centile = self._mw.voltscan_cb_high_centile_InputWidget.value()
-
-            cb_min = np.percentile(scan_image_data, low_centile)
-            cb_max = np.percentile(scan_image_data, high_centile)
-        else:
-            cb_min = self._mw.voltscan_cb_min_InputWidget.value()
-            cb_max = self._mw.voltscan_cb_max_InputWidget.value()
-
-        # Now update image with new color scale, and update colorbar
-        self.scan_matrix_image.setImage(
-            image=scan_image_data,
-            levels=(cb_min, cb_max),
-            axisOrder='row-major')
-
-        scan_image_data2 = self._voltscan_logic.scan_matrix2
-        # Now update image with new color scale, and update colorbar
-        self.scan_matrix_image2.setImage(
-            image=scan_image_data2,
-            levels=(cb_min, cb_max),
-            axisOrder='row-major')
-
-        self.refresh_scan_colorbar()
-
-    def refresh_scan_colorbar(self):
-        """ Update the colorbar to a new scaling."""
-
-        # If "Centiles" is checked, adjust colour scaling automatically to centiles.
-        # Otherwise, take user-defined values.
-        if self._mw.voltscan_cb_centiles_RadioButton.isChecked():
-            low_centile = self._mw.voltscan_cb_low_centile_InputWidget.value()
-            high_centile = self._mw.voltscan_cb_high_centile_InputWidget.value()
-
-            cb_min = np.percentile(self.scan_matrix_image.image, low_centile)
-            cb_max = np.percentile(self.scan_matrix_image.image, high_centile)
-        else:
-            cb_min = self._mw.voltscan_cb_min_InputWidget.value()
-            cb_max = self._mw.voltscan_cb_max_InputWidget.value()
-
-        self.scan_cb.refresh_colorbar(cb_min, cb_max)
-        self._mw.voltscan_cb_ViewWidget.update()
-
-    def refresh_lines(self):
-        self._mw.elapsed_lines_DisplayWidget.display(self._voltscan_logic._scan_counter_up)
-
-    def change_voltage(self):
-        self.sigChangeVoltage.emit(self._mw.constDoubleSpinBox.value())
-
-    def change_start_volt(self):
-        self.sigChangeRange.emit([
-            self._mw.startDoubleSpinBox.value(),
-            self._mw.stopDoubleSpinBox.value()
-        ])
-
-    def change_speed(self):
-        self.sigChangeSpeed.emit(self._mw.speedDoubleSpinBox.value())
-
-    def change_stop_volt(self):
-        self.sigChangeRange.emit([
-            self._mw.startDoubleSpinBox.value(),
-            self._mw.stopDoubleSpinBox.value()
-        ])
-
-    def change_lines(self):
-        self.sigChangeLines.emit(self._mw.linesSpinBox.value())
-
-    def change_resolution(self):
-        self.sigChangeResolution.emit(self._mw.resolutionSpinBox.value())
-
-    def get_matrix_cb_range(self):
+    @QtCore.Slot(object)
+    def _update_scan_data(self, scan_data):
         """
-        Determines the cb_min and cb_max values for the matrix plot
+        @param ScanData scan_data:
         """
-        matrix_image = self.scan_matrix_image.image
+        axes = scan_data.scan_axes
+        
+        self._mw.ple_widget.set_scan_data(scan_data)
+        if scan_data.accumulated_data is not None:
+            self._mw.matrix_widget.set_scan_data(scan_data)
 
-        # If "Manual" is checked or the image is empty (all zeros), then take manual cb range.
-        # Otherwise, calculate cb range from percentiles.
-        if self._mw.voltscan_cb_manual_RadioButton.isChecked() or np.max(matrix_image) < 0.1:
-            cb_min = self._mw.voltscan_cb_min_InputWidget.value()
-            cb_max = self._mw.voltscan_cb_max_InputWidget.value()
+
+    def save_view(self):
+        """Saves the current GUI state as a QbyteArray.
+           The .data() function will transform it to a bytearray, 
+           which can be saved as a StatusVar and read by the load_view method. 
+        """
+        self._save_display_view = self._mw.saveState().data() 
+        
+
+    def load_view(self):
+        """Loads the saved state from the GUI and can read a QbyteArray
+            or a simple byteArray aswell.
+        """
+        if self._save_display_view is None:
+            pass
         else:
-            # Exclude any zeros (which are typically due to unfinished scan)
-            matrix_image_nonzero = matrix_image[np.nonzero(matrix_image)]
+            self._mw.restoreState(self._save_display_view)
 
-            # Read centile range
-            low_centile = self._mw.voltscan_cb_low_centile_InputWidget.value()
-            high_centile = self._mw.voltscan_cb_high_centile_InputWidget.value()
-
-            cb_min = np.percentile(matrix_image_nonzero, low_centile)
-            cb_max = np.percentile(matrix_image_nonzero, high_centile)
-
-        cb_range = [cb_min, cb_max]
-        return cb_range
-
-    def save_data(self):
-        """ Save the sum plot, the scan marix plot and the scan data """
-        filetag = self._mw.save_tag_LineEdit.text()
-        cb_range = self.get_matrix_cb_range()
-
-        # Percentile range is None, unless the percentile scaling is selected in GUI.
-        pcile_range = None
-        if self._mw.voltscan_cb_centiles_RadioButton.isChecked():
-            low_centile = self._mw.voltscan_cb_low_centile_InputWidget.value()
-            high_centile = self._mw.voltscan_cb_high_centile_InputWidget.value()
-            pcile_range = [low_centile, high_centile]
-
-        self.sigSaveMeasurement.emit(filetag, cb_range, pcile_range)
-
-    def updateSweepRange(self):
-        self._mw.startDoubleSpinBox.setValue(int(self.region_cursor.getRegion()[0]))
-        self.change_start_volt()
-        self._mw.stopDoubleSpinBox.setValue(int(self.region_cursor.getRegion()[1]))
-        self.change_stop_volt()
-
-    def updateCursorPosition(self):
-        """ Update the display of cursor position
-        """
-        time.sleep(0.01)
-        self._mw.constDoubleSpinBox.setValue(int(self.main_cursor.value()))
-        self.change_voltage()
-    
-    def setRegionCursorPosition(self):
-        self.region_cursor.setRegion([self._mw.startDoubleSpinBox.value(),self._mw.stopDoubleSpinBox.value()])
-        self.change_start_volt()
-        self.change_stop_volt()
-
-    def setCursorPosition(self):
-        time.sleep(0.01)
-        self.main_cursor.setValue(self._mw.constDoubleSpinBox.value())
-        self.change_voltage()
