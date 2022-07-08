@@ -70,7 +70,7 @@ class PLE2DWidget(QtWidgets.QWidget):
 
     def _data_channel_changed(self) -> None:
         if self._scan_data is not None:
-            current_channel = "fluorescence" 
+            current_channel = "APD1" 
             # current_channel = self.channel_selection_combobox.currentText()
             self.image_widget.set_data_label(label=current_channel,
                                              unit=self._scan_data.channel_units[current_channel])
@@ -82,7 +82,7 @@ class PLE2DWidget(QtWidgets.QWidget):
         #     pass
         # else:
             # current_channel = self.channel_selection_combobox.currentText()
-        current_channel = "fluorescence" #or APD events ?? or time tagger #!TODO!
+        current_channel = "APD1" #or APD events ?? or time tagger #!TODO!
         # self.set_plot_range(x_range= self._scan_data.scan_range[0],
         #                     y_range = self._scan_data.scan_range[0])
         self.image_widget.set_image(self._scan_data.accumulated_data[current_channel].T)    

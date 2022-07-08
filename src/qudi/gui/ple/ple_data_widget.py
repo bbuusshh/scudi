@@ -94,7 +94,7 @@ class PLEDataWidget(QtWidgets.QWidget):
 
     #!! TODO choose CHANNEL
     def _update_scan_data(self, update_range: bool) -> None:
-        current_channel = "fluorescence" #or APD events ?? or time tagger #!TODO!
+        current_channel = "APD1" #or APD events ?? or time tagger #!TODO!
         if (self._scan_data is None) or (self._scan_data.data is None):
             self.data_curve.clear()
         else:

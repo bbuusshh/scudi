@@ -49,7 +49,7 @@ class PLEScanGui(GuiBase):
     _window_geometry = StatusVar(name='window_geometry', default=None)
 
     # signals
-    sigScannerTargetChanged = QtCore.Signal(dict, object)
+    sigScannerTargetChanged = QtCore.Signal(dict)#, object)
     sigScanSettingsChanged = QtCore.Signal(dict)
     sigToggleScan = QtCore.Signal(bool, tuple, object)
     sigOptimizerSettingsChanged = QtCore.Signal(dict)
@@ -276,6 +276,7 @@ class PLEScanGui(GuiBase):
         """
         target = self._mw.ple_widget.target_point.value()
         target_pos = {self._scanning_logic._scan_axis: target}
+        self.sigScannerTargetChanged.emit(target_pos)
         self._mw.constDoubleSpinBox.setValue(target)
         self.scanner_target_updated(pos_dict=target_pos, caller_id=None)
 
