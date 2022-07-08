@@ -88,6 +88,7 @@ class TTGui(GuiBase):
         # Configure PlotWidget
         self._pw = self._mw.counterGraphicsView
         self._pw.setLabel('bottom', 'Time', units='s')
+        self._pw.setLabel('left', 'Counts', units='Hz')
         self._pw.setMouseEnabled(x=False, y=False)
         self._pw.setMouseTracking(False)
         self._pw.setMenuEnabled(False)
@@ -95,9 +96,11 @@ class TTGui(GuiBase):
 
         self._corr_pw = self._mw.corrGraphicsView
         self._corr_pw.setLabel('bottom', 'Time', units='s')
+        self._corr_pw.setLabel('left', 'g2', units='arb.')
 
         self._hist_pw = self._mw.histGraphicsView
         self._hist_pw.setLabel('bottom', 'Time', units='s')
+        self._hist_pw.setLabel('left', 'Events', units='arb.')
 
         
         self._corr_pw.setMouseEnabled(x=False, y=False)
@@ -157,19 +160,19 @@ class TTGui(GuiBase):
             # If just a single signal type is present, alternate the colors accordingly
             if i % 3 == 0:
                 pen1 = pg.mkPen(color[0], cosmetic=True)
-                pen2 = pg.mkPen(color[2], cosmetic=True)
+                pen2 = pg.mkPen(color[1], cosmetic=True)
             elif i % 3 == 1:
-                pen1 = pg.mkPen(color[1], cosmetic=True)
+                pen1 = pg.mkPen(color[2], cosmetic=True)
                 pen2 = pg.mkPen(color[3], cosmetic=True)
             else:
                 pen1 = pg.mkPen(color[4], cosmetic=True)
                 pen2 = pg.mkPen(color[5], cosmetic=True)
-            self.averaged_curves[ch] = pg.PlotCurveItem(pen=pen1,
+            self.averaged_curves[ch] = pg.PlotCurveItem(pen=pen2,
                                                         clipToView=True,
                                                         downsampleMethod='subsample',
                                                         autoDownsample=True,
                                                         antialias=self._use_antialias)
-            self.curves[ch] = pg.PlotCurveItem(pen=pen2,
+            self.curves[ch] = pg.PlotCurveItem(pen=pen1,
                                                clipToView=True,
                                                downsampleMethod='subsample',
                                                autoDownsample=True,
@@ -243,8 +246,10 @@ class TTGui(GuiBase):
                 active_channels.append(ch)
             if channels[ch] and self.curves[ch] not in items:
                 self._pw.addItem(self.curves[ch])
+                self._pw.addItem(self.averaged_curves[ch])
             elif not channels[ch] and self.curves[ch] in items:
                 self._pw.removeItem(self.curves[ch])
+                self._pw.removeItem(self.averaged_curves[ch])
             
         toggle = self._mw.toggleCounterPushButton.isChecked()
         disp = self._mw.count_display_comboBox.currentText()
@@ -255,6 +260,9 @@ class TTGui(GuiBase):
         for ch in data['trace_data']:
             x_arr, y_arr = data['trace_data'][ch]
             self.curves[ch].setData(y=y_arr, x=x_arr)
+        for ch in data['trace_data_avg']:
+            x_arr, y_arr = data['trace_data_avg'][ch]
+            self.averaged_curves[ch].setData(y=y_arr, x=x_arr)
         counts = data['sum']
         self._mw.count_display_label.setText('{:.2r}Hz'.format(ScaledFloat(counts)))
 

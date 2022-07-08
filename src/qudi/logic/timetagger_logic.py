@@ -120,20 +120,24 @@ class TimeTaggerLogic(LogicBase):
                 self._counter_poll_timer.stop()
                 return
             self.trace_data = {}
+            self.trace_data_avg = {}
             counter_sum = None
             raw = self.counter.getDataNormalized()
             index = self.counter.getIndex()/1e12
+            w = int(round(len(index)/50))
             # raw = np.random.random(100)
             # index = np.arange(100)
             counter_sum = np.zeros_like(raw[0])
             for i, ch in enumerate(self.toggled_channels):
                 self.trace_data[ch] = (index, raw[i])
+                self.trace_data_avg[ch] = (index, np.convolve(raw[i], np.ones(w), 'same') / w)
+                
                 if self.display_channel_number==0:
                     counter_sum += raw[i]
                 elif self.display_channel_number==ch:
                     counter_sum += raw[i]
 
-            self.sigCounterDataChanged.emit({'trace_data':self.trace_data, 'sum': np.mean(np.nan_to_num(counter_sum))})
+            self.sigCounterDataChanged.emit({'trace_data':self.trace_data, 'trace_data_avg':self.trace_data_avg,'sum': np.mean(np.nan_to_num(counter_sum))})
         return
     
     def acquire_corr_block(self):
