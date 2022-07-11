@@ -122,11 +122,12 @@ class PLEScanGui(GuiBase):
         self._mw.stopDoubleSpinBox.setSuffix(self.axis.unit)
         self._mw.constDoubleSpinBox.setSuffix(self.axis.unit)
 
-
-        if self._microwave_logic is not None:
+        #create microwave control window if microwave is set
+        if self._microwave_logic() is not None:
             self._microwave_logic = self._microwave_logic()
+            self._mw.add_dock_widget('microwave')
             self._init_microwave()
-
+        
         
         self.scanner_target_updated()
         self.scan_state_updated(self._scanning_logic.module_state() != 'idle')

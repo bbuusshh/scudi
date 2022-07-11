@@ -44,7 +44,7 @@ class PLEScanMainWindow(QtWidgets.QMainWindow):
         self.ple_matrix_dockWidget.setWidget(self.matrix_widget)
 
         self.add_dock_widget('repump')
-        self.add_dock_widget('microwave')
+        
         
 
     def add_dock_widget(self, name):
