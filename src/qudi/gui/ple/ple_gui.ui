@@ -108,6 +108,42 @@
        </property>
        <widget class="QWidget" name="layoutWidget_2">
         <layout class="QGridLayout" name="gridLayout_2">
+         <item row="1" column="0">
+          <layout class="QVBoxLayout" name="verticalLayout_3">
+           <item>
+            <widget class="QLabel" name="constLabel">
+             <property name="text">
+              <string>Current target:</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="ScienDSpinBox" name="constDoubleSpinBox">
+             <property name="minimumSize">
+              <size>
+               <width>80</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="suffix">
+              <string/>
+             </property>
+             <property name="decimals">
+              <number>2</number>
+             </property>
+             <property name="minimum">
+              <double>-99.000000000000000</double>
+             </property>
+             <property name="maximum">
+              <double>100000000.000000000000000</double>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
          <item row="0" column="0" colspan="2">
           <layout class="QVBoxLayout" name="verticalLayout_2">
            <item>
@@ -132,8 +168,8 @@
                </property>
                <property name="minimumSize">
                 <size>
-                 <width>70</width>
-                 <height>5</height>
+                 <width>80</width>
+                 <height>0</height>
                 </size>
                </property>
                <property name="wrapping">
@@ -158,6 +194,12 @@
              </item>
              <item>
               <widget class="ScienDSpinBox" name="stopDoubleSpinBox">
+               <property name="minimumSize">
+                <size>
+                 <width>80</width>
+                 <height>0</height>
+                </size>
+               </property>
                <property name="prefix">
                 <string/>
                </property>
@@ -173,42 +215,6 @@
               </widget>
              </item>
             </layout>
-           </item>
-          </layout>
-         </item>
-         <item row="1" column="0">
-          <layout class="QVBoxLayout" name="verticalLayout_3">
-           <item>
-            <widget class="QLabel" name="constLabel">
-             <property name="text">
-              <string>Current target:</string>
-             </property>
-             <property name="alignment">
-              <set>Qt::AlignCenter</set>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="ScienDSpinBox" name="constDoubleSpinBox">
-             <property name="minimumSize">
-              <size>
-               <width>70</width>
-               <height>0</height>
-              </size>
-             </property>
-             <property name="suffix">
-              <string/>
-             </property>
-             <property name="decimals">
-              <number>2</number>
-             </property>
-             <property name="minimum">
-              <double>-99.000000000000000</double>
-             </property>
-             <property name="maximum">
-              <double>100000000.000000000000000</double>
-             </property>
-            </widget>
            </item>
           </layout>
          </item>
@@ -256,7 +262,7 @@
              </property>
              <property name="minimumSize">
               <size>
-               <width>80</width>
+               <width>0</width>
                <height>0</height>
               </size>
              </property>
@@ -301,7 +307,7 @@
              </property>
              <property name="minimumSize">
               <size>
-               <width>60</width>
+               <width>0</width>
                <height>0</height>
               </size>
              </property>
@@ -347,7 +353,7 @@
              </property>
              <property name="minimumSize">
               <size>
-               <width>50</width>
+               <width>0</width>
                <height>0</height>
               </size>
              </property>

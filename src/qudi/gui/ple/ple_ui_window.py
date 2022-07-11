@@ -43,6 +43,23 @@ class PLEScanMainWindow(QtWidgets.QMainWindow):
         self.matrix_widget = matrix_widget.PLE2DWidget(axes, channel)
         self.ple_matrix_dockWidget.setWidget(self.matrix_widget)
 
+        self.add_dock_widget('repump')
+        self.add_dock_widget('microwave')
+        
+
+    def add_dock_widget(self, name):
+
+        setattr(self, f"{name}_widget", PleWidget(name=name))
+        widget = getattr(self, f"{name}_widget")
+        setattr(self, f"{name}_dockWidget", QtWidgets.QDockWidget())
+        dockWidget = getattr(self, f"{name}_dockWidget")
+        dockWidget.setWindowTitle(name)
+        dockWidget.setFloating(True)
+       
+        self.addDockWidget(QtCore.Qt.TopDockWidgetArea, dockWidget)
+        dockWidget.setWidget(widget)
+
+
 
     def restore_view(self):
         # Resize main window
@@ -54,3 +71,11 @@ class PLEScanMainWindow(QtWidgets.QMainWindow):
         self.data_dockwidget.show()
         self.data_dockwidget.setFloating(False)
         self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.data_dockwidget)
+
+class PleWidget(QtWidgets.QWidget):
+    def __init__(self, name='repump', *args, **kwargs):
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, f'{name}_widget.ui')
+        super(PleWidget, self).__init__(*args, **kwargs)
+        uic.loadUi(ui_file, self)
+        # self.show()
