@@ -20,36 +20,29 @@ class PLE2DWidget(QtWidgets.QWidget):
     """
 
     def __init__(self,
-                *args, 
-                **kwargs):
-        super().__init__(*args, **kwargs)
+                axis: Tuple[ScannerAxis],
+                channel: ScannerChannel,
+                parent: Optional[QtWidgets.QWidget] = None):
+        super().__init__(parent=parent)
 
+        self.channel = channel
         main_layout = QtWidgets.QGridLayout()
         self.setLayout(main_layout)
         matrix_group_box = QtWidgets.QGroupBox('Matrix Region')
  
         self.image_widget = ImageWidget(colorscale = ColorScale) #_Colorscale().lut
         self.image_item = self.image_widget.image_item
-        # self.channel_selection_combobox.currentIndexChanged.connect(self._data_channel_changed)
-        # self.image_widget.sigZoomAreaApplied.connect(self._zoom_applied)
-        # self.plot_widget.setLabel('bottom', 'Wavelength', units='m')
-        # self.plot_widget.setLabel('left', 'Scan number', units='#')
-        self.image_widget.set_axis_label('bottom', label='Frequency', unit='Hz')
-        self.image_widget.set_axis_label('left', label='Scan number', unit='#')
-        # self.image_widget.set_data_label(label=channels[0].name, unit=channels[0].unit)
+
+        self.image_widget.set_axis_label('left', label=channel.name, unit=channel.unit)
+        self.image_widget.set_axis_label('bottom', label=axis.name.title(), unit=axis.unit)
+        self.image_widget.set_data_label(label=channel.name, unit=channel.unit)
         
         self.layout().addWidget(self.image_widget)
 
         # disable buggy pyqtgraph 'Export..' context menu
         self.image_widget.plot_widget.setAspectLocked(lock=False, ratio=1.0)
         self.image_widget.plot_widget.getPlotItem().vb.scene().contextMenu[0].setVisible(False)
-        
-        # grad = QtGui.QLinearGradient(0, 0, 0, 1)
-        # grad.setCoordinateMode(QtGui.QGradient.ObjectMode)
-        # for stop, color in zip(*ColorScale().colormap.getStops('byte')):
-        #     grad.setColorAt(stop, QtGui.QColor(*color))
-        # self.image_widget.colorbar_widget._cb_brush = mkBrush(QtGui.QBrush(grad))
-
+    
         self.number_of_repeats=None
         self._scan_data = None
 
@@ -62,29 +55,13 @@ class PLE2DWidget(QtWidgets.QWidget):
         vb.setRange(xRange=x_range, yRange=y_range)
 
     def set_scan_data(self, data: ScanData) -> None:
-        # Save reference for channel changes
         self._scan_data = data
-        # Set data
-        self._update_scan_data()
-
-
-    def _data_channel_changed(self) -> None:
-        if self._scan_data is not None:
-            current_channel = "APD1" 
-            # current_channel = self.channel_selection_combobox.currentText()
-            self.image_widget.set_data_label(label=current_channel,
-                                             unit=self._scan_data.channel_units[current_channel])
         self._update_scan_data()
 
     def _update_scan_data(self) -> None:
-        # if (self._scan_data is None) or (self._scan_data._accumulated_data is None):
-        #     # self.image_widget.set_image(None)
-        #     pass
-        # else:
-            # current_channel = self.channel_selection_combobox.currentText()
-        current_channel = "APD1" #or APD events ?? or time tagger #!TODO!
-        # self.set_plot_range(x_range= self._scan_data.scan_range[0],
-        #                     y_range = self._scan_data.scan_range[0])
+       
+        current_channel = self.channel.name 
+
         self.image_widget.set_image(self._scan_data.accumulated_data[current_channel].T)    
         matrix_range = (self._scan_data.scan_range[0], (0, self._scan_data.accumulated_data[current_channel].shape[0]))
         self.image_widget.set_image_extent(matrix_range,

@@ -6,7 +6,9 @@ import os
 from qudi.util.widgets.advanced_dockwidget import AdvancedDockWidget
 from qudi.util.widgets.fitting import FitWidget
 import importlib
-
+from qudi.interface.scanning_probe_interface import ScanData, ScannerAxis, ScannerChannel
+from typing import Tuple, Union, Sequence
+from typing import Optional, List
 try:
     importlib.reload(ple_data_widget)
 except NameError:
@@ -21,25 +23,24 @@ except NameError:
 class PLEScanMainWindow(QtWidgets.QMainWindow):
 
     def __init__(self,
-                *args, 
-                **kwargs):
-        # super().__init__(*args, **kwargs)
+                axes: Tuple[ScannerAxis],
+                channel: ScannerChannel,
+                parent: Optional[QtWidgets.QWidget] = None):
+       
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
         ui_file = os.path.join(this_dir, 'ple_gui.ui')
-        # axes_constr = self._scanning_logic().scanner_axes
-        # axes_constr = tuple(axes_constr[ax] for ax in axes)
-        # channel_constr = list(self._scanning_logic().scanner_channels.values())
         # Load it
         super(PLEScanMainWindow, self).__init__()
         uic.loadUi(ui_file, self)
         self.show()
 
         self.centralwidget.hide()
-        self.ple_widget = ple_data_widget.PLEDataWidget()
+
+        self.ple_widget = ple_data_widget.PLEDataWidget(axes, channel)
         self.ple_data_dockWidget.setWidget(self.ple_widget)
 
-        self.matrix_widget = matrix_widget.PLE2DWidget()
+        self.matrix_widget = matrix_widget.PLE2DWidget(axes, channel)
         self.ple_matrix_dockWidget.setWidget(self.matrix_widget)
 
 

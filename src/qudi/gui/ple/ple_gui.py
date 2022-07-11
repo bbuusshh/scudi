@@ -34,7 +34,7 @@ from qudi.logic.scanning_optimize_logic import OptimizerScanSequence
 from qudi.util.widgets.fitting import FitConfigurationDialog
 from .fit_dockwidget import PleFitDockWidget
 from qudi.gui.ple.ple_ui_window import PLEScanMainWindow
-
+from qudi.util.widgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
 
 class PLEScanGui(GuiBase):
     """
@@ -75,11 +75,15 @@ class PLEScanGui(GuiBase):
     def on_activate(self):
         """ 
         """
-        self._mw = PLEScanMainWindow()
-        self._mw.show()
         self._scanning_logic = self._scanning_logic()
         self.scan_axis = self._scanning_logic._scan_axis
+        self.axis = self._scanning_logic.scanner_axes[self.scan_axis]
+        channel = self._scanning_logic.scanner_channels[self._scanning_logic._channel]
 
+
+        self._mw = PLEScanMainWindow(self.axis, channel)
+        self._mw.show()
+        
         # Connect signals
         self.sigScannerTargetChanged.connect(
             self._scanning_logic.set_target_position, QtCore.Qt.QueuedConnection
@@ -103,23 +107,27 @@ class PLEScanGui(GuiBase):
         # self.sigToggleOptimize.connect(
         #     self._optimize_logic().toggle_optimize, QtCore.Qt.QueuedConnection
         # )
-        # Initialize widget data
-        # self.scanner_settings_updated()
 
-        # self._mw.ple_widget.selected_region.sigRegionChangeFinished.connect(self.selected_region_value_changed)
-        # self._mw.ple_widget.axis_type.sigStateChanged.connect(self.axis_type_changed)
-        
         self._mw.ple_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing)
         self._mw.ple_widget.selected_region.sigRegionChanged.connect(self.sliders_values_are_changing)
 
         self._mw.ple_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
-        self._mw.ple_widget.selected_region.sigRegionChangeFinished.connect(self.region_value_changed) #sigRegionChangeFinished
-        
+        self._mw.ple_widget.selected_region.sigRegionChangeFinished.connect(self.region_value_changed) 
+
+
+        # x_range = settings['range'][self.scan_axis]
+        # dec_places = decimal_places = np.abs(int(f'{x_range[0]:e}'.split('e')[-1])) + 3
+        self._mw.startDoubleSpinBox.setSuffix(self.axis.unit)
+        self._mw.stopDoubleSpinBox.setSuffix(self.axis.unit)
+        self._mw.constDoubleSpinBox.setSuffix(self.axis.unit)
+
+
+
+
         
         self.scanner_target_updated()
         self.scan_state_updated(self._scanning_logic.module_state() != 'idle')
 
-        # self._init_ranges()
         self.restore_scanner_settings()
         self._init_ui_connectors()
 
@@ -182,6 +190,9 @@ class PLEScanGui(GuiBase):
             lambda: self.set_scanner_target_position
         )
 
+        
+
+
 
     def toggle_scan(self):
         self._mw.elapsed_lines_DisplayWidget.display(self._scanning_logic._repeated)
@@ -239,10 +250,13 @@ class PLEScanGui(GuiBase):
             self._mw.resolutionDoubleSpinBox.setValue(settings['resolution'][self.scan_axis])
         if 'range' in settings:
             x_range = settings['range'][self.scan_axis]
+  
             self._mw.startDoubleSpinBox.setValue(x_range[0])
             self._mw.stopDoubleSpinBox.setValue(x_range[1])
             self._mw.constDoubleSpinBox.setRange(*x_range)
             
+            # self._mw.startDoubleSpinBox.update_value()
+
 
             y_range =  (0, self._scanning_logic._number_of_repeats)
             self._mw.matrix_widget.set_plot_range(x_range = x_range, y_range = y_range)

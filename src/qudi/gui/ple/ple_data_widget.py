@@ -22,6 +22,8 @@ If not, see <https://www.gnu.org/licenses/>.
 __all__ = ['PLEDataWidget']
 
 import pyqtgraph as pg
+from typing import Tuple, Union, Sequence
+from typing import Optional, List
 from PySide2 import QtCore
 from PySide2 import QtWidgets
 import numpy as np
@@ -37,13 +39,14 @@ class PLEDataWidget(QtWidgets.QWidget):
     sigZoomAreaSelected = QtCore.Signal(tuple)
 
     def __init__(self,
-                *args, 
-                **kwargs):
-        super().__init__(*args, **kwargs)
+                axis: Tuple[ScannerAxis],
+                channel: ScannerChannel,
+                parent: Optional[QtWidgets.QWidget] = None):
+        super().__init__(parent=parent)
 
         main_layout = QtWidgets.QGridLayout()
         self.setLayout(main_layout)
-
+        self.channel = channel
         self.plot_widget = pg.PlotWidget(
             axisItems={'bottom': CustomAxis(orientation='bottom'),
                        'left'  : CustomAxis(orientation='left')}
@@ -70,8 +73,8 @@ class PLEDataWidget(QtWidgets.QWidget):
                                             pen=pg.mkPen(color='green', width=2))
         self.plot_widget.addItem(self.target_point)
 
-        self.plot_widget.setLabel('left', 'Fluorescence', units='cts/s')
-        self.plot_widget.setLabel('bottom' ,'Frequency', units='Hz')#, 'Wavelength', units='m')
+        self.plot_widget.setLabel('left', text=channel.name, units=channel.unit)
+        self.plot_widget.setLabel('bottom', text=axis.name.title(), units=axis.unit)
         self.plot_widget.setMinimumHeight(50)
         main_layout.addWidget(self.plot_widget)
 
@@ -94,7 +97,7 @@ class PLEDataWidget(QtWidgets.QWidget):
 
     #!! TODO choose CHANNEL
     def _update_scan_data(self, update_range: bool) -> None:
-        current_channel = "APD1" #or APD events ?? or time tagger #!TODO!
+        current_channel = self.channel.name #or APD events ?? or time tagger #!TODO!
         if (self._scan_data is None) or (self._scan_data.data is None):
             self.data_curve.clear()
         else:

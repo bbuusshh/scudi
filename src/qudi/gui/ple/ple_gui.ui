@@ -123,7 +123,7 @@
            <item>
             <layout class="QHBoxLayout" name="horizontalLayout_2">
              <item>
-              <widget class="QDoubleSpinBox" name="startDoubleSpinBox">
+              <widget class="ScienDSpinBox" name="startDoubleSpinBox">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                  <horstretch>0</horstretch>
@@ -143,7 +143,7 @@
                 <bool>true</bool>
                </property>
                <property name="suffix">
-                <string>V</string>
+                <string/>
                </property>
                <property name="decimals">
                 <number>2</number>
@@ -157,12 +157,12 @@
               </widget>
              </item>
              <item>
-              <widget class="QDoubleSpinBox" name="stopDoubleSpinBox">
+              <widget class="ScienDSpinBox" name="stopDoubleSpinBox">
                <property name="prefix">
                 <string/>
                </property>
                <property name="suffix">
-                <string>V</string>
+                <string/>
                </property>
                <property name="decimals">
                 <number>2</number>
@@ -189,7 +189,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QDoubleSpinBox" name="constDoubleSpinBox">
+            <widget class="ScienDSpinBox" name="constDoubleSpinBox">
              <property name="minimumSize">
               <size>
                <width>70</width>
@@ -197,7 +197,7 @@
               </size>
              </property>
              <property name="suffix">
-              <string>V</string>
+              <string/>
              </property>
              <property name="decimals">
               <number>2</number>
@@ -520,7 +520,7 @@
             </widget>
            </item>
            <item row="0" column="0" colspan="2">
-            <widget class="QDoubleSpinBox" name="voltscan_cb_max_InputWidget">
+            <widget class="ScienDSpinBox" name="voltscan_cb_max_InputWidget">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                <horstretch>0</horstretch>
@@ -530,13 +530,13 @@
             </widget>
            </item>
            <item row="1" column="1">
-            <widget class="QDoubleSpinBox" name="voltscan_cb_high_centile_InputWidget"/>
+            <widget class="ScienDSpinBox" name="voltscan_cb_high_centile_InputWidget"/>
            </item>
            <item row="3" column="1">
-            <widget class="QDoubleSpinBox" name="voltscan_cb_low_centile_InputWidget"/>
+            <widget class="ScienDSpinBox" name="voltscan_cb_low_centile_InputWidget"/>
            </item>
            <item row="4" column="0" colspan="2">
-            <widget class="QDoubleSpinBox" name="voltscan_cb_min_InputWidget"/>
+            <widget class="ScienDSpinBox" name="voltscan_cb_min_InputWidget"/>
            </item>
            <item row="2" column="0" colspan="2">
             <widget class="PlotWidget" name="voltscan_cb_ViewWidget">
@@ -611,7 +611,6 @@
    </property>
   </action>
   <zorder>scan_control_DockWidget</zorder>
-  <zorder>dockWidget</zorder>
   <zorder>ple_data_dockWidget</zorder>
   <zorder>ple_matrix_dockWidget</zorder>
  </widget>
@@ -620,6 +619,11 @@
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
    <header>pyqtgraph</header>
+  </customwidget>
+  <customwidget>
+   <class>ScienDSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>qudi.util.widgets.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>
  <tabstops>

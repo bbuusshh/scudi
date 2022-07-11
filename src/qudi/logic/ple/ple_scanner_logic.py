@@ -50,12 +50,15 @@ class PLEScannerLogic(ScanningProbeLogic):
     # declare connectors
     _scanner = Connector(name='scanner', interface='ScanningProbeInterface')
     
+    #! We should refactor it to the hardware scanner interface
     _scan_axis = ConfigOption(name='scan_axis', default='a')
+    _channel = ConfigOption(name='channel', default='fluorescence')
+
     # status vars
     _scan_ranges = StatusVar(name='scan_ranges', default=None)
     _scan_resolution = StatusVar(name='scan_resolution', default=None)
     _scan_frequency = StatusVar(name='scan_frequency', default=None)
-
+    
     _number_of_repeats = StatusVar(default=10)
     _repeated = 0
     display_repeated = 0
@@ -354,11 +357,9 @@ class PLEScannerLogic(ScanningProbeLogic):
                 self.stop_scan()
                 self._repeated += 1
                 self.display_repeated += 1
+                self.stack_data()
                 if self._number_of_repeats > self._repeated or self._number_of_repeats == 0:
-                    self.stack_data()
-                    self.sigRepeatScan.emit(True, self._toggled_scan_axes)
-                    
-                    
+                    self.sigRepeatScan.emit(True, self._toggled_scan_axes) 
                 else:
                     self.sigRepeatScan.emit(False, self._toggled_scan_axes)
                     self._repeated = 0 
