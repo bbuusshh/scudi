@@ -16,6 +16,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 #TODO carefull disconnection
+from email.policy import default
 import os
 import numpy as np
 import copy as cp
@@ -42,7 +43,7 @@ class PLEScanGui(GuiBase):
     
     # declare connectors
     _scanning_logic = Connector(name='scannerlogic', interface='PLEScannerLogic')
-
+    _microwave_logic = Connector(name='microwave', interface= 'OdmrLogic', optional=True)
 
     # status vars
     _window_state = StatusVar(name='window_state', default=None)
@@ -122,7 +123,9 @@ class PLEScanGui(GuiBase):
         self._mw.constDoubleSpinBox.setSuffix(self.axis.unit)
 
 
-
+        if self._microwave_logic is not None:
+            self._microwave_logic = self._microwave_logic()
+            self._init_microwave()
 
         
         self.scanner_target_updated()
@@ -133,6 +136,23 @@ class PLEScanGui(GuiBase):
 
         self.setup_fit_widget()
         self.__connect_fit_control_signals()
+
+    def _init_microwave(self):
+        
+        mw_constraints = self._microwave_logic.microwave_constraints
+        self._mw.microwave_widget.set_constraints(mw_constraints)
+        self._mw.microwave_widget.sig_microwave_params_updated.connect(
+            self._microwave_logic.set_cw_parameters
+            )
+        self._mw.microwave_widget.sig_microwave_enabled.connect(
+            self._microwave_logic.toggle_cw_output
+        )
+        self._microwave_logic.sigCwParametersUpdated.connect(
+            self._mw.microwave_widget.update_params
+        )
+        self._microwave_logic.sigCwStateUpdated.connect(
+            self._mw.microwave_widget.enable_microwave
+        )
 
     def setup_fit_widget(self):
         self._fit_dockwidget = PleFitDockWidget(parent=self._mw, fit_container=self._scanning_logic._fit_container)
