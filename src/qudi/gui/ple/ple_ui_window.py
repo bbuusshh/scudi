@@ -43,24 +43,24 @@ class PLEScanMainWindow(QtWidgets.QMainWindow):
         self.matrix_widget = matrix_widget.PLE2DWidget(axes, channel)
         self.ple_matrix_dockWidget.setWidget(self.matrix_widget)
 
-        self.add_dock_widget('repump')
         
         
 
     def add_dock_widget(self, name):
 
         if name == 'microwave':
-            self.microwave_widget = PleMicrowaveWidget()
-            widget = self.microwave_widget
-        elif name == 'repump':
-            self.repump_widget = PleRepumpWidget()
-            widget = self.repump_widget
-
+            setattr(self, f"{name}_widget", PleMicrowaveWidget())
+        elif name ==  'repump':
+            setattr(self, f"{name}_widget", PleRepumpWidget(name))
+        elif name == 'pulse':
+            setattr(self, f"{name}_widget", PlePulseWidget(name))
+        
         setattr(self, f"{name}_dockWidget", QtWidgets.QDockWidget())
         dockWidget = getattr(self, f"{name}_dockWidget")
         dockWidget.setWindowTitle(name)
         dockWidget.setFloating(True)
-       
+
+        widget = getattr(self, f"{name}_widget")
         self.addDockWidget(QtCore.Qt.TopDockWidgetArea, dockWidget)
         dockWidget.setWidget(widget)
 
@@ -118,24 +118,129 @@ class PleMicrowaveWidget(QtWidgets.QWidget):
         self.PowerDoubleSpinBox.setSuffix('dBm')
 
 class PleRepumpWidget(QtWidgets.QWidget):
-    sig_control_widget_updated = QtCore.Signal(dict)
+    sig_repump_params_updated = QtCore.Signal(dict)
+    sig_repump_enabled = QtCore.Signal(bool)
+    sig_repump_pulsed = QtCore.Signal(bool)
+
     params = {}
-    def __init__(self, *args, **kwargs):
+    def __init__(self, name, *args, **kwargs):
         this_dir = os.path.dirname(__file__)
         ui_file = os.path.join(this_dir, 'repump_widget.ui')
         super(PleRepumpWidget, self).__init__(*args, **kwargs)
         uic.loadUi(ui_file, self)
         
         self.enabledCheckBox.toggled.connect(
-            lambda: self.sig_control_widget_updated.emit({'enabled': self.enabledCheckBox.isChecked()})
+            lambda: self.sig_repump_enabled.emit(self.enabledCheckBox.isChecked())
         )
 
-        self.PowerDoubleSpinBox.editingFinished.connect(
-            lambda: self.sig_control_widget_updated.emit({'power': self.PowerDoubleSpinBox.value()})
+        self.pulsedCheckBox.toggled.connect(
+            lambda: self.sig_repump_pulsed.emit(self.pulsedCheckBox.isChecked())
         )
+        self.PowerDoubleSpinBox.editingFinished.connect(
+            lambda: self.sig_repump_params_updated.emit({'power': self.PowerDoubleSpinBox.value()})
+        )
+        self.DelayDoubleSpinBox.editingFinished.connect(
+            lambda: self.sig_repump_params_updated.emit({'delay': self.DelayDoubleSpinBox.value()})
+        )
+        self.LengthDoubleSpinBox.editingFinished.connect(
+            lambda: self.sig_repump_params_updated.emit( {'length': self.LengthDoubleSpinBox.value()})
+        )
+        self.set_constraints()
             # self.FreqDoubleSpinBox.value()
             # self.PowerDoubleSpinBox.value()
         # self.show()
+    
+    @QtCore.Slot(dict)
+    def update_params(self, params):
+        self.DelayDoubleSpinBox.setValue(params['delay'])
+        self.LengthDoubleSpinBox.setValue(params['length'])
+        self.PowerDoubleSpinBox.setValue(params['power'])
+
+    @QtCore.Slot(bool)
+    def enable_pulsed(self, enabled):
+        self.enabledCheckBox.setChecked(enabled)
+
+    def set_constraints(self, constraints=None):
+        #TODO get pulse streamer constraints
+        self.LengthDoubleSpinBox.setRange(*(0, 5))
+        self.LengthDoubleSpinBox.setDecimals(1)
+        self.LengthDoubleSpinBox.setSuffix('s')
+
+        self.DelayDoubleSpinBox.setRange(*(0, 5))
+        self.DelayDoubleSpinBox.setDecimals(1)
+        self.DelayDoubleSpinBox.setSuffix('s')
+
+        #TODO get power constraints
+        self.PowerDoubleSpinBox.setRange(*(0.0, 1.0))
+        self.PowerDoubleSpinBox.setDecimals(1)
+        self.PowerDoubleSpinBox.setSuffix(' ')#'μW')
+
+    @QtCore.Slot(dict)
+    def update_params(self, params):
+        self.PowerDoubleSpinBox.setValue(params['power'])
+        self.enabledCheckBox.setValue(params['enabled'])
+
+
+    
+class PlePulseWidget(QtWidgets.QWidget):
+    sig_pulser_params_updated = QtCore.Signal(dict)
+    sig_pulser_enabled = QtCore.Signal(bool)
+    sig_pulser_pulsed = QtCore.Signal(bool)
+
+    params = {}
+    def __init__(self, name, *args, **kwargs):
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'pulse_widget.ui')
+        super(PlePulseWidget, self).__init__(*args, **kwargs)
+        uic.loadUi(ui_file, self)
+        
+        self.enabledCheckBox.toggled.connect(
+            lambda: self.sig_pulser_enabled.emit(self.enabledCheckBox.isChecked())
+        )
+        self.pulsedCheckBox.toggled.connect(
+            lambda: self.sig_pulser_pulsed.emit(self.pulsedCheckBox.isChecked())
+        )
+
+        self.PowerDoubleSpinBox.editingFinished.connect(
+            lambda: self.sig_pulser_params_updated.emit({'power': self.PowerDoubleSpinBox.value()})
+        )
+        self.PeriodDoubleSpinBox.editingFinished.connect(
+            lambda: self.sig_pulser_params_updated.emit({'period': self.PeriodDoubleSpinBox.value()})
+        )
+        self.LengthDoubleSpinBox.editingFinished.connect(
+            lambda: self.sig_pulser_params_updated.emit({'length': self.LengthDoubleSpinBox.value()})
+        )
+        self.set_constraints()
+            # self.FreqDoubleSpinBox.value()
+            # self.PowerDoubleSpinBox.value()
+        # self.show()
+    
+    @QtCore.Slot(dict)
+    def update_params(self, params):
+        self.PeriodDoubleSpinBox.setValue(params['period'])
+        self.LengthDoubleSpinBox.setValue(params['length'])
+        self.PowerDoubleSpinBox.setValue(params['power'])
+
+
+    @QtCore.Slot(bool)
+    def enable_pulsed(self, enabled):
+        self.enabledCheckBox.setChecked(enabled)
+
+    def set_constraints(self, constraints=None):
+        #TODO get pulse streamer constraints
+        self.LengthDoubleSpinBox.setRange(*(0, 5))
+        self.LengthDoubleSpinBox.setDecimals(1)
+        self.LengthDoubleSpinBox.setSuffix('s')
+
+        self.PeriodDoubleSpinBox.setRange(*(0, 5))
+        self.PeriodDoubleSpinBox.setDecimals(1)
+        self.PeriodDoubleSpinBox.setSuffix('s')
+
+        #TODO get power constraints
+        self.PowerDoubleSpinBox.setRange(*(0.0, 1.0))
+        self.PowerDoubleSpinBox.setSuffix(' ')#'μW')
+        self.PowerDoubleSpinBox.setDecimals(1)
+
     @QtCore.Slot(dict)
     def update_params(self, params):
         self.PowerDoubleSpinBox.setValue(params['power'])

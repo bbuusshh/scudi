@@ -20,20 +20,6 @@
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="0">
-    <widget class="QCheckBox" name="enabledCheckBox">
-     <property name="text">
-      <string>Enable</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="1">
-    <widget class="QCheckBox" name="pulsedCheckBox">
-     <property name="text">
-      <string>Pulsed</string>
-     </property>
-    </widget>
-   </item>
    <item row="1" column="0">
     <widget class="QLabel" name="label_3">
      <property name="text">
@@ -51,7 +37,7 @@
    <item row="1" column="2">
     <widget class="QLabel" name="label_2">
      <property name="text">
-      <string>Delay:</string>
+      <string>Period:</string>
      </property>
     </widget>
    </item>
@@ -68,6 +54,20 @@
        <width>80</width>
        <height>0</height>
       </size>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="0">
+    <widget class="QCheckBox" name="enabledCheckBox">
+     <property name="text">
+      <string>Enable</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QCheckBox" name="pulsedCheckBox">
+     <property name="text">
+      <string>Pulsed</string>
      </property>
     </widget>
    </item>
@@ -88,7 +88,7 @@
     </widget>
    </item>
    <item row="2" column="2">
-    <widget class="ScienDSpinBox" name="DelayDoubleSpinBox">
+    <widget class="ScienDSpinBox" name="PeriodDoubleSpinBox">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
        <horstretch>0</horstretch>

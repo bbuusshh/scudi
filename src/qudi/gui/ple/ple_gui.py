@@ -44,6 +44,7 @@ class PLEScanGui(GuiBase):
     # declare connectors
     _scanning_logic = Connector(name='scannerlogic', interface='PLEScannerLogic')
     _microwave_logic = Connector(name='microwave', interface= 'OdmrLogic', optional=True)
+    _repump_logic = Connector(name='repump', interface= 'RepumpInterfuseLogic', optional=True)
 
     # status vars
     _window_state = StatusVar(name='window_state', default=None)
@@ -127,8 +128,21 @@ class PLEScanGui(GuiBase):
             self._microwave_logic = self._microwave_logic()
             self._mw.add_dock_widget('microwave')
             self._init_microwave()
+
+        if self._repump_logic() is not None:
+            self._repump_logic = self._repump_logic()
+            #TODO repumps single or one???
+            repump = self._repump_logic._repump_laser
+            
+            self._mw.add_dock_widget('repump')
+
+            resonant = self._repump_logic._resonant_laser
         
-        
+            self._mw.add_dock_widget('pulse')
+            
+            self._init_pulser()
+            self._init_repump()
+
         self.scanner_target_updated()
         self.scan_state_updated(self._scanning_logic.module_state() != 'idle')
 
@@ -137,6 +151,16 @@ class PLEScanGui(GuiBase):
 
         self.setup_fit_widget()
         self.__connect_fit_control_signals()
+
+    def _init_pulser(self):
+        self._mw.pulse_widget.sig_pulser_params_updated.connect(self._repump_logic.pulser_updated)
+        self._mw.pulse_widget.sig_pulser_enabled.connect(self._repump_logic.pulser_enabled)
+        self._mw.pulse_widget.sig_pulser_pulsed.connect(self._repump_logic.pulser_pulsed)
+
+    def _init_repump(self):
+        self._mw.repump_widget.sig_repump_params_updated.connect(self._repump_logic.repump_updated)
+        self._mw.repump_widget.sig_repump_enabled.connect(self._repump_logic.repump_enabled)
+        self._mw.repump_widget.sig_repump_pulsed.connect(self._repump_logic.repump_pulsed)
 
     def _init_microwave(self):
         
