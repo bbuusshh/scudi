@@ -195,6 +195,7 @@ class RepumpInterfuseLogic(LogicBase):
         element_list.append(repump_pulse_block)
         #now the nothing till the priod ends
         time_off = self.parameters['resonant']['period'] - self.parameters['resonant']['length'] - self.parameters['repump']['delay'] - self.parameters["repump"]['length']
+        
         off_pulse_block = PulseBlockElement(
             init_length_s = time_off, 
             increment_s=0, 
