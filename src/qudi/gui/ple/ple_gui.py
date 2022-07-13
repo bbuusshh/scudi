@@ -154,14 +154,14 @@ class PLEScanGui(GuiBase):
 
     def _init_pulser(self):
         self._mw.pulse_widget.sig_pulser_params_updated.connect(self._repump_logic.pulser_updated)
-        self._mw.pulse_widget.sig_pulser_enabled.connect(self._repump_logic.pulser_enabled)
+        self._mw.pulse_widget.sig_pulser_enabled.connect(self._repump_logic.pulser_CW)
         self._mw.pulse_widget.sig_pulser_pulsed.connect(self._repump_logic.pulser_pulsed)
         self._repump_logic.sigParamsUpdated.connect(
              self._mw.pulse_widget.update_params
         )
     def _init_repump(self):
         self._mw.repump_widget.sig_repump_params_updated.connect(self._repump_logic.repump_updated)
-        self._mw.repump_widget.sig_repump_enabled.connect(self._repump_logic.repump_enabled)
+        self._mw.repump_widget.sig_repump_enabled.connect(self._repump_logic.repump_CW)
         self._mw.repump_widget.sig_repump_pulsed.connect(self._repump_logic.repump_pulsed)
         self._repump_logic.sigParamsUpdated.connect(
              self._mw.repump_widget.update_params
