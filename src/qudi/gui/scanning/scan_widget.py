@@ -214,6 +214,10 @@ class Scan2DWidget(_BaseScanWidget):
         self.image_widget.set_selection_mutable(True)
         self.image_widget.add_region_selection(span=((-0.5, 0.5), (-0.5, 0.5)),
                                                mode=self.image_widget.SelectionMode.XY)
+
+
+
+                                               
         self.image_item = self.image_widget.image_item
         self.image_widget.sigRegionSelectionChanged.connect(self._region_changed)
         self.channel_selection_combobox.currentIndexChanged.connect(self._data_channel_changed)

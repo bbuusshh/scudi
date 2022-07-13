@@ -22,83 +22,101 @@ See the GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License along with qudi.
 If not, see <https://www.gnu.org/licenses/>.
 """
+
+#TODO when scan stopped plot the last complete scan. 
+#TODO refresh matrix when settings change
+#TODO resolution
+#!ValueError: all the input array dimensions for the concatenation axis must match exactly, but along dimension 1, the array at index 0 has size 50 and the array at index 1 has size 100
+
 from PySide2 import QtCore
 import copy as cp
+from qudi.logic.scanning_probe_logic import ScanningProbeLogic
 
 from qudi.core.module import LogicBase
 from qudi.util.mutex import RecursiveMutex
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
+
+from qudi.util.widgets.fitting import FitConfigurationDialog, FitWidget
+
+
 from qudi.util.datastorage import TextDataStorage
 from qudi.util.datafitting import FitContainer, FitConfigurationsModel
+import numpy as np
+class PLEScannerLogic(ScanningProbeLogic):
 
-class PLEScannerLogic(LogicBase):
 
     """This logic module controls scans of DC voltage on the fourth analog
     output channel of the NI Card.  It collects countrate as a function of voltage.
     """
 
-    sig_data_updated = QtCore.Signal()
-
     # declare connectors
-       # declare connectors
     _scanner = Connector(name='scanner', interface='ScanningProbeInterface')
+    
+    #! We should refactor it to the hardware scanner interface
+    _scan_axis = ConfigOption(name='scan_axis', default='a')
+    _channel = ConfigOption(name='channel', default='fluorescence')
+
 
     # status vars
     _scan_ranges = StatusVar(name='scan_ranges', default=None)
     _scan_resolution = StatusVar(name='scan_resolution', default=None)
     _scan_frequency = StatusVar(name='scan_frequency', default=None)
-    scan_range = StatusVar('scan_range', [-10, 10])
-    number_of_repeats = StatusVar(default=10)
-    resolution = StatusVar('resolution', 500)
-    _scan_speed = StatusVar('scan_speed', 10)
-    _static_v = StatusVar('goto_voltage', 5)
 
-
-    _fit_config = StatusVar(name='fit_config', default=dict())
+    _number_of_repeats = StatusVar(default=10)
+    _repeated = 0
+    display_repeated = 0
+    # config options
+    _fit_config = StatusVar(name='fit_config', default=None)
     _fit_region = StatusVar(name='fit_region', default=[0, 1])
 
-    sigChangeVoltage = QtCore.Signal(float)
-    sigVoltageChanged = QtCore.Signal(float)
-    sigScanNextLine = QtCore.Signal()
-    sigUpdatePlots = QtCore.Signal()
-  
-    # signals
-    sigScanStateChanged = QtCore.Signal(bool, object, object)
-    sigScannerTargetChanged = QtCore.Signal(dict, object)
-    sigScanSettingsChanged = QtCore.Signal(dict)
+    _default_fit_configs = (
+        {'name'             : 'Lorentzian',
+         'model'            : 'Lorentzian',
+         'estimator'        : 'Peak',
+         'custom_parameters': None},
+
+        {'name'             : 'Gaussian',
+         'model'            : 'Gaussian',
+         'estimator'        : 'Peak',
+         'custom_parameters': None}
+         
+    )
+
+    accumulated_data = None
+    sigRepeatScan = QtCore.Signal(bool, tuple)
+    sigFitUpdated = QtCore.Signal(object, str)
+
 
     def __init__(self, config, **kwargs):
-        super().__init__(config=config, **kwargs)
+        super(PLEScannerLogic, self).__init__(config=config, **kwargs)
+
         """ Create VoltageScanningLogic object with connectors.
 
           @param dict kwargs: optional parameters
         """
-        self._thread_lock = RecursiveMutex()
+
         #Took some from the spectrometer program, beacuse it's graaape
         self.refractive_index_air = 1.00028823
         self.speed_of_light = 2.99792458e8 / self.refractive_index_air
-        self._fit_config_model = None
         self._fit_container = None
-
-        self.stopRequested = False
-        self._wavelength = None
+        self._fit_config_model = None
         self._fit_results = None
+
+        self._wavelength = None
         self._fit_method = ''
-
-
-                # others
+        # self.__scan_poll_interval = 0
+        # self.__scan_stop_requested = True
+        # self._curr_caller_id = self.module_uuid
+        # self._thread_lock = RecursiveMutex()
         self.__scan_poll_timer = None
         self.__scan_poll_interval = 0
         self.__scan_stop_requested = True
-        self._curr_caller_id = self.module_uuid
-        
-        self.fit_x = []
-        self.fit_y = []
-        self.plot_x = []
-        self.plot_y = []
-        self.plot_y2 = []
+        self.data_accumulated = None
+
+        self._fit_results = dict()
+        self._fit_results['fluorescence'] = [None] * 1
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -108,8 +126,7 @@ class PLEScannerLogic(LogicBase):
         self._fit_config_model.load_configs(self._fit_config)
         self._fit_container = FitContainer(parent=self, config_model=self._fit_config_model)
         self.fit_region = self._fit_region
-
-
+       
         constr = self.scanner_constraints
 
         self._scan_saved_to_hist = True
@@ -130,6 +147,7 @@ class PLEScannerLogic(LogicBase):
         if not isinstance(self._scan_frequency, dict):
             self._scan_frequency = {ax.name: ax.max_frequency for ax in constr.axes.values()}
         """
+        self.sigRepeatScan.connect(self.toggle_scan, QtCore.Qt.QueuedConnection)
         self.__scan_poll_interval = 0
         self.__scan_stop_requested = True
         self._curr_caller_id = self.module_uuid
@@ -137,73 +155,86 @@ class PLEScannerLogic(LogicBase):
         self.__scan_poll_timer = QtCore.QTimer()
         self.__scan_poll_timer.setSingleShot(True)
         self.__scan_poll_timer.timeout.connect(self.__scan_poll_loop, QtCore.Qt.QueuedConnection)
+        
         return
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
         """
-        self.stopRequested = True
         self._fit_config = self._fit_config_model.dump_configs()
-
+        """ 
+        Reverse steps of activation
+        """
         self.__scan_poll_timer.stop()
         self.__scan_poll_timer.timeout.disconnect()
         if self.module_state() != 'idle':
             self._scanner().stop_scan()
 
-    @property
-    def scan_data(self):
-        with self._thread_lock:
-            return self._scanner().get_scan_data()
+        return  
+
+    @QtCore.Slot(str, str)
+    def do_fit(self, fit_config, channel):
+        """
+        Execute the currently configured fit on the measurement data. Optionally on passed data
+        """
+        print(fit_config)
+        if fit_config != 'No Fit' and fit_config not in self._fit_config_model.configuration_names:
+            self.log.error(f'Unknown fit configuration "{fit_config}" encountered.')
+            return
+
+        if self.scan_data is None:
+            return
+        y_data = self.scan_data.data[channel]
+        x_range = self.scan_ranges[self._scan_axis]
+        x_data = np.linspace(*x_range, self.scan_resolution[self._scan_axis])
+        try:
+            fit_config, fit_result = self._fit_container.fit_data(fit_config, x_data, y_data)
+        except:
+            self.log.exception('Data fitting failed:')
+            return
+        
+        if fit_result is not None:
+            self._fit_results[channel] = (fit_config, fit_result)
+        else:
+            self._fit_results[channel] = None
+        print(self._fit_results[channel])
+        self.sigFitUpdated.emit(self._fit_results[channel], channel)
+
+    @_fit_config.representer
+    def __repr_fit_configs(self, value):
+        configs = self.fit_config_model.dump_configs()
+        if len(configs) < 1:
+            configs = None
+        return configs
+
+    @_fit_config.constructor
+    def __constr_fit_configs(self, value):
+        if not value:
+            return self._default_fit_configs
+        return value
 
     @property
-    def scanner_position(self):
-        with self._thread_lock:
-            return self._scanner().get_position()
+    def fit_results(self):
+        return self._fit_results.copy()
+    @property
+    def fit_config_model(self):
+        return self._fit_config_model
 
     @property
-    def scanner_target(self):
-        with self._thread_lock:
-            return self._scanner().get_target()
+    def fit_container(self):
+        return self._fit_container
 
     @property
-    def scanner_axes(self):
-        return self.scanner_constraints.axes
-
-    @property
-    def scanner_channels(self):
-        return self.scanner_constraints.channels
-
-    @property
-    def scanner_constraints(self):
-        return self._scanner().get_constraints()
-
-    @property
-    def scan_ranges(self):
-        with self._thread_lock:
-            return cp.copy(self._scan_ranges)
-
-    @property
-    def scan_resolution(self):
-        with self._thread_lock:
-            return cp.copy(self._scan_resolution)
-
-    @property
-    def scan_frequency(self):
-        with self._thread_lock:
-            return cp.copy(self._scan_frequency)
-
-    @property
-    def scan_saved_to_history(self):
-        with self._thread_lock:
-            return self._scan_saved_to_hist
-
-    @property
-    def scan_settings(self):
-        with self._thread_lock:
-            return {'range': self.scan_ranges,
-                    'resolution': self.scan_resolution,
-                    'frequency': self.scan_frequency,
-                    'save_to_history': cp.copy(self._scan_saved_to_hist)}
+    def fit_results(self):
+        return self._fit_results.copy()
+    def stack_data(self):
+        if (self.scan_data is not None) and (self.scan_data.scan_dimension == 1):
+            if self.accumulated_data is None:
+                self.accumulated_data = {channel: data_i[np.newaxis, :] for channel, data_i in self.scan_data.data.items()}
+            else:
+                self.accumulated_data = {channel : np.vstack((self.accumulated_data[channel], data_i))[-self._number_of_repeats:] for channel, data_i in self.scan_data.data.items()}
+            self.scan_data._accumulated_data = self.accumulated_data
+            self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)
 
     @QtCore.Slot(dict)
     def set_scan_settings(self, settings):
@@ -216,153 +247,29 @@ class PLEScannerLogic(LogicBase):
                 self.set_scan_frequency(settings['frequency'])
             if 'save_to_history' in settings:
                 self._scan_saved_to_hist = settings['save_to_history']
+            # self.reset_accumulated()
 
-    def check_sanity_scan_settings(self, settings=None):
-        if not isinstance(settings, dict):
-            settings = self.scan_settings
+    def update_number_of_repeats(self, number_of_repeats):
+        self._number_of_repeats = number_of_repeats
 
-        settings = cp.deepcopy(settings)
-        constr = self.scanner_constraints
-
-        def check_valid(settings, key):
-            is_valid = True  # non present key -> valid
-            if key in settings:
-                if not isinstance(settings[key], dict):
-                    is_valid = False
-                else:
-                    axes = settings[key].keys()
-                    if axes != constr.axes.keys():
-                        is_valid = False
-
-            return is_valid
-
-        for key, val in settings.items():
-            if not check_valid(settings, key):
-                if key == 'range':
-                    settings['range'] = {ax.name: ax.value_range for ax in constr.axes.values()}
-                if key == 'resolution':
-                    settings['resolution'] = {ax.name: max(ax.min_resolution, min(128, ax.max_resolution))  # TODO Hardcoded 128?
-                                              for ax in constr.axes.values()}
-                if key == 'frequency':
-                    settings['frequency'] = {ax.name: ax.max_frequency for ax in constr.axes.values()}
-
-        return settings
-
-    @QtCore.Slot(dict)
-    def set_scan_range(self, ranges):
-        with self._thread_lock:
-            if self.module_state() != 'idle':
-                self.log.warning('Scan is running. Unable to change scan ranges.')
-                new_ranges = self.scan_ranges
-                self.sigScanSettingsChanged.emit({'range': new_ranges})
-                return new_ranges
-
-            constr = self.scanner_constraints
-            for ax, ax_range in ranges.items():
-                if ax not in constr.axes:
-                    self.log.error('Unknown scanner axis "{0}" encountered.'.format(ax))
-                    new_ranges = self.scan_ranges
-                    self.sigScanSettingsChanged.emit({'range': new_ranges})
-                    return new_ranges
-
-                self._scan_ranges[ax] = (constr.axes[ax].clip_value(float(min(ax_range))),
-                                         constr.axes[ax].clip_value(float(max(ax_range))))
-
-            new_ranges = {ax: self._scan_ranges[ax] for ax in ranges}
-            self.sigScanSettingsChanged.emit({'range': new_ranges})
-            return new_ranges
-
-    @QtCore.Slot(dict)
-    def set_scan_resolution(self, resolution):
-        with self._thread_lock:
-            if self.module_state() != 'idle':
-                self.log.warning('Scan is running. Unable to change scan resolution.')
-                new_res = self.scan_resolution
-                self.sigScanSettingsChanged.emit({'resolution': new_res})
-                return new_res
-
-            constr = self.scanner_constraints
-            for ax, ax_res in resolution.items():
-                if ax not in constr.axes:
-                    self.log.error('Unknown axis "{0}" encountered.'.format(ax))
-                    new_res = self.scan_resolution
-                    self.sigScanSettingsChanged.emit({'resolution': new_res})
-                    return new_res
-
-                self._scan_resolution[ax] = constr.axes[ax].clip_resolution(int(ax_res))
-
-            new_resolution = {ax: self._scan_resolution[ax] for ax in resolution}
-            self.sigScanSettingsChanged.emit({'resolution': new_resolution})
-            return new_resolution
-
-    @QtCore.Slot(dict)
-    def set_scan_frequency(self, frequency):
-        with self._thread_lock:
-            if self.module_state() != 'idle':
-                self.log.warning('Scan is running. Unable to change scan frequency.')
-                new_freq = self.scan_frequency
-                self.sigScanSettingsChanged.emit({'frequency': new_freq})
-                return new_freq
-
-            constr = self.scanner_constraints
-            for ax, ax_freq in frequency.items():
-                if ax not in constr.axes:
-                    self.log.error('Unknown axis "{0}" encountered.'.format(ax))
-                    new_freq = self.scan_frequency
-                    self.sigScanSettingsChanged.emit({'frequency': new_freq})
-                    return new_freq
-
-                self._scan_frequency[ax] = constr.axes[ax].clip_frequency(float(ax_freq))
-
-            new_freq = {ax: self._scan_frequency[ax] for ax in frequency}
-            self.sigScanSettingsChanged.emit({'frequency': new_freq})
-            return new_freq
-
-    @QtCore.Slot(dict)
-    @QtCore.Slot(dict, object)
-    def set_target_position(self, pos_dict, caller_id=None):
-        with self._thread_lock:
-            if self.module_state() != 'idle':
-                self.log.error('Unable to change scanner target position while a scan is running.')
-                new_pos = self._scanner().get_target()
-                self.sigScannerTargetChanged.emit(new_pos, self.module_uuid)
-                return new_pos
-
-            ax_constr = self.scanner_constraints.axes
-            new_pos = pos_dict.copy()
-            for ax, pos in pos_dict.items():
-                if ax not in ax_constr:
-                    self.log.error('Unknown scanner axis: "{0}"'.format(ax))
-                    new_pos = self._scanner().get_target()
-                    self.sigScannerTargetChanged.emit(new_pos, self.module_uuid)
-                    return new_pos
-
-                new_pos[ax] = ax_constr[ax].clip_value(pos)
-                if pos != new_pos[ax]:
-                    self.log.warning('Scanner position target value out of bounds for axis "{0}". '
-                                     'Clipping value to {1:.3e}.'.format(ax, new_pos[ax]))
-
-            new_pos = self._scanner().move_absolute(new_pos)
-            if any(pos != new_pos[ax] for ax, pos in pos_dict.items()):
-                caller_id = None
-            #self.log.debug(f"Logic issuing with id {caller_id}: {new_pos}")
-            self.sigScannerTargetChanged.emit(
-                new_pos,
-                self.module_uuid if caller_id is None else caller_id
-            )
-            return new_pos
 
     @QtCore.Slot(bool, tuple)
     @QtCore.Slot(bool, tuple, object)
     def toggle_scan(self, start, scan_axes, caller_id=None):
+
+        self._toggled_scan_axes = scan_axes
         with self._thread_lock:
             if start:
-                return self.start_scan(scan_axes, caller_id)
+                if self._repeated == 0:
+                    self.display_repeated = 0
+                return self.start_scan(self._toggled_scan_axes, caller_id)
             return self.stop_scan()
 
     @QtCore.Slot(tuple)
     @QtCore.Slot(tuple, object)
     def start_scan(self, scan_axes, caller_id=None):
+    
+        self.display_repeated = self._repeated
         with self._thread_lock:
             if self.module_state() != 'idle':
                 self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)
@@ -414,7 +321,7 @@ class PLEScannerLogic(LogicBase):
                 self.module_state.unlock()
                 self.sigScanStateChanged.emit(False, None, self._curr_caller_id)
                 return -1
-
+                
             self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)
             self.__start_timer()
             return 0
@@ -422,6 +329,8 @@ class PLEScannerLogic(LogicBase):
     @QtCore.Slot()
     def stop_scan(self):
         with self._thread_lock:
+            self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)
+
             if self.module_state() == 'idle':
                 self.sigScanStateChanged.emit(False, self.scan_data, self._curr_caller_id)
                 return 0
@@ -431,7 +340,7 @@ class PLEScannerLogic(LogicBase):
             err = self._scanner().stop_scan() if self._scanner().module_state() != 'idle' else 0
 
             self.module_state.unlock()
-
+        
             if self.scan_settings['save_to_history']:
                 # module_uuid signals data-ready to data logic
                 self.sigScanStateChanged.emit(False, self.scan_data, self.module_uuid)
@@ -439,6 +348,11 @@ class PLEScannerLogic(LogicBase):
                 self.sigScanStateChanged.emit(False, self.scan_data, self._curr_caller_id)
 
             return err
+
+    def reset_accumulated(self):
+        self.accumulated_data = None
+        if self.scan_data is not None:
+            self.scan_data._accumulated_data = None
 
     @QtCore.Slot()
     def __scan_poll_loop(self):
@@ -448,6 +362,15 @@ class PLEScannerLogic(LogicBase):
 
             if self._scanner().module_state() == 'idle':
                 self.stop_scan()
+
+                self._repeated += 1
+                self.display_repeated += 1
+                self.stack_data()
+                if self._number_of_repeats > self._repeated or self._number_of_repeats == 0:
+                    self.sigRepeatScan.emit(True, self._toggled_scan_axes) 
+                else:
+                    self.sigRepeatScan.emit(False, self._toggled_scan_axes)
+                    self._repeated = 0 
                 return
             # TODO Added the following line as a quick test; Maybe look at it with more caution if correct
             self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)
@@ -455,12 +378,7 @@ class PLEScannerLogic(LogicBase):
             # Queue next call to this slot
             self.__scan_poll_timer.start()
             return
-
-    @QtCore.Slot()
-    def set_full_scan_ranges(self):
-        scan_range = {ax: axis.value_range for ax, axis in self.scanner_constraints.axes.items()}
-        return self.set_scan_range(scan_range)
-
+    
     def __start_timer(self):
         if self.thread() is not QtCore.QThread.currentThread():
             QtCore.QMetaObject.invokeMethod(self.__scan_poll_timer,
