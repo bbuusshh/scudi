@@ -57,6 +57,7 @@ class PLEScanMainWindow(QtWidgets.QMainWindow):
         
         setattr(self, f"{name}_dockWidget", QtWidgets.QDockWidget())
         dockWidget = getattr(self, f"{name}_dockWidget")
+        dockWidget.setObjectName(name)
         dockWidget.setWindowTitle(name)
         dockWidget.setFloating(True)
 

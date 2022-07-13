@@ -16,6 +16,12 @@
     <verstretch>0</verstretch>
    </sizepolicy>
   </property>
+  <property name="maximumSize">
+   <size>
+    <width>16777215</width>
+    <height>80</height>
+   </size>
+  </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
@@ -23,7 +29,10 @@
    <item row="0" column="0">
     <widget class="QCheckBox" name="enabledCheckBox">
      <property name="text">
-      <string>Enable</string>
+      <string>CW</string>
+     </property>
+     <property name="autoExclusive">
+      <bool>true</bool>
      </property>
     </widget>
    </item>
@@ -31,6 +40,9 @@
     <widget class="QCheckBox" name="pulsedCheckBox">
      <property name="text">
       <string>Pulsed</string>
+     </property>
+     <property name="autoExclusive">
+      <bool>true</bool>
      </property>
     </widget>
    </item>
