@@ -31,11 +31,13 @@ If not, see <https://www.gnu.org/licenses/>.
 from PySide2 import QtCore
 import copy as cp
 from qudi.logic.scanning_probe_logic import ScanningProbeLogic
+
 from qudi.core.module import LogicBase
 from qudi.util.mutex import RecursiveMutex
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
+
 from qudi.util.widgets.fitting import FitConfigurationDialog, FitWidget
 
 
@@ -44,9 +46,11 @@ from qudi.util.datafitting import FitContainer, FitConfigurationsModel
 import numpy as np
 class PLEScannerLogic(ScanningProbeLogic):
 
+
     """This logic module controls scans of DC voltage on the fourth analog
     output channel of the NI Card.  It collects countrate as a function of voltage.
     """
+
     # declare connectors
     _scanner = Connector(name='scanner', interface='ScanningProbeInterface')
     
@@ -54,11 +58,12 @@ class PLEScannerLogic(ScanningProbeLogic):
     _scan_axis = ConfigOption(name='scan_axis', default='a')
     _channel = ConfigOption(name='channel', default='fluorescence')
 
+
     # status vars
     _scan_ranges = StatusVar(name='scan_ranges', default=None)
     _scan_resolution = StatusVar(name='scan_resolution', default=None)
     _scan_frequency = StatusVar(name='scan_frequency', default=None)
-    
+
     _number_of_repeats = StatusVar(default=10)
     _repeated = 0
     display_repeated = 0
@@ -86,10 +91,12 @@ class PLEScannerLogic(ScanningProbeLogic):
 
     def __init__(self, config, **kwargs):
         super(PLEScannerLogic, self).__init__(config=config, **kwargs)
+
         """ Create VoltageScanningLogic object with connectors.
 
           @param dict kwargs: optional parameters
         """
+
         #Took some from the spectrometer program, beacuse it's graaape
         self.refractive_index_air = 1.00028823
         self.speed_of_light = 2.99792458e8 / self.refractive_index_air
@@ -111,7 +118,6 @@ class PLEScannerLogic(ScanningProbeLogic):
         self._fit_results = dict()
         self._fit_results['fluorescence'] = [None] * 1
 
-
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
@@ -121,9 +127,6 @@ class PLEScannerLogic(ScanningProbeLogic):
         self._fit_container = FitContainer(parent=self, config_model=self._fit_config_model)
         self.fit_region = self._fit_region
        
-        
-        """ Initialisation performed during activation of the module.
-        """
         constr = self.scanner_constraints
 
         self._scan_saved_to_hist = True
@@ -145,8 +148,6 @@ class PLEScannerLogic(ScanningProbeLogic):
             self._scan_frequency = {ax.name: ax.max_frequency for ax in constr.axes.values()}
         """
         self.sigRepeatScan.connect(self.toggle_scan, QtCore.Qt.QueuedConnection)
-
-
         self.__scan_poll_interval = 0
         self.__scan_stop_requested = True
         self._curr_caller_id = self.module_uuid
@@ -168,6 +169,7 @@ class PLEScannerLogic(ScanningProbeLogic):
         self.__scan_poll_timer.timeout.disconnect()
         if self.module_state() != 'idle':
             self._scanner().stop_scan()
+
         return  
 
     @QtCore.Slot(str, str)
@@ -234,7 +236,6 @@ class PLEScannerLogic(ScanningProbeLogic):
             self.scan_data._accumulated_data = self.accumulated_data
             self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)
 
-
     @QtCore.Slot(dict)
     def set_scan_settings(self, settings):
         with self._thread_lock:
@@ -251,9 +252,11 @@ class PLEScannerLogic(ScanningProbeLogic):
     def update_number_of_repeats(self, number_of_repeats):
         self._number_of_repeats = number_of_repeats
 
+
     @QtCore.Slot(bool, tuple)
     @QtCore.Slot(bool, tuple, object)
     def toggle_scan(self, start, scan_axes, caller_id=None):
+
         self._toggled_scan_axes = scan_axes
         with self._thread_lock:
             if start:
@@ -265,6 +268,7 @@ class PLEScannerLogic(ScanningProbeLogic):
     @QtCore.Slot(tuple)
     @QtCore.Slot(tuple, object)
     def start_scan(self, scan_axes, caller_id=None):
+    
         self.display_repeated = self._repeated
         with self._thread_lock:
             if self.module_state() != 'idle':
@@ -317,6 +321,7 @@ class PLEScannerLogic(ScanningProbeLogic):
                 self.module_state.unlock()
                 self.sigScanStateChanged.emit(False, None, self._curr_caller_id)
                 return -1
+                
             self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)
             self.__start_timer()
             return 0
@@ -331,6 +336,7 @@ class PLEScannerLogic(ScanningProbeLogic):
                 return 0
 
             self.__stop_timer()
+
             err = self._scanner().stop_scan() if self._scanner().module_state() != 'idle' else 0
 
             self.module_state.unlock()
@@ -340,6 +346,7 @@ class PLEScannerLogic(ScanningProbeLogic):
                 self.sigScanStateChanged.emit(False, self.scan_data, self.module_uuid)
             else:
                 self.sigScanStateChanged.emit(False, self.scan_data, self._curr_caller_id)
+
             return err
 
     def reset_accumulated(self):
@@ -355,6 +362,7 @@ class PLEScannerLogic(ScanningProbeLogic):
 
             if self._scanner().module_state() == 'idle':
                 self.stop_scan()
+
                 self._repeated += 1
                 self.display_repeated += 1
                 self.stack_data()
