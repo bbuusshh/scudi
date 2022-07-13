@@ -19,14 +19,18 @@ You should have received a copy of the GNU Lesser General Public License along w
 If not, see <https://www.gnu.org/licenses/>.
 """
 
+from ast import Raise
+from email.policy import default
 from qudi.core.connector import Connector
 from qudi.core.module import LogicBase
 from qudi.core.configoption import ConfigOption
 from qudi.logic.pulsed.pulse_objects import PulseBlockElement, PulseBlock, PulseBlockEnsemble
 from qudi.logic.pulsed.sampling_functions import SamplingFunctions
+from PySide2 import QtCore
+from qudi.core.statusvariable import StatusVar
 
 class RepumpInterfuseLogic(LogicBase):
-
+    sigParamsUpdated = QtCore.Signal(str, dict,  QtCore.Qt.QueuedConnection)
     _pulsed = Connector(name='pulsed', interface='PulsedMasterLogic')
     _resonant_laser = ConfigOption(name='resonant_laser', default=None)
     _repump_laser = ConfigOption(name='repump_laser', default=None)
@@ -34,7 +38,7 @@ class RepumpInterfuseLogic(LogicBase):
     trigger_channel = 'd_ch5'
     resonant_block = None
     trigger_block = None
-    parameters = {
+    default_params = {
         "resonant":
             {   
                 "enabled": False,
@@ -52,6 +56,7 @@ class RepumpInterfuseLogic(LogicBase):
                 "power"  : 1,
             },
         }
+    parameters = StatusVar(name="_parameters", default=default_params)
     
     def on_activate(self):
         self.pulsed = self._pulsed()
@@ -67,6 +72,13 @@ class RepumpInterfuseLogic(LogicBase):
             'd_ch3': False, 
             'd_ch4': False,
             }
+        
+
+        
+    def update_params(self):
+        self.sigParamsUpdated.emit('repump', self.parameters)
+        self.sigParamsUpdated.emit('resonant', self.parameters)
+    
     def on_deactivate(self):
         pass
     
@@ -129,8 +141,15 @@ class RepumpInterfuseLogic(LogicBase):
     
     def pulser_updated(self, params):
         self.parameters['resonant'].update(params)
+        self.check_period()
         return 
-    
+    def check_period(self):
+        new_period = self.parameters['resonant']['length'] + self.parameters['repump']['delay'] + self.parameters['repump']['length']
+        
+        if new_period > self.parameters['resonant']['period']:
+            self.parameters['resonant']['period'] = new_period
+        self.sigParamsUpdated.emit('resonant', self.parameters)
+
     def repump_enabled(self, enabled):
         self.parameters['repump'].update({"enabled":enabled })
         if self.parameters['repump']['enabled']:
@@ -158,6 +177,9 @@ class RepumpInterfuseLogic(LogicBase):
         self.pulsed.sigPulserRunningUpdated.emit(self.parameters['repump']['enabled'] and self.parameters['resonant']['enabled']) 
 
     def construct_resonant_and_repump_ensemble(self):
+        period_exceeded = self.parameters['resonant']['period'] > self.parameters['resonant']['length'] + self.parameters['repump']['delay'] + self.parameters['repump']['length']
+        if period_exceeded:
+            return 
         self.pulsed.sigDeletePulseBlock.emit('resonant repumped')
         self.pulsed.sigDeleteBlockEnsemble.emit('resonant repumped')
         element_list = []
@@ -195,7 +217,8 @@ class RepumpInterfuseLogic(LogicBase):
         element_list.append(repump_pulse_block)
         #now the nothing till the priod ends
         time_off = self.parameters['resonant']['period'] - self.parameters['resonant']['length'] - self.parameters['repump']['delay'] - self.parameters["repump"]['length']
-        
+        if time_off < 0 :
+            raise ValueError('Period is too short') 
         off_pulse_block = PulseBlockElement(
             init_length_s = time_off, 
             increment_s=0, 
@@ -210,4 +233,5 @@ class RepumpInterfuseLogic(LogicBase):
 
         block_ensemble = PulseBlockEnsemble(name='resonant repumped', block_list=[(pulse_block.name, 0)], rotating_frame=False)
         self.pulsed.sigSaveBlockEnsemble.emit(block_ensemble)
+    
         

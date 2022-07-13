@@ -136,13 +136,13 @@ class PleRepumpWidget(QtWidgets.QWidget):
         self.pulsedCheckBox.toggled.connect(
             lambda: self.sig_repump_pulsed.emit(self.pulsedCheckBox.isChecked())
         )
-        self.PowerDoubleSpinBox.editingFinished.connect(
+        self.PowerDoubleSpinBox.valueChanged.connect(
             lambda: self.sig_repump_params_updated.emit({'power': self.PowerDoubleSpinBox.value()})
         )
-        self.DelayDoubleSpinBox.editingFinished.connect(
+        self.DelayDoubleSpinBox.valueChanged.connect(
             lambda: self.sig_repump_params_updated.emit({'delay': self.DelayDoubleSpinBox.value()})
         )
-        self.LengthDoubleSpinBox.editingFinished.connect(
+        self.LengthDoubleSpinBox.valueChanged.connect(
             lambda: self.sig_repump_params_updated.emit( {'length': self.LengthDoubleSpinBox.value()})
         )
         self.set_constraints()
@@ -150,11 +150,16 @@ class PleRepumpWidget(QtWidgets.QWidget):
             # self.PowerDoubleSpinBox.value()
         # self.show()
     
-    @QtCore.Slot(dict)
-    def update_params(self, params):
+    @QtCore.Slot(str, dict)
+    def update_params(self, type, params):
+        if type != 'repump':
+            return 
+        params = params[type]
         self.DelayDoubleSpinBox.setValue(params['delay'])
         self.LengthDoubleSpinBox.setValue(params['length'])
         self.PowerDoubleSpinBox.setValue(params['power'])
+        self.enabledCheckBox.setChecked(params['enabled'])
+        self.pulsedCheckBox.setChecked(params['pulsed'])
 
     @QtCore.Slot(bool)
     def enable_pulsed(self, enabled):
@@ -175,10 +180,6 @@ class PleRepumpWidget(QtWidgets.QWidget):
         self.PowerDoubleSpinBox.setDecimals(1)
         self.PowerDoubleSpinBox.setSuffix(' ')#'μW')
 
-    @QtCore.Slot(dict)
-    def update_params(self, params):
-        self.PowerDoubleSpinBox.setValue(params['power'])
-        self.enabledCheckBox.setValue(params['enabled'])
 
 
     
@@ -201,13 +202,13 @@ class PlePulseWidget(QtWidgets.QWidget):
             lambda: self.sig_pulser_pulsed.emit(self.pulsedCheckBox.isChecked())
         )
 
-        self.PowerDoubleSpinBox.editingFinished.connect(
+        self.PowerDoubleSpinBox.valueChanged.connect(
             lambda: self.sig_pulser_params_updated.emit({'power': self.PowerDoubleSpinBox.value()})
         )
-        self.PeriodDoubleSpinBox.editingFinished.connect(
+        self.PeriodDoubleSpinBox.valueChanged.connect(
             lambda: self.sig_pulser_params_updated.emit({'period': self.PeriodDoubleSpinBox.value()})
         )
-        self.LengthDoubleSpinBox.editingFinished.connect(
+        self.LengthDoubleSpinBox.valueChanged.connect(
             lambda: self.sig_pulser_params_updated.emit({'length': self.LengthDoubleSpinBox.value()})
         )
         self.set_constraints()
@@ -215,12 +216,16 @@ class PlePulseWidget(QtWidgets.QWidget):
             # self.PowerDoubleSpinBox.value()
         # self.show()
     
-    @QtCore.Slot(dict)
-    def update_params(self, params):
+    @QtCore.Slot(str, dict)
+    def update_params(self, type, params):
+        if type != 'resonant':
+            return 
+        params = params[type]
         self.PeriodDoubleSpinBox.setValue(params['period'])
         self.LengthDoubleSpinBox.setValue(params['length'])
         self.PowerDoubleSpinBox.setValue(params['power'])
-
+        self.enabledCheckBox.setChecked(params['enabled'])
+        self.pulsedCheckBox.setChecked(params['pulsed'])
 
     @QtCore.Slot(bool)
     def enable_pulsed(self, enabled):
@@ -241,7 +246,3 @@ class PlePulseWidget(QtWidgets.QWidget):
         self.PowerDoubleSpinBox.setSuffix(' ')#'μW')
         self.PowerDoubleSpinBox.setDecimals(1)
 
-    @QtCore.Slot(dict)
-    def update_params(self, params):
-        self.PowerDoubleSpinBox.setValue(params['power'])
-        self.enabledCheckBox.setValue(params['enabled'])
