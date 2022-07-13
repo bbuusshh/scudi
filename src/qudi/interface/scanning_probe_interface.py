@@ -50,7 +50,7 @@ class ScanningProbeInterface(Base):
     def configure_scan(self, settings):
         """ Configure the hardware with all parameters needed for a 1D or 2D scan.
 
-        @param ScanSettings settings: ScanSettings instance holding all parameters
+        @param ScanSettings settings: ScanSettings instance holding all parameters # TODO update me!
 
         @return (bool, ScanSettings): Failure indicator (fail=True),
                                       altered ScanSettings instance (same as "settings")
@@ -138,14 +138,15 @@ class ScanData:
     """
 
     def __init__(self, channels, scan_axes, scan_range, scan_resolution, scan_frequency,
-                 position_feedback_axes=None):
+                 target_at_start=None, position_feedback_axes=None):
         """
-
+        
         @param ScannerChannel[] channels: ScannerChannel objects involved in this scan
         @param ScannerAxis[] scan_axes: ScannerAxis instances involved in the scan
         @param float[][2] scan_range: inclusive range for each scan axis
         @param int[] scan_resolution: planned number of points for each scan axis
         @param float scan_frequency: Scan pixel frequency of the fast axis
+        @param dict target_at_start: optional, save scanner target (all axes) at beginning of scan
         @param ScannerAxis[] position_feedback_axes: optional, axes for which to acquire position
                                                      feedback during the scan.
         """
@@ -182,6 +183,7 @@ class ScanData:
         self._scan_resolution = tuple(int(res) for res in scan_resolution)
         self._scan_frequency = float(scan_frequency)
         self._channels = tuple(channels)
+
         if position_feedback_axes is None:
             self._position_feedback_axes = None
         else:
@@ -189,8 +191,11 @@ class ScanData:
 
         self._timestamp = None
         self._data = None
+        self._accumulated_data = None
         self._position_data = None
-        # TODO: Automatic interpolation onto rectangular grid needs to be implemented
+        self._target_at_start = target_at_start
+
+        # TODO: Automatic interpolation onto rectangular grid needs to be implemented (for position feedback HW)
         return
 
     def __copy__(self):
@@ -205,6 +210,8 @@ class ScanData:
             new_inst._data = self._data.copy()
         if self._position_data is not None:
             new_inst._position_data = self._position_data.copy()
+        if self._accumulated_data is not None:
+            new_inst._accumulated_data = self._accumulated_data.copy()
         return new_inst
 
     def __deepcopy__(self, memodict={}):
@@ -215,7 +222,7 @@ class ScanData:
             raise NotImplemented
 
         attrs = ('_timestamp', '_scan_frequency', '_scan_axes', '_scan_range', '_scan_resolution',
-                 '_channels', '_position_feedback_axes', '_data', '_position_data', '_timestamp')
+                 '_channels', '_position_feedback_axes', '_data', '_accumulated_data', '_position_data', '_timestamp')
         return all(getattr(self, a) == getattr(other, a) for a in attrs)
 
     @property
@@ -233,6 +240,14 @@ class ScanData:
     @property
     def scan_frequency(self):
         return self._scan_frequency
+
+    @property
+    def scanner_target_at_start(self):
+        return self._target_at_start
+
+    @scanner_target_at_start.setter
+    def scanner_target_at_start(self, target_dict):
+        self._target_at_start = target_dict
 
     @property
     def channels(self):
@@ -253,6 +268,9 @@ class ScanData:
     def data(self):
         return self._data
 
+    @property
+    def accumulated_data(self):
+        return self._accumulated_data
     @property
     def position_data(self):
         return self._position_data
@@ -542,13 +560,13 @@ class ScanConstraints:
         return self._channels.copy()
 
     @property
-    def backscan_configurable(self):
+    def backscan_configurable(self):  # TODO Incorporate in gui/logic toolchain?
         return self._backscan_configurable
 
     @property
-    def has_position_feedback(self):
+    def has_position_feedback(self):  # TODO Incorporate in gui/logic toolchain?
         return self._has_position_feedback
 
     @property
-    def square_px_only(self):
+    def square_px_only(self):  # TODO Incorporate in gui/logic toolchain?
         return self._square_px_only
