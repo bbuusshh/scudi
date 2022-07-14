@@ -30,7 +30,7 @@ import copy as cp
 from qudi.util.widgets.plotting.plot_widget import DataSelectionPlotWidget
 from qudi.util.widgets.plotting.plot_item import DataImageItem, XYPlotItem
 from qudi.util.colordefs import QudiPalette
-
+from qudi.util.colordefs import ColorScaleRdBuRev as ColorScale
 
 class OptimizerDockWidget(QtWidgets.QDockWidget):
     """
@@ -79,7 +79,7 @@ class OptimizerDockWidget(QtWidgets.QDockWidget):
                 plot2d_widget.set_selection_mutable(False)
                 plot2d_widget.add_marker_selection((0, 0),
                                                    mode=DataSelectionPlotWidget.SelectionMode.XY)
-                image_item = DataImageItem()
+                image_item = DataImageItem(colorscale = ColorScale)
                 plot2d_widget.addItem(image_item)
                 self._plot_widgets.append({'widget': plot2d_widget,
                                            'image_2d': image_item,

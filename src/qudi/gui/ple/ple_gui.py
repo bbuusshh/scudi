@@ -200,7 +200,7 @@ class PLEScanGui(GuiBase):
 
 
     def _fit_clicked(self, fit_config):
-        channel = 'fluorescence'#self._scan_control_dockwidget.selected_channel
+        channel = self._scanning_logic.scanner_channels[self._scanning_logic._channel]#self._scan_control_dockwidget.selected_channel
         # range_index = #self._scan_control_dockwidget.selected_range
         self.sigDoFit.emit(fit_config, channel)
 
