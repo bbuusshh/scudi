@@ -1,5 +1,6 @@
 
 from PySide2 import QtCore, QtGui, QtWidgets
+import os
 
 class PleRepumpWidget(QtWidgets.QWidget):
     sig_repump_params_updated = QtCore.Signal(dict)
