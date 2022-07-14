@@ -92,10 +92,10 @@ class PleMicrowaveWidget(QtWidgets.QWidget):
         self.enabledCheckBox.toggled.connect(
             lambda: self.sig_microwave_enabled.emit(self.enabledCheckBox.isChecked())
         )
-        self.FreqDoubleSpinBox.valueChanged.connect(
+        self.FreqDoubleSpinBox.editingFinished.connect(
             lambda: self.sig_microwave_params_updated.emit(self.FreqDoubleSpinBox.value(), self.PowerDoubleSpinBox.value())
         )
-        self.PowerDoubleSpinBox.valueChanged.connect(
+        self.PowerDoubleSpinBox.editingFinished.connect(
             lambda: self.sig_microwave_params_updated.emit(self.FreqDoubleSpinBox.value(), self.PowerDoubleSpinBox.value())
         )
             # self.FreqDoubleSpinBox.value()
@@ -137,13 +137,13 @@ class PleRepumpWidget(QtWidgets.QWidget):
         self.pulsedCheckBox.toggled.connect(
             lambda: self.sig_repump_pulsed.emit(self.pulsedCheckBox.isChecked())
         )
-        self.PowerDoubleSpinBox.valueChanged.connect(
+        self.PowerDoubleSpinBox.editingFinished.connect(
             lambda: self.sig_repump_params_updated.emit({'power': self.PowerDoubleSpinBox.value()})
         )
-        self.DelayDoubleSpinBox.valueChanged.connect(
+        self.DelayDoubleSpinBox.editingFinished.connect(
             lambda: self.sig_repump_params_updated.emit({'delay': self.DelayDoubleSpinBox.value()})
         )
-        self.LengthDoubleSpinBox.valueChanged.connect(
+        self.LengthDoubleSpinBox.editingFinished.connect(
             lambda: self.sig_repump_params_updated.emit( {'length': self.LengthDoubleSpinBox.value()})
         )
         self.set_constraints()
@@ -203,13 +203,13 @@ class PlePulseWidget(QtWidgets.QWidget):
             lambda: self.sig_pulser_pulsed.emit(self.pulsedCheckBox.isChecked())
         )
 
-        self.PowerDoubleSpinBox.valueChanged.connect(
+        self.PowerDoubleSpinBox.editingFinished.connect(
             lambda: self.sig_pulser_params_updated.emit({'power': self.PowerDoubleSpinBox.value()})
         )
-        self.PeriodDoubleSpinBox.valueChanged.connect(
+        self.PeriodDoubleSpinBox.editingFinished.connect(
             lambda: self.sig_pulser_params_updated.emit({'period': self.PeriodDoubleSpinBox.value()})
         )
-        self.LengthDoubleSpinBox.valueChanged.connect(
+        self.LengthDoubleSpinBox.editingFinished.connect(
             lambda: self.sig_pulser_params_updated.emit({'length': self.LengthDoubleSpinBox.value()})
         )
         self.set_constraints()
