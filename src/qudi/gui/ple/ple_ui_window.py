@@ -159,7 +159,7 @@ class PleRepumpWidget(QtWidgets.QWidget):
         self.DelayDoubleSpinBox.setValue(params['delay'])
         self.LengthDoubleSpinBox.setValue(params['length'])
         self.PowerDoubleSpinBox.setValue(params['power'])
-        self.enabledCheckBox.setChecked(params['enabled'])
+        self.enabledCheckBox.setChecked(params['CW'])
         self.pulsedCheckBox.setChecked(params['pulsed'])
 
     @QtCore.Slot(bool)
@@ -225,7 +225,7 @@ class PlePulseWidget(QtWidgets.QWidget):
         self.PeriodDoubleSpinBox.setValue(params['period'])
         self.LengthDoubleSpinBox.setValue(params['length'])
         self.PowerDoubleSpinBox.setValue(params['power'])
-        self.enabledCheckBox.setChecked(params['enabled'])
+        self.enabledCheckBox.setChecked(params['CW'])
         self.pulsedCheckBox.setChecked(params['pulsed'])
 
     @QtCore.Slot(bool)
