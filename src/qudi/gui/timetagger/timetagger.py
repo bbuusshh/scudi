@@ -88,7 +88,7 @@ class TTGui(GuiBase):
         # Configure PlotWidget
         self._pw = self._mw.counterGraphicsView
         self._pw.setLabel('bottom', 'Time', units='s')
-        self._pw.setLabel('left', 'Counts', units='Hz')
+        self._pw.setLabel('left', 'Counts', units='c/s')
         self._pw.setMouseEnabled(x=False, y=False)
         self._pw.setMouseTracking(False)
         self._pw.setMenuEnabled(False)
@@ -264,7 +264,7 @@ class TTGui(GuiBase):
             x_arr, y_arr = data['trace_data_avg'][ch]
             self.averaged_curves[ch].setData(y=y_arr, x=x_arr)
         counts = data['sum']
-        self._mw.count_display_label.setText('{:.2r}Hz'.format(ScaledFloat(counts)))
+        self._mw.count_display_label.setText('{:.2r}c/s'.format(ScaledFloat(counts)))
 
     def update_corr(self):
         self._corr_bin_width = self._mw.corrBinWidthDoubleSpinBox.value()

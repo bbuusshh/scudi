@@ -32,7 +32,7 @@ from qudi.util.widgets.plotting.image_widget import RubberbandZoomSelectionImage
 from qudi.util.widgets.plotting.plot_item import XYPlotItem
 from qudi.util.paths import get_artwork_dir
 from qudi.interface.scanning_probe_interface import ScanData, ScannerAxis, ScannerChannel
-
+from qudi.util.colordefs import ColorScaleRdBuRev as ColorScale
 
 class _BaseScanWidget(QtWidgets.QWidget):
     """ Base Widget to interactively display multichannel 1D or 2D scan data as well as
@@ -210,7 +210,8 @@ class Scan2DWidget(_BaseScanWidget):
 
         self.image_widget = RubberbandZoomSelectionImageWidget(allow_tracking_outside_data=True,
                                                                xy_region_selection_crosshair=True,
-                                                               xy_region_selection_handles=False)
+                                                               xy_region_selection_handles=False,
+                                                               colorscale=ColorScale)
         self.image_widget.set_selection_mutable(True)
         self.image_widget.add_region_selection(span=((-0.5, 0.5), (-0.5, 0.5)),
                                                mode=self.image_widget.SelectionMode.XY)
