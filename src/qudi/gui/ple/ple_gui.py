@@ -183,7 +183,8 @@ class PLEScanGui(GuiBase):
         self._microwave_logic.sigCwStateUpdated.connect(
             self._mw.microwave_widget.enable_microwave
         )
-
+        self._microwave_logic.sigCwParametersUpdated.emit(self._microwave_logic.cw_parameters)
+        
     def setup_fit_widget(self):
         self._fit_dockwidget = PleFitDockWidget(parent=self._mw, fit_container=self._scanning_logic._fit_container)
         self._fit_config_dialog = FitConfigurationDialog(parent=self._mw,
@@ -200,7 +201,7 @@ class PLEScanGui(GuiBase):
 
 
     def _fit_clicked(self, fit_config):
-        channel = 'fluorescence'#self._scan_control_dockwidget.selected_channel
+        channel = self._scanning_logic.scanner_channels[self._scanning_logic._channel]#self._scan_control_dockwidget.selected_channel
         # range_index = #self._scan_control_dockwidget.selected_range
         self.sigDoFit.emit(fit_config, channel)
 

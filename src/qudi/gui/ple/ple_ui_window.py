@@ -7,6 +7,7 @@ from qudi.util.widgets.advanced_dockwidget import AdvancedDockWidget
 from qudi.util.widgets.fitting import FitWidget
 import importlib
 from qudi.interface.scanning_probe_interface import ScanData, ScannerAxis, ScannerChannel
+from qudi.gui.ple.ple_repump_widget import PleRepumpWidget, PlePulseWidget
 from typing import Tuple, Union, Sequence
 from typing import Optional, List
 try:
@@ -92,10 +93,10 @@ class PleMicrowaveWidget(QtWidgets.QWidget):
         self.enabledCheckBox.toggled.connect(
             lambda: self.sig_microwave_enabled.emit(self.enabledCheckBox.isChecked())
         )
-        self.FreqDoubleSpinBox.valueChanged.connect(
+        self.FreqDoubleSpinBox.editingFinished.connect(
             lambda: self.sig_microwave_params_updated.emit(self.FreqDoubleSpinBox.value(), self.PowerDoubleSpinBox.value())
         )
-        self.PowerDoubleSpinBox.valueChanged.connect(
+        self.PowerDoubleSpinBox.editingFinished.connect(
             lambda: self.sig_microwave_params_updated.emit(self.FreqDoubleSpinBox.value(), self.PowerDoubleSpinBox.value())
         )
             # self.FreqDoubleSpinBox.value()
@@ -117,6 +118,7 @@ class PleMicrowaveWidget(QtWidgets.QWidget):
 
         self.PowerDoubleSpinBox.setRange(*constraints.power_limits)
         self.PowerDoubleSpinBox.setSuffix('dBm')
+<<<<<<< HEAD
 
 class PleRepumpWidget(QtWidgets.QWidget):
     sig_repump_params_updated = QtCore.Signal(dict)
@@ -247,3 +249,5 @@ class PlePulseWidget(QtWidgets.QWidget):
         self.PowerDoubleSpinBox.setSuffix(' ')#'μW')
         self.PowerDoubleSpinBox.setDecimals(1)
 
+=======
+>>>>>>> 589dcfb8b9501486e99443549332545a44e08d12
