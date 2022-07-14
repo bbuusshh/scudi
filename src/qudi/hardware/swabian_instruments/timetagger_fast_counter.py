@@ -21,11 +21,11 @@ If not, see <https://www.gnu.org/licenses/>.
 """
 
 import numpy as np
-import TimeTagger as tt
+#import TimeTagger as tt
 
 from qudi.interface.fast_counter_interface import FastCounterInterface
 from qudi.core.configoption import ConfigOption
-
+from qudi.core.connector import Connector
 
 class TimeTaggerFastCounter(FastCounterInterface):
     """ Hardware class to controls a Time Tagger from Swabian Instruments.
@@ -34,14 +34,17 @@ class TimeTaggerFastCounter(FastCounterInterface):
 
     fastcounter_timetagger:
         module.Class: 'swabian_instruments.timetagger_fast_counter.TimeTaggerFastCounter'
-        timetagger_channel_apd_0: 0
-        timetagger_channel_apd_1: 1
-        timetagger_channel_detect: 2
-        timetagger_channel_sequence: 3
-        timetagger_sum_channels: 4
+        options:
+            timetagger_channel_apd_0: 0
+            timetagger_channel_apd_1: 1
+            timetagger_channel_detect: 2
+            timetagger_channel_sequence: 3
+            timetagger_sum_channels: 4
+        connect:
+            tagger: 'tagger'
 
     """
-
+    timetagger = Connector(interface='TT')
     _channel_apd_0 = ConfigOption('timetagger_channel_apd_0', missing='error')
     _channel_apd_1 = ConfigOption('timetagger_channel_apd_1', missing='error')
     _channel_detect = ConfigOption('timetagger_channel_detect', missing='error')
@@ -51,15 +54,15 @@ class TimeTaggerFastCounter(FastCounterInterface):
     def on_activate(self):
         """ Connect and configure the access to the FPGA.
         """
-        self._tagger = tt.createTimeTagger()
-        self._tagger.reset()
+        self._tagger = self.timetagger()#tt.createTimeTagger()
+        self._tagger.tagger.reset()
 
         self._number_of_gates = int(100)
         self._bin_width = 1
         self._record_length = int(4000)
 
         if self._sum_channels:
-            self._channel_combined = tt.Combiner(self._tagger, channels=[self._channel_apd_0, self._channel_apd_1])
+            self._channel_combined = self._tagger.combiner(channels=[self._channel_apd_0, self._channel_apd_1])#tt.Combiner(self._tagger, channels=[self._channel_apd_0, self._channel_apd_1])
             self._channel_apd = self._channel_combined.getChannel()
         else:
             self._channel_apd = self._channel_apd_0
@@ -144,16 +147,24 @@ class TimeTaggerFastCounter(FastCounterInterface):
         self._record_length = 1 + int(record_length_s / bin_width_s)
         self.statusvar = 1
 
-        self.pulsed = tt.TimeDifferences(
-            tagger=self._tagger,
+        #self.pulsed = tt.TimeDifferences(
+        #    tagger=self._tagger,
+        #    click_channel=self._channel_apd,
+        #    start_channel=self._channel_detect,
+        #    next_channel=self._channel_detect,
+        #    sync_channel=tt.CHANNEL_UNUSED,
+        #    binwidth=int(np.round(self._bin_width * 1000)),
+        #    n_bins=int(self._record_length),
+        #    n_histograms=number_of_gates)
+        self.pulsed = self._tagger.time_differences(
             click_channel=self._channel_apd,
             start_channel=self._channel_detect,
             next_channel=self._channel_detect,
-            sync_channel=tt.CHANNEL_UNUSED,
+            #sync_channel=tt.CHANNEL_UNUSED,
             binwidth=int(np.round(self._bin_width * 1000)),
             n_bins=int(self._record_length),
-            n_histograms=number_of_gates)
-
+            n_histograms=number_of_gates
+        )
         self.pulsed.stop()
 
         return bin_width_s, record_length_s, number_of_gates
