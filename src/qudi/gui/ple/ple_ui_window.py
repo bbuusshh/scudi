@@ -118,7 +118,6 @@ class PleMicrowaveWidget(QtWidgets.QWidget):
 
         self.PowerDoubleSpinBox.setRange(*constraints.power_limits)
         self.PowerDoubleSpinBox.setSuffix('dBm')
-<<<<<<< HEAD
 
 class PleRepumpWidget(QtWidgets.QWidget):
     sig_repump_params_updated = QtCore.Signal(dict)
@@ -248,6 +247,3 @@ class PlePulseWidget(QtWidgets.QWidget):
         self.PowerDoubleSpinBox.setRange(*(0.0, 1.0))
         self.PowerDoubleSpinBox.setSuffix(' ')#'μW')
         self.PowerDoubleSpinBox.setDecimals(1)
-
-=======
->>>>>>> 589dcfb8b9501486e99443549332545a44e08d12
