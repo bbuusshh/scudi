@@ -1,5 +1,6 @@
 
 from PySide2 import QtCore, QtGui, QtWidgets
+import qudi.util.uic as uic
 import os
 
 class PleRepumpWidget(QtWidgets.QWidget):
