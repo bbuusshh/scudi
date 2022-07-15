@@ -145,7 +145,6 @@ class ScanningDataLogic(LogicBase):
         with self._thread_lock:
             return list(self._curr_data_per_scan.copy().values())
 
-    @QtCore.Slot()
     def history_previous(self):
         with self._thread_lock:
             if self._curr_history_index < 1:
@@ -153,18 +152,18 @@ class ScanningDataLogic(LogicBase):
                                  'Already at earliest history entry.')
                 return
 
+            #self.log.debug(f"Hist_prev called, index {self._curr_history_index - 1}")
             return self.restore_from_history(self._curr_history_index - 1)
 
-    @QtCore.Slot()
     def history_next(self):
         with self._thread_lock:
             if self._curr_history_index >= len(self._scan_history) - 1:
                 self.log.warning('Unable to restore next state from scan history. '
                                  'Already at latest history entry.')
                 return
+            #self.log.debug(f"Hist_prev called, index {self._curr_history_index + 1}")
             return self.restore_from_history(self._curr_history_index + 1)
 
-    @QtCore.Slot(int)
     def restore_from_history(self, index):
         with self._thread_lock:
             if self._scan_logic().module_state() != 'idle':
@@ -193,7 +192,6 @@ class ScanningDataLogic(LogicBase):
             self.sigHistoryScanDataRestored.emit(data)
             return
 
-    @QtCore.Slot()
     def _update_scan_state(self, running, data, caller_id):
 
         settings = {
@@ -281,7 +279,6 @@ class ScanningDataLogic(LogicBase):
                         arrowprops={'facecolor': '#17becf', 'shrink': 0.05})
         return fig
 
-    @QtCore.Slot(object, object)
     def save_scan(self, scan_data, color_range=None):
         with self._thread_lock:
             if self.module_state() != 'idle':
@@ -329,7 +326,7 @@ class ScanningDataLogic(LogicBase):
                 for channel, data in scan_data.data.items():
                     # data
                     # nametag = '{0}_{1}{2}_image_scan'.format(channel, *scan_data.scan_axes)
-                    tag = self.create_tag_from_scan_data(scan_data)
+                    tag = self.create_tag_from_scan_data(scan_data, channel)
                     file_path, _, _ = ds.save_data(data,
                                                    metadata=parameters,
                                                    nametag=tag,
@@ -355,11 +352,11 @@ class ScanningDataLogic(LogicBase):
         scan = self.get_current_scan_data(scan_axes=scan_axes)
         self.save_scan(scan, color_range=color_range)
 
-    def create_tag_from_scan_data(self, scan_data):
+    def create_tag_from_scan_data(self, scan_data, channel):
         axes = scan_data.scan_axes
         axis_dim = len(axes)
         axes_code = reduce(operator.add, axes)
-        tag = f"{axis_dim}D-scan with {axes_code} axes"
+        tag = f"{axis_dim}D-scan with {axes_code} axes from channel {channel}"
         return tag
 
     def draw_2d_scan_figure(self, scan_data, channel, cbar_range=None):
