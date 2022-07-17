@@ -20,7 +20,7 @@ You should have received a copy of the GNU Lesser General Public License along w
 If not, see <https://www.gnu.org/licenses/>.
 """
 
-from qtpy import QtCore
+from PySide2 import QtCore
 from collections import OrderedDict
 import numpy as np
 import time
@@ -33,6 +33,9 @@ from qudi.core.configoption import ConfigOption
 from qudi.core.module import Base
 from qudi.util.mutex import Mutex
 
+from qudi.util.widgets.fitting import FitConfigurationDialog, FitWidget
+from qudi.util.datastorage import TextDataStorage
+from qudi.util.datafitting import FitContainer, FitConfigurationsModel
 
 class WavemeterLoggerLogic(Base):
     """This logic module gathers data from wavemeter and the counter logic.
