@@ -100,9 +100,9 @@ class PLEScanGui(GuiBase):
         self._scanning_logic.sigScanStateChanged.connect(
             self.scan_state_updated, QtCore.Qt.QueuedConnection
         )
-        self._scanning_logic.sigScannerTargetChanged.connect(
-            self.scanner_target_updated, QtCore.Qt.QueuedConnection
-        )
+        #self._scanning_logic.sigScannerTargetChanged.connect(
+        #    self.scanner_target_updated, QtCore.Qt.QueuedConnection
+        #)
         self._scanning_logic.sigScanSettingsChanged.connect(
             self.scanner_settings_updated, QtCore.Qt.QueuedConnection
         )
@@ -110,10 +110,10 @@ class PLEScanGui(GuiBase):
         #     self._optimize_logic().toggle_optimize, QtCore.Qt.QueuedConnection
         # )
 
-        self._mw.ple_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing)
+        #self._mw.ple_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing)
         self._mw.ple_widget.selected_region.sigRegionChanged.connect(self.sliders_values_are_changing)
 
-        self._mw.ple_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
+        self._mw.ple_widget.target_point.sigPositionChanged.connect(self.set_scanner_target_position)
         self._mw.ple_widget.selected_region.sigRegionChangeFinished.connect(self.region_value_changed) 
 
 
