@@ -173,3 +173,11 @@ class WavemeterLoggerLogic(Base):
             self.samples_num = np.zeros(len(xx))
             self.plot_x = xx
             self.plot_y = self.cts_ys
+
+    def wavelength_to_freq(wavelength):
+        if isinstance(wavelength, float):
+            return 299792458.0 * 1e9 / wavelength
+        wavelength = np.array(wavelength)
+        aa = 299792458.0 * 1e9 * np.ones(wavelength.shape[0])
+        freqs = np.divide(aa, wavelength, out=np.zeros_like(aa), where=wavelength!=0)
+        return freqs
