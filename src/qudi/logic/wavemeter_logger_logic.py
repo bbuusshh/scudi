@@ -20,6 +20,7 @@ You should have received a copy of the GNU Lesser General Public License along w
 If not, see <https://www.gnu.org/licenses/>.
 """
 
+from itertools import count
 from PySide2 import QtCore
 from collections import OrderedDict
 import numpy as np
@@ -69,13 +70,16 @@ class WavemeterLoggerLogic(Base):
     zpl_bin_width = .00005
     skip_rate = 3
     current_wavelength = -1
+    wavelengths = np.array([], dtype = [('time', np.uint16), ('wavelength', np.uint32)])
+    count_data = np.array([], dtype = [('wavelength', np.uint16), ('counts', np.uint32)])
     plot_x = []
     plot_y = []
     # config opts
     _logic_update_timing = ConfigOption('logic_query_timing', 200.0, missing='warn')
     # _logic_update_timing = ConfigOption('logic_update_timing', 100.0, missing='warn')
     sig_query_wavemeter = QtCore.Signal()
-    sig_update_gui = QtCore.Signal(object, object)
+    sig_update_data = QtCore.Signal(object,object)
+    
     def __init__(self, config, **kwargs):
         """ Create WavemeterLoggerLogic object with connectors.
 
@@ -130,8 +134,9 @@ class WavemeterLoggerLogic(Base):
         self._queryTimer.setInterval(self._logic_update_timing)
         self._queryTimer.setSingleShot(False)
         self._queryTimer.timeout.connect(
-            lambda : self.sig_update_gui.emit(self.plot_x, self.plot_y)
+            lambda : self.sig_update_data.emit(self.wavelengths, self.count_data)
         , QtCore.Qt.QueuedConnection)     
+        
         self._queryTimer.start()
         
         self.sig_query_wavemeter.emit()
@@ -148,11 +153,18 @@ class WavemeterLoggerLogic(Base):
     def query_wavemeter(self):
         self.current_wavelength = self._wavemeter.get_current_wavelength()
         if self.current_wavelength > 0:
+            if self.wavelengths.shape[0] == 0 :
+                self.wavelengths = np.append(self.wavelengths, np.array([time.time() - self._acquisition_start_time, self.current_wavelength]))
+            else:
+                self.wavelengths = np.append(self.wavelengths, np.array([time.time() - self._acquisition_start_time, self.current_wavelength]), axis=0)
+                
             self.cts = self._counter_logic.get_data_trace()[0].mean()
             self.cts_ys[np.argmin(np.abs(self.current_wavelength - self.wlth_xs))] += self.cts
             self.samples_num[np.argmin(np.abs(self.current_wavelength - self.wlth_xs))] += 1
             
             self.plot_y = np.divide(self.cts_ys, self.samples_num, out = np.zeros_like(self.cts_ys), where=self.samples_num != 0)
+            self.count_data['wavelength'] = self.plot_x
+            self.count_data['counts'] = self.plot_y
         self.sig_query_wavemeter.emit()
     
     def recalculate_histogram(self, bins=None, xmin=None, xmax=None):
