@@ -141,7 +141,7 @@ class PLEScanGui(GuiBase):
             self._mw.Pulsed_widget.sig_pulser_params_updated.connect(self._repump_logic.pulser_updated, QtCore.Qt.QueuedConnection)
             self._repump_logic.sigGuiParamsUpdated.connect(self._mw.Pulsed_widget.update_gui, QtCore.Qt.QueuedConnection)
             
-        self._repump_logic.sigGuiParamsUpdated.emit(self._repump_logic.parameters)
+            self._repump_logic.sigGuiParamsUpdated.emit(self._repump_logic.parameters)
         self.scanner_target_updated()
         self.scan_state_updated(self._scanning_logic.module_state() != 'idle')
 
