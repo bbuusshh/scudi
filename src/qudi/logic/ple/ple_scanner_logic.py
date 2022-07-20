@@ -157,6 +157,10 @@ class PLEScannerLogic(ScanningProbeLogic):
         self.__scan_stop_requested = True
         self._curr_caller_id = self.module_uuid
 
+        if not self._min_poll_interval:
+            # defaults to maximum scan frequency of scanner
+            self._min_poll_interval = 1/np.max([self.scanner_constraints.axes[ax].frequency_range for ax in self.scanner_constraints.axes])
+
         self.__scan_poll_timer = QtCore.QTimer()
         self.__scan_poll_timer.setSingleShot(True)
         self.__scan_poll_timer.timeout.connect(self.__scan_poll_loop, QtCore.Qt.QueuedConnection)
