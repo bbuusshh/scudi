@@ -138,6 +138,11 @@ class PLEScannerLogic(ScanningProbeLogic):
             self._scan_ranges = new_settings['range']
             self._scan_resolution = new_settings['resolution']
             self._scan_frequency = new_settings['frequency']
+        
+        if not self._min_poll_interval:
+            # defaults to maximum scan frequency of scanner
+            self._min_poll_interval = 1/np.max([constr.axes[ax].frequency_range for ax in constr.axes])
+
         """
         if not isinstance(self._scan_ranges, dict):
             self._scan_ranges = {ax.name: ax.value_range for ax in constr.axes.values()}
