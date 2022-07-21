@@ -91,36 +91,33 @@
 High bin number gives noisy but detailed data.</string>
        </property>
        <property name="text">
-        <string>Bins (#)</string>
+        <string>Bin width</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QSpinBox" name="binSpinBox">
+      <widget class="ScienDSpinBox" name="binDoubleSpinBox">
        <property name="toolTip">
         <string>Number of bins to split the wavelength range up into.
 High bin number gives noisy but detailed data.</string>
        </property>
-       <property name="minimum">
-        <number>1</number>
-       </property>
-       <property name="maximum">
-        <number>10000</number>
-       </property>
-       <property name="value">
-        <number>200</number>
+       <property name="suffix">
+        <string>Hz</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QLabel" name="minLabel">
        <property name="text">
-        <string>Minimum wavelength (nm)</string>
+        <string>Min frequency</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QDoubleSpinBox" name="minDoubleSpinBox">
+      <widget class="ScienDSpinBox" name="minDoubleSpinBox">
+       <property name="suffix">
+        <string>Hz</string>
+       </property>
        <property name="decimals">
         <number>6</number>
        </property>
@@ -138,12 +135,15 @@ High bin number gives noisy but detailed data.</string>
      <item>
       <widget class="QLabel" name="maxLabel">
        <property name="text">
-        <string>Maximum wavelength (nm)</string>
+        <string>Max frequency</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QDoubleSpinBox" name="maxDoubleSpinBox">
+      <widget class="ScienDSpinBox" name="maxDoubleSpinBox">
+       <property name="suffix">
+        <string>Hz</string>
+       </property>
        <property name="decimals">
         <number>6</number>
        </property>
@@ -329,6 +329,13 @@ High bin number gives noisy but detailed data.</string>
    </property>
   </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ScienDSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>qudi.util.widgets.scientific_spinbox.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections>
   <connection>

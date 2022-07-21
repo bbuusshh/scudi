@@ -44,9 +44,8 @@ class WavemeterLoggerLogic(LogicBase):
     """This logic module gathers data from wavemeter and the counter logic.
     """
 
-    sig_data_updated = QtCore.Signal()
-    sig_new_data_point = QtCore.Signal(list)
 
+    sigUpdateSettings = QtCore.Signal(dict)
     sigFitUpdated = QtCore.Signal(object, str)
     # declare connectors
     wavemeter = Connector(interface='WavemeterInterface')
@@ -67,10 +66,15 @@ class WavemeterLoggerLogic(LogicBase):
          
     )
     wavelength_buffer = 5000
-    zpl_bin_width = .00005 #0.2 #GHz 
+    zpl_bin_width = 0.2 #GHz #.00005 #
+    _settings = {
+        'bin_width':0.2,
+        'start_value':0,
+        'stop_value':1000
+    }
     current_wavelength = -1
-    _xmin = 636
-    _xmax = 638
+    _xmin = 420 * 1e3 # GHz
+    _xmax = 425 * 1e3 # GHz
     wavelengths = np.array([], dtype = WAVELENGTH_DTYPE)
     count_data = np.array([], dtype = COUNT_DTYPE)
     plot_x = []
@@ -103,7 +107,7 @@ class WavemeterLoggerLogic(LogicBase):
         self.sig_query_wavemeter.connect(self.query_wavemeter, QtCore.Qt.QueuedConnection)
         # connect the signals in and out of the threaded object
 
-        
+        self.sigUpdateSettings.connect(self._udpate_settings)
         
         self._queryTimer = QtCore.QTimer()
         self._queryTimer.setInterval(self._logic_update_timing)
@@ -127,6 +131,14 @@ class WavemeterLoggerLogic(LogicBase):
         """
         if self.module_state() != 'idle' and self.module_state() != 'deactivated':
             self.stop_scanning()
+
+    @QtCore.Slot(dict)
+    def _udpate_settings(self, settings):
+        if self.module_state() != 'locked':
+            self._settings.update(settings)
+            self.recalculate_histogram()
+            # settings['mode'] # frequency or vac or air
+        return 
 
     def get_bins(self):
         return len(self.plot_x)
@@ -168,22 +180,16 @@ class WavemeterLoggerLogic(LogicBase):
 
     
     def recalculate_histogram(self, bins=None, xmin=None, xmax=None):
-            if (bins is None) or (xmin is None) or (xmax is None):
-                xx = np.arange(self._xmin, self._xmax, self.zpl_bin_width)
-                self.wlth_xs = xx
-                self.cts_ys = np.zeros(len(xx))
-                self.samples_num = np.zeros(len(xx))
-                self.plot_x = xx
-                self.plot_y = self.cts_ys
-            else:
-                self.zpl_bin_width = bins
-                self.intern_xmin = xmin
-                self.intern_xmin = xmax
-                xx = np.arange(xmin, xmax, bins)
-                self.wlth_xs = xx
-                self.cts_ys = np.zeros(len(xx))
-                self.samples_num = np.zeros(len(xx))
-                self.plot_x = xx
+        self._settings['bin_width']
+        if self.module_state() != 'locked':
+                self.wlth_xs = np.arange(
+                    self._settings['start_value'], 
+                    self._settings['stop_value'], 
+                    self._settings['bin_width']
+                )
+                self.cts_ys = np.zeros(len(self.wlth_xs))
+                self.samples_num = np.zeros(len(self.wlth_xs))
+                self.plot_x = self.wlth_xs
                 self.plot_y = self.cts_ys
 
     def wavelength_to_freq(self, wavelength):
