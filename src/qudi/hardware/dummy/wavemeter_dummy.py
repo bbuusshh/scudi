@@ -179,6 +179,8 @@ class WavemeterDummy(WavemeterInterface):
         if kind in "vac":
             # for vacuum just return the current wavelength
             return float(self._current_wavelength)
+        if kind in "freq":
+            return float(299792458.0 * 1e9 / self._current_wavelength)
         return -2.0
 
     def get_current_wavelength2(self, kind="air"):

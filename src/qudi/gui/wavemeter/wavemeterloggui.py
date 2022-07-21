@@ -65,12 +65,11 @@ class WavemeterLogGui(GuiBase):
 
         # setting up the window
         self._mw = WavemeterMainWindow()
-        self._mw.show()
         self.wavelog_logic = self.wavemeterloggerlogic()
         self._mw.actionStop_resume_scan.triggered.connect(self.stop_resume_clicked)
         # self._mw.actionSave_histogram.triggered.connect(self.save_clicked)
         self._mw.actionStart_scan.triggered.connect(self.start_clicked)
-        self._mw.actionAuto_range.triggered.connect(self.set_auto_range)
+        # self._mw.actionAuto_range.triggered.connect(self.set_auto_range)
 
         # defining the parameters to edit
         self._mw.binDoubleSpinBox.setValue(self.wavelog_logic._settings['bin_width'])
@@ -120,6 +119,11 @@ class WavemeterLogGui(GuiBase):
         """
         self._mw.close()
 
+    def show(self):
+        """Make window visible and put it above all other windows. """
+        self._mw.show()
+        self._mw.activateWindow()
+        self._mw.raise_()
 
     def update_sweep_around_centre(self):
         sweep_range = self._mw.sweepRangeDoubleSpinBox.value()

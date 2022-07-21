@@ -153,7 +153,7 @@ class WavemeterLoggerLogic(LogicBase):
     @QtCore.Slot()
     def query_wavemeter(self):
         with self._thread_lock:
-            self.current_wavelength = self.wavelength_to_freq(self._wavemeter.get_current_wavelength())
+            self.current_wavelength = self._wavemeter.get_current_wavelength(kind='freq')
             self._time_elapsed = time.time() - self._acquisition_start_time
             if self.current_wavelength > 0:
                 if self.wavelengths.shape[0] == 0:
