@@ -31,16 +31,16 @@ import matplotlib.pyplot as plt
 
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
-from qudi.core.module import Base
-from qudi.util.mutex import Mutex
+from qudi.core.module import LogicBase
+from qudi.util.mutex import Mutex, RecursiveMutex
 
 from qudi.util.widgets.fitting import FitConfigurationDialog, FitWidget
 from qudi.util.datastorage import TextDataStorage
 from qudi.util.datafitting import FitContainer, FitConfigurationsModel
 from qudi.core.statusvariable import StatusVar
-
-
-class WavemeterLoggerLogic(Base):
+COUNT_DTYPE =  np.dtype([('wavelength', np.float64), ('counts', np.float64)])
+WAVELENGTH_DTYPE = np.dtype([('time', np.float64), ('wavelength', np.float64)])
+class WavemeterLoggerLogic(LogicBase):
     """This logic module gathers data from wavemeter and the counter logic.
     """
 
@@ -66,12 +66,12 @@ class WavemeterLoggerLogic(Base):
          'custom_parameters': None}
          
     )
-    wavelength_buffer = 2000
+    wavelength_buffer = 5000
     zpl_bin_width = .00005
     skip_rate = 3
     current_wavelength = -1
-    wavelengths = np.array([], dtype = [('time', np.uint16), ('wavelength', np.uint32)])
-    count_data = np.array([], dtype = [('wavelength', np.uint16), ('counts', np.uint32)])
+    wavelengths = np.array([], dtype = WAVELENGTH_DTYPE)
+    count_data = np.array([], dtype = COUNT_DTYPE)
     plot_x = []
     plot_y = []
     # config opts
@@ -89,7 +89,7 @@ class WavemeterLoggerLogic(Base):
         super().__init__(config=config, **kwargs)
 
         # locking for thread safety
-        self.threadlock = Mutex()
+        self._thread_lock = RecursiveMutex()
 
         self._acquisition_start_time = 0
         self._bins = 200
@@ -136,12 +136,14 @@ class WavemeterLoggerLogic(Base):
         self._queryTimer.timeout.connect(
             lambda : self.sig_update_data.emit(self.wavelengths, self.count_data)
         , QtCore.Qt.QueuedConnection)     
-        
-        self._queryTimer.start()
-        
-        self.sig_query_wavemeter.emit()
+         
         self._counter_logic.start_measure()
         self._wavemeter.start_acquisition()
+        self._acquisition_start_time = time.time()
+        self._queryTimer.start()
+        self.sig_query_wavemeter.emit()
+
+        
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -149,23 +151,45 @@ class WavemeterLoggerLogic(Base):
         if self.module_state() != 'idle' and self.module_state() != 'deactivated':
             self.stop_scanning()
 
+    def get_bins(self):
+        return len(self.plot_x)
+
+    def toggle_log(self, start):
+        with self._thread_lock:
+            if start:
+                self.module_state.lock()
+                self.sig_query_wavemeter.emit()
+
+            else:
+                self.module_state.unlock()
+                self.sig_query_wavemeter.emit()
+                
+
+                
+
     @QtCore.Slot()
     def query_wavemeter(self):
-        self.current_wavelength = self._wavemeter.get_current_wavelength()
-        if self.current_wavelength > 0:
-            if self.wavelengths.shape[0] == 0 :
-                self.wavelengths = np.append(self.wavelengths, np.array([time.time() - self._acquisition_start_time, self.current_wavelength]))
-            else:
-                self.wavelengths = np.append(self.wavelengths, np.array([time.time() - self._acquisition_start_time, self.current_wavelength]), axis=0)
-                
-            self.cts = self._counter_logic.get_data_trace()[0].mean()
-            self.cts_ys[np.argmin(np.abs(self.current_wavelength - self.wlth_xs))] += self.cts
-            self.samples_num[np.argmin(np.abs(self.current_wavelength - self.wlth_xs))] += 1
+        with self._thread_lock:
+            self.current_wavelength = self._wavemeter.get_current_wavelength()
+            self._time_elapsed = time.time() - self._acquisition_start_time
+            if self.current_wavelength > 0:
+                if self.wavelengths.shape[0] == 0:
+                    self.wavelengths = np.array([(self._time_elapsed, self.current_wavelength)], dtype=WAVELENGTH_DTYPE)
+                elif self._time_elapsed > self.wavelengths['time'][-1]:
+                    self.wavelengths = np.append(self.wavelengths, np.array([(time.time() - self._acquisition_start_time, self.current_wavelength)], dtype=WAVELENGTH_DTYPE))
+                    self.cts = self._counter_logic.get_data_trace()[0].mean()
+                    self.cts_ys[np.argmin(np.abs(self.current_wavelength - self.wlth_xs))] += self.cts
+                    self.samples_num[np.argmin(np.abs(self.current_wavelength - self.wlth_xs))] += 1
+                    
+                    self.plot_y = np.divide(self.cts_ys, self.samples_num, out = np.zeros_like(self.cts_ys), where=self.samples_num != 0)
+                    self.count_data = np.zeros(self.plot_x.shape[0], dtype = COUNT_DTYPE)
+                    self.count_data['wavelength'] = self.plot_x
+                    self.count_data['counts'] = self.plot_y
+            self.wavelengths = self.wavelengths[-self.wavelength_buffer:]
             
-            self.plot_y = np.divide(self.cts_ys, self.samples_num, out = np.zeros_like(self.cts_ys), where=self.samples_num != 0)
-            self.count_data['wavelength'] = self.plot_x
-            self.count_data['counts'] = self.plot_y
-        self.sig_query_wavemeter.emit()
+            if self.module_state() != 'idle':
+                self.sig_query_wavemeter.emit()
+
     
     def recalculate_histogram(self, bins=None, xmin=None, xmax=None):
         if (bins is None) or (xmin is None) or (xmax is None):

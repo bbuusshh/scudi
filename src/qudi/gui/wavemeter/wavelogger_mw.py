@@ -23,8 +23,6 @@ except NameError:
 class WavemeterMainWindow(QtWidgets.QMainWindow):
 
     def __init__(self,
-                axes: Tuple[ScannerAxis],
-                channel: ScannerChannel,
                 parent: Optional[QtWidgets.QWidget] = None):
        
         # Get the path to the *.ui file

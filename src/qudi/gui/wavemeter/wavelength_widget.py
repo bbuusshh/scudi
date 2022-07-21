@@ -84,16 +84,16 @@ class WavelengthDataWidget(QtWidgets.QWidget):
     #!! TODO choose CHANNEL
     def _update_scan_data(self, data, update_range=False) -> None:
     
-        if self.data is None:
+        if data is None:
             self.data_curve.clear()
         else:
             if update_range:
                 x_data = np.linspace(*self._scan_data.scan_range[0],
                                      self._scan_data.scan_resolution[0])
-                self.data_curve.setData(y=self.data['wavelength'], x=x_data)
+                self.data_curve.setData(x=self.data['wavelength'], y=x_data)
             else:
-                self.data_curve.setData(y=self.data['wavelength'],
-                                       x=self.data['time'])
+                self.data_curve.setData(x=data['wavelength'],
+                                       y=data['time'])
 
 class CustomAxis(pg.AxisItem):
     """ This is a CustomAxis that extends the normal pyqtgraph to be able to nudge the axis labels.
