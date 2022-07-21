@@ -49,6 +49,7 @@ class PLEScanGui(GuiBase):
     # status vars
     _window_state = StatusVar(name='window_state', default=None)
     _window_geometry = StatusVar(name='window_geometry', default=None)
+    _save_display_view = StatusVar(name='save_display_view', default=None)
 
     # signals
     sigScannerTargetChanged = QtCore.Signal(dict)#, object)
@@ -67,6 +68,7 @@ class PLEScanGui(GuiBase):
         @return int: error code (0:OK, -1:error)
         """
         self._save_window_geometry(self._mw)
+        self.save_view()
         self._mw.close()
         self.sigScannerTargetChanged.disconnect()
         self.sigScanSettingsChanged.disconnect()
@@ -100,9 +102,9 @@ class PLEScanGui(GuiBase):
         self._scanning_logic.sigScanStateChanged.connect(
             self.scan_state_updated, QtCore.Qt.QueuedConnection
         )
-        self._scanning_logic.sigScannerTargetChanged.connect(
-            self.scanner_target_updated, QtCore.Qt.QueuedConnection
-        )
+        #self._scanning_logic.sigScannerTargetChanged.connect(
+        #    self.scanner_target_updated, QtCore.Qt.QueuedConnection
+        #)
         self._scanning_logic.sigScanSettingsChanged.connect(
             self.scanner_settings_updated, QtCore.Qt.QueuedConnection
         )
@@ -110,10 +112,10 @@ class PLEScanGui(GuiBase):
         #     self._optimize_logic().toggle_optimize, QtCore.Qt.QueuedConnection
         # )
 
-        self._mw.ple_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing)
+        #self._mw.ple_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing)
         self._mw.ple_widget.selected_region.sigRegionChanged.connect(self.sliders_values_are_changing)
 
-        self._mw.ple_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
+        self._mw.ple_widget.target_point.sigPositionChanged.connect(self.set_scanner_target_position)
         self._mw.ple_widget.selected_region.sigRegionChangeFinished.connect(self.region_value_changed) 
 
 
@@ -126,23 +128,20 @@ class PLEScanGui(GuiBase):
         #create microwave control window if microwave is set
         if self._microwave_logic() is not None:
             self._microwave_logic = self._microwave_logic()
-            self._mw.add_dock_widget('microwave')
+            self._mw.add_dock_widget('Microwave')
             self._init_microwave()
 
         if self._repump_logic() is not None:
             self._repump_logic = self._repump_logic()
             #TODO repumps single or one???
             repump = self._repump_logic._repump_laser
-            
-            self._mw.add_dock_widget('repump')
-
             resonant = self._repump_logic._resonant_laser
-        
-            self._mw.add_dock_widget('pulse')
+
+            self._mw.add_dock_widget('Pulsed')
+            self._mw.Pulsed_widget.sig_pulser_params_updated.connect(self._repump_logic.pulser_updated, QtCore.Qt.QueuedConnection)
+            self._repump_logic.sigGuiParamsUpdated.connect(self._mw.Pulsed_widget.update_gui, QtCore.Qt.QueuedConnection)
             
-            self._init_pulser()
-            self._init_repump()
-            self._repump_logic.update_params()
+            self._repump_logic.sigGuiParamsUpdated.emit(self._repump_logic.parameters)
         self.scanner_target_updated()
         self.scan_state_updated(self._scanning_logic.module_state() != 'idle')
 
@@ -151,37 +150,23 @@ class PLEScanGui(GuiBase):
 
         self.setup_fit_widget()
         self.__connect_fit_control_signals()
-
-    def _init_pulser(self):
-        self._mw.pulse_widget.sig_pulser_params_updated.connect(self._repump_logic.pulser_updated)
-        self._mw.pulse_widget.sig_pulser_enabled.connect(self._repump_logic.pulser_CW)
-        self._mw.pulse_widget.sig_pulser_pulsed.connect(self._repump_logic.pulser_pulsed)
-        self._repump_logic.sigParamsUpdated.connect(
-             self._mw.pulse_widget.update_params
-        )
-    def _init_repump(self):
-        self._mw.repump_widget.sig_repump_params_updated.connect(self._repump_logic.repump_updated)
-        self._mw.repump_widget.sig_repump_enabled.connect(self._repump_logic.repump_CW)
-        self._mw.repump_widget.sig_repump_pulsed.connect(self._repump_logic.repump_pulsed)
-        self._repump_logic.sigParamsUpdated.connect(
-             self._mw.repump_widget.update_params
-        )
-
+        self.load_view()
+        
     def _init_microwave(self):
         
         mw_constraints = self._microwave_logic.microwave_constraints
-        self._mw.microwave_widget.set_constraints(mw_constraints)
-        self._mw.microwave_widget.sig_microwave_params_updated.connect(
+        self._mw.Microwave_widget.set_constraints(mw_constraints)
+        self._mw.Microwave_widget.sig_microwave_params_updated.connect(
             self._microwave_logic.set_cw_parameters
             )
-        self._mw.microwave_widget.sig_microwave_enabled.connect(
+        self._mw.Microwave_widget.sig_microwave_enabled.connect(
             self._microwave_logic.toggle_cw_output
         )
         self._microwave_logic.sigCwParametersUpdated.connect(
-            self._mw.microwave_widget.update_params
+            self._mw.Microwave_widget.update_params
         )
         self._microwave_logic.sigCwStateUpdated.connect(
-            self._mw.microwave_widget.enable_microwave
+            self._mw.Microwave_widget.enable_microwave
         )
         self._microwave_logic.sigCwParametersUpdated.emit(self._microwave_logic.cw_parameters)
         
@@ -240,10 +225,6 @@ class PLEScanGui(GuiBase):
         self._mw.constDoubleSpinBox.editingFinished.connect(
             lambda: self.set_scanner_target_position
         )
-
-        
-
-
 
     def toggle_scan(self):
         self._mw.elapsed_lines_DisplayWidget.display(self._scanning_logic._repeated)
@@ -326,7 +307,6 @@ class PLEScanGui(GuiBase):
         self._scanning_logic.reset_accumulated()
         self._mw.number_of_repeats_SpinBox.setValue(self._scanning_logic._number_of_repeats)
         
-        
 
     @QtCore.Slot(bool, tuple)
     def scan_repeated(self, start, scan_axes):
@@ -391,7 +371,6 @@ class PLEScanGui(GuiBase):
         """
         self._save_display_view = self._mw.saveState().data() 
         
-
     def load_view(self):
         """Loads the saved state from the GUI and can read a QbyteArray
             or a simple byteArray aswell.
