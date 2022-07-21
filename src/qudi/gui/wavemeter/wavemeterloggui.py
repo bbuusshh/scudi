@@ -120,12 +120,6 @@ class WavemeterLogGui(GuiBase):
         """
         self._mw.close()
 
-    def show(self):
-        """ Make window visible and put it above all other windows.
-        """
-        QtWidgets.QMainWindow.show(self._mw)
-        self._mw.activateWindow()
-        self._mw.raise_()
 
     def update_sweep_around_centre(self):
         sweep_range = self._mw.sweepRangeDoubleSpinBox.value()
@@ -203,20 +197,3 @@ class WavemeterLogGui(GuiBase):
                         'start_value': x_range[0],
                         'stop_value': x_range[1]
                         })
-
-    def set_auto_range(self):
-        self._mw.minDoubleSpinBox.setValue(self.wavelog_logic._xmin)
-        self._mw.maxDoubleSpinBox.setValue(self.wavelog_logic._xmax)
-        self.recalculate_histogram()
-
-    ## Handle view resizing
-    def _update_plot_views(self):
-        ## view has resized; update auxiliary views to match
-        self._right_axis.setGeometry(self._plot_item.vb.sceneBoundingRect())
-        self._top_axis.setGeometry(self._plot_item.vb.sceneBoundingRect())
-
-        ## need to re-update linked axes since this was called
-        ## incorrectly while views had different shapes.
-        ## (probably this should be handled in ViewBox.resizeEvent)
-        self._right_axis.linkedViewChanged(self._plot_item.vb, self._right_axis.XAxis)
-        self._top_axis.linkedViewChanged(self._plot_item.vb, self._top_axis.YAxis)
