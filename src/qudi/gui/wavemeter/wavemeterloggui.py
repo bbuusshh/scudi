@@ -67,36 +67,36 @@ class WavemeterLogGui(GuiBase):
         # setting up the window
         self._mw = WavemeterMainWindow()
         self._mw.show()
-        self.wavemeterloggerlogic = self.wavemeterloggerlogic()
+        self.wavelog_logic = self.wavemeterloggerlogic()
         self._mw.actionStop_resume_scan.triggered.connect(self.stop_resume_clicked)
         # self._mw.actionSave_histogram.triggered.connect(self.save_clicked)
         self._mw.actionStart_scan.triggered.connect(self.start_clicked)
         self._mw.actionAuto_range.triggered.connect(self.set_auto_range)
 
         # defining the parameters to edit
-        self._mw.binSpinBox.setValue(self.wavemeterloggerlogic.get_bins())
+        self._mw.binSpinBox.setValue(self.wavelog_logic.get_bins())
         # self._mw.binSpinBox.editingFinished.connect(self.recalculate_histogram)
 
-        # self._mw.minDoubleSpinBox.setValue(self.wavemeterloggerlogic.get_min_wavelength())
+        # self._mw.minDoubleSpinBox.setValue(self.wavelog_logic.get_min_wavelength())
         # self._mw.minDoubleSpinBox.editingFinished.connect(self.recalculate_histogram)
 
-        # self._mw.maxDoubleSpinBox.setValue(self.wavemeterloggerlogic.get_max_wavelength())
+        # self._mw.maxDoubleSpinBox.setValue(self.wavelog_logic.get_max_wavelength())
         # self._mw.maxDoubleSpinBox.editingFinished.connect(self.recalculate_histogram)
 
 
         self._mw.show()
 
-        # self.wavemeterloggerlogic.sig_new_data_point.connect(self.add_data_point)
+        # self.wavelog_logic.sig_new_data_point.connect(self.add_data_point)
 
-        self.wavemeterloggerlogic.sig_update_data.connect(self._update_data, QtCore.Qt.QueuedConnection)
-        # self.wavemeterloggerlogic.sig_new_wavelength.connect(self._update_live_wavelength)
+        self.wavelog_logic.sig_update_data.connect(self._update_data, QtCore.Qt.QueuedConnection)
+        # self.wavelog_logic.sig_new_wavelength.connect(self._update_live_wavelength)
 
         # Connect signals
         # self._mw.actionFit_settings.triggered.connect(self._fsd.show)
         # self._mw.do_fit_PushButton.clicked.connect(self.doFit)
-        # self.sigDoFit.connect(self.wavemeterloggerlogic.do_fit)
-        # self.sigFitChanged.connect(self.wavemeterloggerlogic.fc.set_current_fit)
-        # self.wavemeterloggerlogic.sig_fit_updated.connect(self.updateFit)
+        # self.sigDoFit.connect(self.wavelog_logic.do_fit)
+        # self.sigFitChanged.connect(self.wavelog_logic.fc.set_current_fit)
+        # self.wavelog_logic.sig_fit_updated.connect(self.updateFit)
 
     def on_deactivate(self):
         """ Deactivate the module properly.
@@ -121,7 +121,10 @@ class WavemeterLogGui(GuiBase):
         @param ScanData scan_data:
         """
         if wavelengths.shape[0] > 0:
-            self._mw.wavelengthLabel.setText(f"{wavelengths['wavelength'][-1]} nm")
+            wavelength = np.round(wavelengths['wavelength'][-1], 6)
+            frequency = np.round(self.wavelog_logic.wavelength_to_freq(wavelengths['wavelength'][-1]) * 1e-12, 6)
+            self._mw.wavelengthLabel.setText(f"{wavelength} nm")
+            self._mw.frequencyLabel.setText(f"{frequency} THz")
             self._mw.wavelength_widget.set_data(wavelengths)
             self._mw.countlog_widget.set_data(count_data)
 
@@ -130,26 +133,26 @@ class WavemeterLogGui(GuiBase):
         """ Handling the Start button to stop and restart the counter.
         """
         # If running, then we stop the measurement and enable inputs again
-        if self.wavemeterloggerlogic.module_state() != 'idle':
+        if self.wavelog_logic.module_state() != 'idle':
             self._mw.actionStop_resume_scan.setText('Resume')
-            self.wavemeterloggerlogic.toggle_log(False)
+            self.wavelog_logic.toggle_log(False)
             self._mw.actionStop_resume_scan.setEnabled(True)
             self._mw.actionStart_scan.setEnabled(True)
             self._mw.binSpinBox.setEnabled(True)
         # Otherwise, we start a measurement and disable some inputs.
         else:
             self._mw.actionStop_resume_scan.setText('Stop')
-            self.wavemeterloggerlogic.toggle_log(True)
+            self.wavelog_logic.toggle_log(True)
             self._mw.actionStart_scan.setEnabled(False)
             self._mw.binSpinBox.setEnabled(False)
 
     def start_clicked(self):
         """ Handling resume of the scanning without resetting the data.
         """
-        if self.wavemeterloggerlogic.module_state() == 'idle':
+        if self.wavelog_logic.module_state() == 'idle':
             # self._scatterplot.clear()
-            # self.wavemeterloggerlogic.start_scanning()
-            self.wavemeterloggerlogic.toggle_log(True)
+            # self.wavelog_logic.start_scanning()
+            self.wavelog_logic.toggle_log(True)
             # Enable the stop button once a scan starts.
             self._mw.actionStop_resume_scan.setText('Stop')
             self._mw.actionStop_resume_scan.setEnabled(True)
@@ -161,15 +164,15 @@ class WavemeterLogGui(GuiBase):
 
 
     def recalculate_histogram(self):
-        self.wavemeterloggerlogic.recalculate_histogram(
+        self.wavelog_logic.recalculate_histogram(
             bins=self._mw.binSpinBox.value(),
             xmin=self._mw.minDoubleSpinBox.value(),
             xmax=self._mw.maxDoubleSpinBox.value()
         )
 
     def set_auto_range(self):
-        self._mw.minDoubleSpinBox.setValue(self.wavemeterloggerlogic.intern_xmin)
-        self._mw.maxDoubleSpinBox.setValue(self.wavemeterloggerlogic.intern_xmax)
+        self._mw.minDoubleSpinBox.setValue(self.wavelog_logic._xmin)
+        self._mw.maxDoubleSpinBox.setValue(self.wavelog_logic._xmax)
         self.recalculate_histogram()
 
     ## Handle view resizing

@@ -67,9 +67,10 @@ class WavemeterLoggerLogic(LogicBase):
          
     )
     wavelength_buffer = 5000
-    zpl_bin_width = .00005
-    skip_rate = 3
+    zpl_bin_width = .00005 #0.2 #GHz 
     current_wavelength = -1
+    _xmin = 636
+    _xmax = 638
     wavelengths = np.array([], dtype = WAVELENGTH_DTYPE)
     count_data = np.array([], dtype = COUNT_DTYPE)
     plot_x = []
@@ -90,45 +91,19 @@ class WavemeterLoggerLogic(LogicBase):
 
         # locking for thread safety
         self._thread_lock = RecursiveMutex()
-
-        self._acquisition_start_time = 0
-        self._bins = 200
-        self._data_index = 0
-
-        self._recent_wavelength_window = [0, 0]
-        self.counts_with_wavelength = []
-
-        self._xmin = 636
-        self._xmax = 638
         # internal min and max wavelength determined by the measured wavelength
-        self.intern_xmax = -1.0
-        self.intern_xmin = 1.0e10
-        self.current_wavelength = 0
-
-        self._acquisition_running = False
-        self._histogram_busy = False
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        self._wavelength_data = []
 
-        self.stopRequested = False
         self._counter_logic = self.counter()
         self._wavemeter = self.wavemeter()
-        # create a new x axis from xmin to xmax with bins points
-        self.histogram_axis = np.arange(
-            self._xmin,
-            self._xmax,
-            (self._xmax - self._xmin) / self._bins
-        )
-        self.histogram = np.zeros(self.histogram_axis.shape)
-        self.envelope_histogram = np.zeros(self.histogram_axis.shape)
+
         self.sig_query_wavemeter.connect(self.query_wavemeter, QtCore.Qt.QueuedConnection)
         # connect the signals in and out of the threaded object
-        self.last_point_time = time.time()
 
-        self.recalculate_histogram()
+        
         
         self._queryTimer = QtCore.QTimer()
         self._queryTimer.setInterval(self._logic_update_timing)
@@ -136,10 +111,12 @@ class WavemeterLoggerLogic(LogicBase):
         self._queryTimer.timeout.connect(
             lambda : self.sig_update_data.emit(self.wavelengths, self.count_data)
         , QtCore.Qt.QueuedConnection)     
-         
+        
+        self.recalculate_histogram()
         self._counter_logic.start_measure()
         self._wavemeter.start_acquisition()
         self._acquisition_start_time = time.time()
+
         self._queryTimer.start()
         self.sig_query_wavemeter.emit()
 
@@ -159,7 +136,6 @@ class WavemeterLoggerLogic(LogicBase):
             if start:
                 self.module_state.lock()
                 self.sig_query_wavemeter.emit()
-
             else:
                 self.module_state.unlock()
                 self.sig_query_wavemeter.emit()
@@ -192,25 +168,25 @@ class WavemeterLoggerLogic(LogicBase):
 
     
     def recalculate_histogram(self, bins=None, xmin=None, xmax=None):
-        if (bins is None) or (xmin is None) or (xmax is None):
-            xx = np.arange(self._xmin, self._xmax, self.zpl_bin_width)
-            self.wlth_xs = xx
-            self.cts_ys = np.zeros(len(xx))
-            self.samples_num = np.zeros(len(xx))
-            self.plot_x = xx
-            self.plot_y = self.cts_ys
-        else:
-            self.zpl_bin_width = bins
-            self.intern_xmin = xmin
-            self.intern_xmin = xmax
-            xx = np.arange(xmin, xmax, bins)
-            self.wlth_xs = xx
-            self.cts_ys = np.zeros(len(xx))
-            self.samples_num = np.zeros(len(xx))
-            self.plot_x = xx
-            self.plot_y = self.cts_ys
+            if (bins is None) or (xmin is None) or (xmax is None):
+                xx = np.arange(self._xmin, self._xmax, self.zpl_bin_width)
+                self.wlth_xs = xx
+                self.cts_ys = np.zeros(len(xx))
+                self.samples_num = np.zeros(len(xx))
+                self.plot_x = xx
+                self.plot_y = self.cts_ys
+            else:
+                self.zpl_bin_width = bins
+                self.intern_xmin = xmin
+                self.intern_xmin = xmax
+                xx = np.arange(xmin, xmax, bins)
+                self.wlth_xs = xx
+                self.cts_ys = np.zeros(len(xx))
+                self.samples_num = np.zeros(len(xx))
+                self.plot_x = xx
+                self.plot_y = self.cts_ys
 
-    def wavelength_to_freq(wavelength):
+    def wavelength_to_freq(self, wavelength):
         if isinstance(wavelength, float):
             return 299792458.0 * 1e9 / wavelength
         wavelength = np.array(wavelength)
