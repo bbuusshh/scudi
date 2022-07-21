@@ -69,6 +69,12 @@ class CountlogDataWidget(QtWidgets.QWidget):
         self.plot_widget.setMinimumHeight(50)
         main_layout.addWidget(self.plot_widget)
 
+    def set_plot_range(self,
+                       x_range: Optional[Tuple[float, float]] = None,
+                       y_range: Optional[Tuple[float, float]] = None
+                       ) -> None:
+        vb = self._data_item.getViewBox()
+        vb.setRange(xRange=x_range, yRange=y_range)
 
     def set_data(self, data) -> None:
         # Save reference for channel changes

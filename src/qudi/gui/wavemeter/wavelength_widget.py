@@ -62,10 +62,20 @@ class WavelengthDataWidget(QtWidgets.QWidget):
         self.plot_widget.setLabel('left', text='time', units='s')
         self.plot_widget.setLabel('bottom', text='frequency', units='Hz')
         self.plot_widget.setMinimumHeight(50)
+        # vb = self._data_item.getViewBox()
+        # vb.disableAutoRange()
         main_layout.addWidget(self.plot_widget)
 
 
         self._scan_data = None
+
+    def set_plot_range(self,
+                       x_range: Optional[Tuple[float, float]] = None,
+                       y_range: Optional[Tuple[float, float]] = None
+                       ) -> None:
+        vb = self._data_item.getViewBox()
+        vb.disableAutoRange()
+        vb.setRange(xRange=x_range, yRange=y_range)
 
     def set_data(self, data) -> None:
         # Save reference for channel changes

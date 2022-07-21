@@ -48,7 +48,7 @@ class WavemeterLogGui(GuiBase):
     sigStopCounter = QtCore.Signal()
     sigFitChanged = QtCore.Signal(str)
     sigDoFit = QtCore.Signal(str, str)
-
+    sigUpdateRange = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -77,16 +77,26 @@ class WavemeterLogGui(GuiBase):
         self._mw.minDoubleSpinBox.setValue(self.wavelog_logic._settings['start_value'])
         self._mw.maxDoubleSpinBox.setValue(self.wavelog_logic._settings['stop_value'])
         self._mw.countlog_widget.selected_region.setRegion((self.wavelog_logic._settings['start_value'], self.wavelog_logic._settings['stop_value']))
+        
+        self.sigUpdateRange.connect(self.update_range)
+        
         self._mw.binDoubleSpinBox.editingFinished.connect(
-            lambda : self.wavelog_logic.sigUpdateSettings.emit({'bin_width': self._mw.binDoubleSpinBox.value()})
+            lambda : (self.wavelog_logic.sigUpdateSettings.emit({'bin_width': self._mw.binDoubleSpinBox.value()}),
+            self.sigUpdateRange.emit())
             )
         self._mw.minDoubleSpinBox.editingFinished.connect(
-            lambda : self.wavelog_logic.sigUpdateSettings.emit({'start_value': self._mw.minDoubleSpinBox.value()})
+            lambda : (self.wavelog_logic.sigUpdateSettings.emit({'start_value': self._mw.minDoubleSpinBox.value()}),
+            self.sigUpdateRange.emit())
             )
         self._mw.maxDoubleSpinBox.editingFinished.connect(
-            lambda : self.wavelog_logic.sigUpdateSettings.emit({'stop_value': self._mw.maxDoubleSpinBox.value()})
+            lambda : (self.wavelog_logic.sigUpdateSettings.emit({'stop_value': self._mw.maxDoubleSpinBox.value()}),
+            self.sigUpdateRange.emit())
             )
         self._mw.countlog_widget.selected_region.sigRegionChanged.connect(self.sliders_values_are_changing)
+        self._mw.countlog_widget.selected_region.sigRegionChangeFinished.connect(
+            lambda: self.sigUpdateRange.emit()
+        )
+        
         # self.selected_region.setRegion(self._scan_data.scan_range[0])
         self._mw.show()
 
@@ -119,10 +129,8 @@ class WavemeterLogGui(GuiBase):
         region = self._mw.countlog_widget.selected_region.getRegion()
         self._mw.minDoubleSpinBox.setValue(region[0])
         self._mw.maxDoubleSpinBox.setValue(region[1])
-        self.wavelog_logic.sigUpdateSettings.emit({
-                        'start_value': self._mw.minDoubleSpinBox.value(),
-                        'stop_value': self._mw.maxDoubleSpinBox.value()
-                        })
+        
+
     @QtCore.Slot(object)
     def _update_data(self, wavelengths, count_data):
         """
@@ -174,13 +182,16 @@ class WavemeterLogGui(GuiBase):
         else:
             self.log.error('Cannot scan, since a scan is already running.')
 
+    @QtCore.Slot()
+    def update_range(self):
+        x_range = (self._mw.minDoubleSpinBox.value(), self._mw.maxDoubleSpinBox.value())
+        self._mw.countlog_widget.set_plot_range(x_range=x_range)
+        self._mw.wavelength_widget.set_plot_range(x_range=x_range)
 
-    def recalculate_histogram(self):
-        self.wavelog_logic.recalculate_histogram(
-            bins=self._mw.binDoubleSpinBox.value(),
-            xmin=self._mw.minDoubleSpinBox.value(),
-            xmax=self._mw.maxDoubleSpinBox.value()
-        )
+        self.wavelog_logic.sigUpdateSettings.emit({
+                        'start_value': x_range[0],
+                        'stop_value': x_range[1]
+                        })
 
     def set_auto_range(self):
         self._mw.minDoubleSpinBox.setValue(self.wavelog_logic._xmin)
