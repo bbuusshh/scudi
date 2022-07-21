@@ -73,15 +73,13 @@ class WavemeterLoggerLogic(LogicBase):
     }
     _settings = StatusVar(name = 'wavelogger_settings', default=default_settings)
     current_wavelength = -1
-    _xmin = 420 * 1e3 # GHz
-    _xmax = 425 * 1e3 # GHz
     wavelengths = np.array([], dtype = WAVELENGTH_DTYPE)
     count_data = np.array([], dtype = COUNT_DTYPE)
     plot_x = []
     plot_y = []
+
     # config opts
     _logic_update_timing = ConfigOption('logic_query_timing', 200.0, missing='warn')
-    # _logic_update_timing = ConfigOption('logic_update_timing', 100.0, missing='warn')
     sig_query_wavemeter = QtCore.Signal()
     sig_update_data = QtCore.Signal(object,object)
     
@@ -151,7 +149,6 @@ class WavemeterLoggerLogic(LogicBase):
                 self.sig_query_wavemeter.emit()
                 
 
-                
 
     @QtCore.Slot()
     def query_wavemeter(self):
@@ -181,7 +178,6 @@ class WavemeterLoggerLogic(LogicBase):
 
     
     def recalculate_histogram(self):
-      
         if self.module_state() != 'locked':
                 self.wlth_xs = np.arange(
                     self._settings['start_value'], 
