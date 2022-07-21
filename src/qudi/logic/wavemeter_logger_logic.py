@@ -165,14 +165,17 @@ class WavemeterLoggerLogic(LogicBase):
                     self.wavelengths = np.array([(self._time_elapsed, self.current_wavelength)], dtype=WAVELENGTH_DTYPE)
                 elif self._time_elapsed > self.wavelengths['time'][-1]:
                     self.wavelengths = np.append(self.wavelengths, np.array([(time.time() - self._acquisition_start_time, self.current_wavelength)], dtype=WAVELENGTH_DTYPE))
-                    self.cts = self._counter_logic.get_data_trace()[0].mean()
-                    self.cts_ys[np.argmin(np.abs(self.current_wavelength - self.wlth_xs))] += self.cts
-                    self.samples_num[np.argmin(np.abs(self.current_wavelength - self.wlth_xs))] += 1
-                    
-                    self.plot_y = np.divide(self.cts_ys, self.samples_num, out = np.zeros_like(self.cts_ys), where=self.samples_num != 0)
-                    self.count_data = np.zeros(self.plot_x.shape[0], dtype = COUNT_DTYPE)
-                    self.count_data['wavelength'] = self.plot_x
-                    self.count_data['counts'] = self.plot_y
+                    try:
+                        self.cts = self._counter_logic.get_data_trace()[0].mean()
+                        self.cts_ys[np.argmin(np.abs(self.current_wavelength - self.wlth_xs))] += self.cts
+                        self.samples_num[np.argmin(np.abs(self.current_wavelength - self.wlth_xs))] += 1
+                        
+                        self.plot_y = np.divide(self.cts_ys, self.samples_num, out = np.zeros_like(self.cts_ys), where=self.samples_num != 0)
+                        self.count_data = np.zeros(self.plot_x.shape[0], dtype = COUNT_DTYPE)
+                        self.count_data['wavelength'] = self.plot_x
+                        self.count_data['counts'] = self.plot_y
+                    except:
+                        pass
             self.wavelengths = self.wavelengths[-self.wavelength_buffer:]
             
             if self.module_state() != 'idle':

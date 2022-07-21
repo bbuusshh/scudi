@@ -117,7 +117,10 @@ class WavemeterLogGui(GuiBase):
         region = self._mw.countlog_widget.selected_region.getRegion()
         self._mw.minDoubleSpinBox.setValue(region[0])
         self._mw.maxDoubleSpinBox.setValue(region[1])
-
+        self.wavelog_logic.sigUpdateSettings.emit({
+                        'start_value': self._mw.minDoubleSpinBox.value(),
+                        'stop_value': self._mw.maxDoubleSpinBox.value()
+                        })
     @QtCore.Slot(object)
     def _update_data(self, wavelengths, count_data):
         """
@@ -150,6 +153,7 @@ class WavemeterLogGui(GuiBase):
             self.wavelog_logic.toggle_log(True)
             self._mw.actionStart_scan.setEnabled(False)
             self._mw.binDoubleSpinBox.setEnabled(False)
+        self._mw.countlog_widget.selected_region.show()
 
     def start_clicked(self):
         """ Handling resume of the scanning without resetting the data.
@@ -158,6 +162,7 @@ class WavemeterLogGui(GuiBase):
             # self._scatterplot.clear()
             # self.wavelog_logic.start_scanning()
             self.wavelog_logic.toggle_log(True)
+            self._mw.countlog_widget.selected_region.hide()
             # Enable the stop button once a scan starts.
             self._mw.actionStop_resume_scan.setText('Stop')
             self._mw.actionStop_resume_scan.setEnabled(True)
