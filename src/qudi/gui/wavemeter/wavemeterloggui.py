@@ -48,7 +48,7 @@ class WavemeterLogGui(GuiBase):
     sigStopCounter = QtCore.Signal()
     sigFitChanged = QtCore.Signal(str)
     sigDoFit = QtCore.Signal(str, str)
-    sigUpdateRange = QtCore.Signal()
+    # sigUpdateRange = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -78,25 +78,28 @@ class WavemeterLogGui(GuiBase):
         self._mw.maxDoubleSpinBox.setValue(self.wavelog_logic._settings['stop_value'])
         self._mw.countlog_widget.selected_region.setRegion((self.wavelog_logic._settings['start_value'], self.wavelog_logic._settings['stop_value']))
         
-        self.sigUpdateRange.connect(self.update_range)
+        # self.sigUpdateRange.connect(self.update_range)
         
         self._mw.binDoubleSpinBox.editingFinished.connect(
             lambda : (self.wavelog_logic.sigUpdateSettings.emit({'bin_width': self._mw.binDoubleSpinBox.value()}),
-            self.sigUpdateRange.emit())
+            self.update_range())
             )
         self._mw.minDoubleSpinBox.editingFinished.connect(
             lambda : (self.wavelog_logic.sigUpdateSettings.emit({'start_value': self._mw.minDoubleSpinBox.value()}),
-            self.sigUpdateRange.emit())
+            self.update_range())
             )
         self._mw.maxDoubleSpinBox.editingFinished.connect(
             lambda : (self.wavelog_logic.sigUpdateSettings.emit({'stop_value': self._mw.maxDoubleSpinBox.value()}),
-            self.sigUpdateRange.emit())
+            self.update_range())
             )
+        self._mw.sweepRangeDoubleSpinBox.editingFinished.connect(self.update_sweep_around_centre)
+        self._mw.centreDoubleSpinBox.editingFinished.connect(self.update_sweep_around_centre)
+
         self._mw.countlog_widget.selected_region.sigRegionChanged.connect(self.sliders_values_are_changing)
         self._mw.countlog_widget.selected_region.sigRegionChangeFinished.connect(
-            lambda: self.sigUpdateRange.emit()
+            lambda: self.update_range()
         )
-        
+        self.update_range()
         # self.selected_region.setRegion(self._scan_data.scan_range[0])
         self._mw.show()
 
@@ -124,11 +127,18 @@ class WavemeterLogGui(GuiBase):
         self._mw.activateWindow()
         self._mw.raise_()
 
+    def update_sweep_around_centre(self):
+        sweep_range = self._mw.sweepRangeDoubleSpinBox.value()
+        central_frequency = self._mw.centreDoubleSpinBox.value()
+        self.update_range((central_frequency - sweep_range/2,central_frequency + sweep_range/2))
+
     @QtCore.Slot()
     def sliders_values_are_changing(self):
-        region = self._mw.countlog_widget.selected_region.getRegion()
-        self._mw.minDoubleSpinBox.setValue(region[0])
-        self._mw.maxDoubleSpinBox.setValue(region[1])
+        x_range = self._mw.countlog_widget.selected_region.getRegion()
+        self._mw.minDoubleSpinBox.setValue(x_range[0])
+        self._mw.maxDoubleSpinBox.setValue(x_range[1])
+        self._mw.sweepRangeDoubleSpinBox.setValue(abs(x_range[1] - x_range[0] ))
+        self._mw.centreDoubleSpinBox.setValue((x_range[0] + x_range[1] )/ 2 )
         
 
     @QtCore.Slot(object)
@@ -182,12 +192,13 @@ class WavemeterLogGui(GuiBase):
         else:
             self.log.error('Cannot scan, since a scan is already running.')
 
-    @QtCore.Slot()
-    def update_range(self):
-        x_range = (self._mw.minDoubleSpinBox.value(), self._mw.maxDoubleSpinBox.value())
+    def update_range(self, x_range=None):
+        x_range = (self._mw.minDoubleSpinBox.value(), self._mw.maxDoubleSpinBox.value()) if x_range is None else x_range
         self._mw.countlog_widget.set_plot_range(x_range=x_range)
         self._mw.wavelength_widget.set_plot_range(x_range=x_range)
-
+        self._mw.countlog_widget.selected_region.setRegion(x_range)
+        self._mw.sweepRangeDoubleSpinBox.setValue(abs(x_range[1] - x_range[0] ))
+        self._mw.centreDoubleSpinBox.setValue((x_range[0] + x_range[1] )/ 2 )
         self.wavelog_logic.sigUpdateSettings.emit({
                         'start_value': x_range[0],
                         'stop_value': x_range[1]

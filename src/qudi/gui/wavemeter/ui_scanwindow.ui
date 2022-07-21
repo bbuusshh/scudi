@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>749</width>
+    <width>573</width>
     <height>749</height>
    </rect>
   </property>
@@ -19,15 +19,13 @@
   <property name="dockOptions">
    <set>QMainWindow::AllowNestedDocks|QMainWindow::AllowTabbedDocks|QMainWindow::AnimatedDocks|QMainWindow::GroupedDragging|QMainWindow::VerticalTabs</set>
   </property>
-  <widget class="QWidget" name="centralwidget">
-   <layout class="QGridLayout" name="gridLayout" rowstretch="0"/>
-  </widget>
+  <widget class="QWidget" name="centralwidget"/>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>749</width>
+     <width>573</width>
      <height>21</height>
     </rect>
    </property>
@@ -76,6 +74,18 @@
    <addaction name="actionSave_histogram"/>
   </widget>
   <widget class="QDockWidget" name="scanParametersDockWidget">
+   <property name="minimumSize">
+    <size>
+     <width>500</width>
+     <height>112</height>
+    </size>
+   </property>
+   <property name="maximumSize">
+    <size>
+     <width>524287</width>
+     <height>112</height>
+    </size>
+   </property>
    <property name="windowTitle">
     <string>Scan &amp;parameters</string>
    </property>
@@ -83,88 +93,228 @@
     <number>4</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents">
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <item>
-      <widget class="QLabel" name="binLabel">
-       <property name="toolTip">
-        <string>Number of bins to split the wavelength range up into.
+    <layout class="QGridLayout" name="gridLayout_6">
+     <item row="0" column="0">
+      <layout class="QFormLayout" name="formLayout">
+       <item row="0" column="0">
+        <widget class="QLabel" name="binLabel">
+         <property name="toolTip">
+          <string>Number of bins to split the wavelength range up into.
 High bin number gives noisy but detailed data.</string>
-       </property>
-       <property name="text">
-        <string>Bin width</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="ScienDSpinBox" name="binDoubleSpinBox">
-       <property name="toolTip">
-        <string>Number of bins to split the wavelength range up into.
+         </property>
+         <property name="text">
+          <string>Bin width:</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="ScienDSpinBox" name="binDoubleSpinBox">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>80</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="toolTip">
+          <string>Number of bins to split the wavelength range up into.
 High bin number gives noisy but detailed data.</string>
-       </property>
-       <property name="suffix">
-        <string>Hz</string>
-       </property>
-       <property name="decimals">
-        <number>8</number>
-       </property>
-       <property name="maximum">
-        <double>10000000000000.000000000000000</double>
-       </property>
-      </widget>
+         </property>
+         <property name="suffix">
+          <string>Hz</string>
+         </property>
+         <property name="decimals">
+          <number>1</number>
+         </property>
+         <property name="maximum">
+          <double>10000000000000.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </item>
-     <item>
-      <widget class="QLabel" name="minLabel">
-       <property name="text">
-        <string>Min frequency</string>
+     <item row="0" column="1">
+      <widget class="QSplitter" name="splitter">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
        </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="ScienDSpinBox" name="minDoubleSpinBox">
-       <property name="suffix">
-        <string>Hz</string>
-       </property>
-       <property name="decimals">
-        <number>8</number>
-       </property>
-       <property name="minimum">
-        <double>1.000000000000000</double>
-       </property>
-       <property name="maximum">
-        <double>1000000000000000000.000000000000000</double>
-       </property>
-       <property name="singleStep">
-        <double>1.000000000000000</double>
-       </property>
-       <property name="value">
-        <double>1.000000000000000</double>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="maxLabel">
-       <property name="text">
-        <string>Max frequency</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="ScienDSpinBox" name="maxDoubleSpinBox">
-       <property name="suffix">
-        <string>Hz</string>
-       </property>
-       <property name="decimals">
-        <number>8</number>
-       </property>
-       <property name="minimum">
-        <double>1.000000000000000</double>
-       </property>
-       <property name="maximum">
-        <double>1000000000000000000.000000000000000</double>
-       </property>
-       <property name="value">
-        <double>750.000000000000000</double>
-       </property>
+       <widget class="QWidget" name="">
+        <layout class="QGridLayout" name="gridLayout">
+         <item row="0" column="0">
+          <widget class="QLabel" name="minLabel">
+           <property name="text">
+            <string>Min frequency:</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="ScienDSpinBox" name="minDoubleSpinBox">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>100</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="suffix">
+            <string>Hz</string>
+           </property>
+           <property name="decimals">
+            <number>5</number>
+           </property>
+           <property name="minimum">
+            <double>1.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>1000000000000000000.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>1.000000000000000</double>
+           </property>
+           <property name="value">
+            <double>1.000000000000000</double>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="maxLabel">
+           <property name="text">
+            <string>Max frequency:</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="ScienDSpinBox" name="maxDoubleSpinBox">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>100</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="suffix">
+            <string>Hz</string>
+           </property>
+           <property name="decimals">
+            <number>5</number>
+           </property>
+           <property name="minimum">
+            <double>1.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>1000000000000000000.000000000000000</double>
+           </property>
+           <property name="value">
+            <double>750.000000000000000</double>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="">
+        <layout class="QGridLayout" name="gridLayout_3">
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_2">
+           <property name="text">
+            <string>Sweep Range:</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="ScienDSpinBox" name="sweepRangeDoubleSpinBox">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>100</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="suffix">
+            <string>Hz</string>
+           </property>
+           <property name="decimals">
+            <number>5</number>
+           </property>
+           <property name="minimum">
+            <double>1.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>1000000000000000000.000000000000000</double>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label">
+           <property name="text">
+            <string>Central frequency:</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="ScienDSpinBox" name="centreDoubleSpinBox">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>100</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="suffix">
+            <string>Hz</string>
+           </property>
+           <property name="decimals">
+            <number>5</number>
+           </property>
+           <property name="minimum">
+            <double>1.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>1000000000000000000.000000000000000</double>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
       </widget>
      </item>
     </layout>
