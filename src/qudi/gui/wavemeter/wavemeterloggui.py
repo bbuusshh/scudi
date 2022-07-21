@@ -73,8 +73,10 @@ class WavemeterLogGui(GuiBase):
         self._mw.actionAuto_range.triggered.connect(self.set_auto_range)
 
         # defining the parameters to edit
-        self._mw.binDoubleSpinBox.setValue(self.wavelog_logic.get_bins())
-
+        self._mw.binDoubleSpinBox.setValue(self.wavelog_logic._settings['bin_width'])
+        self._mw.minDoubleSpinBox.setValue(self.wavelog_logic._settings['start_value'])
+        self._mw.maxDoubleSpinBox.setValue(self.wavelog_logic._settings['stop_value'])
+        self._mw.countlog_widget.selected_region.setRegion((self.wavelog_logic._settings['start_value'], self.wavelog_logic._settings['stop_value']))
         self._mw.binDoubleSpinBox.editingFinished.connect(
             lambda : self.wavelog_logic.sigUpdateSettings.emit({'bin_width': self._mw.binDoubleSpinBox.value()})
             )
@@ -129,8 +131,8 @@ class WavemeterLogGui(GuiBase):
         if wavelengths.shape[0] > 0:
             wavelength = np.round(wavelengths['wavelength'][-1], 6)
             frequency = np.round(self.wavelog_logic.wavelength_to_freq(wavelengths['wavelength'][-1]) * 1e-12, 6)
-            self._mw.wavelengthLabel.setText(f"{wavelength} nm")
-            self._mw.frequencyLabel.setText(f"{frequency} THz")
+            # self._mw.wavelengthLabel.setText(f"{wavelength} nm")
+            self._mw.frequencyLabel.setText(f"{wavelength/1e12} THz")
             self._mw.wavelength_widget.set_data(wavelengths)
             self._mw.countlog_widget.set_data(count_data)
 

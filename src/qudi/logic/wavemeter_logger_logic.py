@@ -65,13 +65,13 @@ class WavemeterLoggerLogic(LogicBase):
          'custom_parameters': None}
          
     )
-    wavelength_buffer = 5000
-    zpl_bin_width = 0.2 #GHz #.00005 #
-    _settings = {
-        'bin_width':0.2,
-        'start_value':0,
-        'stop_value':1000
+    wavelength_buffer = 10000
+    default_settings = {
+        'bin_width':20e6, #20 MHz
+        'start_value':350e12, # 350 THz
+        'stop_value':351e12 # 351 THz
     }
+    _settings = StatusVar(name = 'wavelogger_settings', default=default_settings)
     current_wavelength = -1
     _xmin = 420 * 1e3 # GHz
     _xmax = 425 * 1e3 # GHz
@@ -140,8 +140,6 @@ class WavemeterLoggerLogic(LogicBase):
             # settings['mode'] # frequency or vac or air
         return 
 
-    def get_bins(self):
-        return len(self.plot_x)
 
     def toggle_log(self, start):
         with self._thread_lock:
@@ -158,7 +156,7 @@ class WavemeterLoggerLogic(LogicBase):
     @QtCore.Slot()
     def query_wavemeter(self):
         with self._thread_lock:
-            self.current_wavelength = self._wavemeter.get_current_wavelength()
+            self.current_wavelength = self.wavelength_to_freq(self._wavemeter.get_current_wavelength())
             self._time_elapsed = time.time() - self._acquisition_start_time
             if self.current_wavelength > 0:
                 if self.wavelengths.shape[0] == 0:
@@ -182,8 +180,8 @@ class WavemeterLoggerLogic(LogicBase):
                 self.sig_query_wavemeter.emit()
 
     
-    def recalculate_histogram(self, bins=None, xmin=None, xmax=None):
-        self._settings['bin_width']
+    def recalculate_histogram(self):
+      
         if self.module_state() != 'locked':
                 self.wlth_xs = np.arange(
                     self._settings['start_value'], 

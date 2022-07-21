@@ -60,7 +60,7 @@ class WavelengthDataWidget(QtWidgets.QWidget):
         self.data_curve.setPen(palette.c1, width=2)
 
         self.plot_widget.setLabel('left', text='time', units='s')
-        self.plot_widget.setLabel('bottom', text='frequency', units='THz')
+        self.plot_widget.setLabel('bottom', text='frequency', units='Hz')
         self.plot_widget.setMinimumHeight(50)
         main_layout.addWidget(self.plot_widget)
 

@@ -104,6 +104,12 @@ High bin number gives noisy but detailed data.</string>
        <property name="suffix">
         <string>Hz</string>
        </property>
+       <property name="decimals">
+        <number>8</number>
+       </property>
+       <property name="maximum">
+        <double>10000000000000.000000000000000</double>
+       </property>
       </widget>
      </item>
      <item>
@@ -119,16 +125,19 @@ High bin number gives noisy but detailed data.</string>
         <string>Hz</string>
        </property>
        <property name="decimals">
-        <number>6</number>
+        <number>8</number>
        </property>
        <property name="minimum">
         <double>1.000000000000000</double>
        </property>
        <property name="maximum">
-        <double>10000.000000000000000</double>
+        <double>1000000000000000000.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>1.000000000000000</double>
        </property>
        <property name="value">
-        <double>650.000000000000000</double>
+        <double>1.000000000000000</double>
        </property>
       </widget>
      </item>
@@ -145,13 +154,13 @@ High bin number gives noisy but detailed data.</string>
         <string>Hz</string>
        </property>
        <property name="decimals">
-        <number>6</number>
+        <number>8</number>
        </property>
        <property name="minimum">
         <double>1.000000000000000</double>
        </property>
        <property name="maximum">
-        <double>10000.000000000000000</double>
+        <double>1000000000000000000.000000000000000</double>
        </property>
        <property name="value">
         <double>750.000000000000000</double>

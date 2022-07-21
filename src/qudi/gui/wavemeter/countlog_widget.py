@@ -65,7 +65,7 @@ class CountlogDataWidget(QtWidgets.QWidget):
         self.plot_widget.addItem(self.selected_region)
 
         self.plot_widget.setLabel('left', text='Integrated counts', units='c')
-        self.plot_widget.setLabel('bottom', text='frequency', units='THz')
+        self.plot_widget.setLabel('bottom', text='frequency', units='Hz')
         self.plot_widget.setMinimumHeight(50)
         main_layout.addWidget(self.plot_widget)
 
