@@ -49,6 +49,7 @@ class DigitalSwitchNI(SwitchInterface):
     _channel = ConfigOption(name='channel', default='/Dev1/port0/line31', missing='warn')
     # switch_time to wait after setting the states for the connected hardware to react
     _switch_time = ConfigOption(name='switch_time', default=0.1, missing='nothing')
+    _pulsed = ConfigOption(name='pulsed', default=False, missing='nothing')
     # optionally customize all switches in config. Each switch needs a tuple of 2 state names.
     # If used, you must specify as many switches as you have specified channels
     _switches = ConfigOption(name='switches', default=None, missing='nothing')
@@ -169,6 +170,7 @@ class DigitalSwitchNI(SwitchInterface):
             with self.lock:
                 new_states = self._states.copy()
                 new_states.update(state_dict)
+
                 with nidaqmx.Task('NISwitchTask' + self.name.replace(':', ' ')) as switch_task:
                     binary = list()
                     for channel_index, (switch, state) in enumerate(new_states.items()):
@@ -177,7 +179,15 @@ class DigitalSwitchNI(SwitchInterface):
                             binary.append(avail_states[switch][0] == state)
                         else:
                             binary.append(avail_states[switch][0] != state)
-                    switch_task.write(binary, auto_start=True)
+                        
+                        if self._pulsed:
+                            binary.append(avail_states[switch][0] == state)
+                            switch_task.write(binary, auto_start=True)
+                            binary.append(avail_states[switch][0] != state)
+                            switch_task.write(binary, auto_start=True)
+                        else:
+                            switch_task.write(binary, auto_start=True)
+                            
                     time.sleep(self._switch_time)
                     self._states = new_states
 
