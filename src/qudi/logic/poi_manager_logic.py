@@ -149,7 +149,7 @@ class RegionOfInterest:
     def scan_image_extent(self):
         if self._scan_image_extent is None:
             return None
-        x, y, z = self.origin
+        z, x, y = self.origin
         x_extent = (self._scan_image_extent[0][0] + x, self._scan_image_extent[0][1] + x)
         y_extent = (self._scan_image_extent[1][0] + y, self._scan_image_extent[1][1] + y)
         return x_extent, y_extent
@@ -244,7 +244,7 @@ class RegionOfInterest:
             self._scan_image = None
             self._scan_image_extent = None
         else:
-            roi_x_pos, roi_y_pos, roi_z_pos = self.origin
+            roi_z_pos, roi_x_pos, roi_y_pos  = self.origin
             x_extent = (image_extent[0][0] - roi_x_pos, image_extent[0][1] - roi_x_pos)
             y_extent = (image_extent[1][0] - roi_y_pos, image_extent[1][1] - roi_y_pos)
             self._scan_image = np.array(image_arr)
@@ -860,7 +860,7 @@ class PoiManagerLogic(LogicBase):
         """ Get the current xy scan data and set as scan_image of ROI. """
         with self._thread_lock:
 
-            scan_data = self._data_logic().get_current_scan_data()
+            scan_data = self._data_logic().get_all_current_scan_data()[0]#self._data_logic().get_current_scan_data()
             if scan_data:
                 self._roi.set_scan_image(scan_data.data[self._optimizelogic()._data_channel],
                                          scan_data.scan_range)
