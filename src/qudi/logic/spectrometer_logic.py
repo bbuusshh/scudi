@@ -161,12 +161,8 @@ class SpectrometerLogic(LogicBase):
 
         if self.differential_spectrum_available and self._differential_spectrum:
             self.modulation_device().modulation_off()
-<<<<<<< HEAD
             data = np.array(netobtain(self.spectrometer().record_spectrum()))
             
-=======
-            data = np.array(self.spectrometer().record_spectrum())
->>>>>>> f455f628bec5e4f52d463622de4cf6f06142415e
             with self._lock:
                 if self._spectrum[1] is None:
                     self._spectrum[1] = data[1, :]
