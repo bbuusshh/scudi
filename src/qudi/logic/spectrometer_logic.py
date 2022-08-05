@@ -149,7 +149,7 @@ class SpectrometerLogic(LogicBase):
             self.spectrometer().clearBuffer()
             self.flip_mirror().set_state(self.flip_mirror().switch_names[0], 'On')
         # get data from the spectrometer
-        data = np.array(netobtain(self.spectrometer().record_spectrum()))
+        data = np.array(self.spectrometer().record_spectrum())
         with self._lock:
             if self._spectrum[0] is None:
                 self._spectrum[0] = data[1, :]
@@ -161,8 +161,12 @@ class SpectrometerLogic(LogicBase):
 
         if self.differential_spectrum_available and self._differential_spectrum:
             self.modulation_device().modulation_off()
+<<<<<<< HEAD
             data = np.array(netobtain(self.spectrometer().record_spectrum()))
             
+=======
+            data = np.array(self.spectrometer().record_spectrum())
+>>>>>>> f455f628bec5e4f52d463622de4cf6f06142415e
             with self._lock:
                 if self._spectrum[1] is None:
                     self._spectrum[1] = data[1, :]
