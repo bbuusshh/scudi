@@ -743,6 +743,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
                 velocity = self.__max_move_velocity
 
             self.__ni_ao_write_timer.setInterval(self._default_timer_interval)
+          
             granularity = velocity * self.__ni_ao_write_timer.interval() * 1e-3
 
             self.__write_queue = {axis: np.linspace(start_pos[axis],

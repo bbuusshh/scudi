@@ -659,6 +659,7 @@ class ScannerGui(GuiBase):
         self.scanner_control_dockwidget.set_target(pos_dict)
 
     def scan_state_updated(self, is_running, scan_data=None, caller_id=None):
+        
         scan_axes = scan_data.scan_axes if scan_data is not None else None
         self._toggle_enable_scan_buttons(not is_running, exclude_scan=scan_axes)
         if not self._optimizer_state['is_running']:
