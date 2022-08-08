@@ -149,7 +149,7 @@ class RegionOfInterest:
     def scan_image_extent(self):
         if self._scan_image_extent is None:
             return None
-        z, x, y = self.origin
+        x, y, z = self.origin
         x_extent = (self._scan_image_extent[0][0] + x, self._scan_image_extent[0][1] + x)
         y_extent = (self._scan_image_extent[1][0] + y, self._scan_image_extent[1][1] + y)
         return x_extent, y_extent
@@ -244,7 +244,7 @@ class RegionOfInterest:
             self._scan_image = None
             self._scan_image_extent = None
         else:
-            roi_z_pos, roi_x_pos, roi_y_pos  = self.origin
+            roi_x_pos, roi_y_pos, roi_z_pos = self.origin
             x_extent = (image_extent[0][0] - roi_x_pos, image_extent[0][1] - roi_x_pos)
             y_extent = (image_extent[1][0] - roi_y_pos, image_extent[1][1] - roi_y_pos)
             self._scan_image = np.array(image_arr)
@@ -560,7 +560,11 @@ class PoiManagerLogic(LogicBase):
 
     @property
     def scanner_position(self):
-        return np.array(list(self._scanninglogic().scanner_position.values()))
+        return np.array([
+            self._scanninglogic().scanner_position['x'],
+            self._scanninglogic().scanner_position['y'],
+            self._scanninglogic().scanner_position['z']]
+            )
 
     @property
     def move_scanner_after_optimise(self):
@@ -626,19 +630,22 @@ class PoiManagerLogic(LogicBase):
             self.set_active_poi(poi_name)
             return
 
-    @QtCore.Slot()
-    def delete_poi(self, name=None):
+    @QtCore.Slot(str)
+    def delete_poi(self, name:str = None):
         """
+        ! TODO WHY THE F THE NAME IS FALSE and not None ???????????????????????????
+        if printed
         Deletes the given poi from the ROI.
 
         @param str name: Name of the POI to delete. If None (default) delete active POI.
         @param bool emit_change: Flag indicating if the changed POI set should be signaled.
         """
+        #print('Name', name) try this out....
         with self._thread_lock:
             if len(self.poi_names) == 0:
                 self.log.warning('Can not delete POI. No POI present in ROI.')
                 return
-            if name is None:
+            if (name is None) or (name is False):
                 if self.active_poi is None:
                     self.log.error('No POI name to delete and no active POI set.')
                     return
@@ -860,7 +867,7 @@ class PoiManagerLogic(LogicBase):
         """ Get the current xy scan data and set as scan_image of ROI. """
         with self._thread_lock:
 
-            scan_data = self._data_logic().get_all_current_scan_data()[0]#self._data_logic().get_current_scan_data()
+            scan_data = self._data_logic().get_current_scan_data()
             if scan_data:
                 self._roi.set_scan_image(scan_data.data[self._optimizelogic()._data_channel],
                                          scan_data.scan_range)
