@@ -100,6 +100,10 @@ class SpectrometerGui(GuiBase):
         self._mw.control_widget.differential_spectrum_switch.sigStateChanged.connect(
             self.differential_spectrum_changed
         )
+        self._mw.control_widget.flipper_switch.sigStateChanged.connect(
+            self.automatic_flip
+        )
+        self._mw.control_widget.flipper_switch.setChecked(self._spectrometer_logic().do_flip)
         self._mw.data_widget.fit_region_from.editingFinished.connect(self.fit_region_value_changed)
         self._mw.data_widget.fit_region_to.editingFinished.connect(self.fit_region_value_changed)
         self._mw.data_widget.axis_type.sigStateChanged.connect(self.axis_type_changed)
@@ -302,7 +306,8 @@ class SpectrometerGui(GuiBase):
 
     def differential_spectrum_changed(self):
         self._spectrometer_logic().differential_spectrum = self._mw.control_widget.differential_spectrum_switch.isChecked()
-
+    def automatic_flip(self):
+        self._spectrometer_logic().do_flip = self._mw.control_widget.flipper_switch.isChecked()
     def fit_region_changed(self):
         self._spectrometer_logic().fit_region = self._mw.data_widget.fit_region.getRegion()
 

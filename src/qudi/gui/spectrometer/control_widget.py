@@ -105,7 +105,13 @@ class SpectrometerControlWidget(QtWidgets.QWidget):
         switch_layout.addWidget(differential_spectrum_label, 2, 0)
         switch_layout.addWidget(self.differential_spectrum_switch, 2, 1)
 
-        switch_layout.setColumnStretch(2, 1)
+        flipper_label = QtWidgets.QLabel('Automatic flip:')
+        flipper_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        self.flipper_switch = ToggleSwitch(state_names=('Off', 'On'))
+        switch_layout.addWidget(flipper_label, 3, 0)
+        switch_layout.addWidget(self.flipper_switch, 3, 1)
+
+        switch_layout.setColumnStretch(3, 1)
 
         main_layout.addLayout(switch_layout, 0, 4, 3, 1)
 

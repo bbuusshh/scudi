@@ -560,7 +560,11 @@ class PoiManagerLogic(LogicBase):
 
     @property
     def scanner_position(self):
-        return np.array(list(self._scanninglogic().scanner_position.values()))
+        return np.array([
+            self._scanninglogic().scanner_position['x'],
+            self._scanninglogic().scanner_position['y'],
+            self._scanninglogic().scanner_position['z']]
+            )
 
     @property
     def move_scanner_after_optimise(self):
@@ -626,19 +630,22 @@ class PoiManagerLogic(LogicBase):
             self.set_active_poi(poi_name)
             return
 
-    @QtCore.Slot()
-    def delete_poi(self, name=None):
+    @QtCore.Slot(str)
+    def delete_poi(self, name:str = None):
         """
+        ! TODO WHY THE F THE NAME IS FALSE and not None ???????????????????????????
+        if printed
         Deletes the given poi from the ROI.
 
         @param str name: Name of the POI to delete. If None (default) delete active POI.
         @param bool emit_change: Flag indicating if the changed POI set should be signaled.
         """
+        #print('Name', name) try this out....
         with self._thread_lock:
             if len(self.poi_names) == 0:
                 self.log.warning('Can not delete POI. No POI present in ROI.')
                 return
-            if name is None:
+            if (name is None) or (name is False):
                 if self.active_poi is None:
                     self.log.error('No POI name to delete and no active POI set.')
                     return

@@ -19,6 +19,7 @@ You should have received a copy of the GNU Lesser General Public License along w
 If not, see <https://www.gnu.org/licenses/>.
 """
 
+from pyrsistent import optional
 from PySide2 import QtCore
 import numpy as np
 import matplotlib.pyplot as plt
@@ -49,7 +50,7 @@ class SpectrometerLogic(LogicBase):
     # declare connectors
     spectrometer = Connector(interface='SpectrometerInterface')
     modulation_device = Connector(interface='ModulationInterface', optional=True)
-
+    flip_mirror = Connector(interface = 'DigitalSwitchNI', optional=True)
     # declare status variables
     _spectrum = StatusVar(name='spectrum', default=[None, None])
     _background = StatusVar(name='background', default=None)
@@ -60,7 +61,7 @@ class SpectrometerLogic(LogicBase):
     _fit_region = StatusVar(name='fit_region', default=[0, 1])
     _axis_type_frequency = StatusVar(name='axis_type_frequency', default=False)
     max_repetitions = StatusVar(name='max_repetitions', default=0)
-
+    do_flip = StatusVar(name='do_flip', default=False)
     _fit_config = StatusVar(name='fit_config', default=dict())
 
     # Internal signals
@@ -142,8 +143,13 @@ class SpectrometerLogic(LogicBase):
         if self.differential_spectrum_available and self._differential_spectrum:
             self.modulation_device().modulation_on()
 
+        if self.flip_mirror() and self.do_flip:
+            #key = self.flip_mirror().available_states.keys()[0]
+            #state = self.flip_mirror().get_state(key)
+            self.spectrometer().clearBuffer()
+            self.flip_mirror().set_state(self.flip_mirror().switch_names[0], 'On')
         # get data from the spectrometer
-        data = np.array(netobtain(self.spectrometer().record_spectrum()))
+        data = np.array(self.spectrometer().record_spectrum())
         with self._lock:
             if self._spectrum[0] is None:
                 self._spectrum[0] = data[1, :]
@@ -156,6 +162,7 @@ class SpectrometerLogic(LogicBase):
         if self.differential_spectrum_available and self._differential_spectrum:
             self.modulation_device().modulation_off()
             data = np.array(netobtain(self.spectrometer().record_spectrum()))
+            
             with self._lock:
                 if self._spectrum[1] is None:
                     self._spectrum[1] = data[1, :]
@@ -172,6 +179,12 @@ class SpectrometerLogic(LogicBase):
         self._acquisition_running = False
         self.fit_region = self._fit_region
         self.sig_state_updated.emit()
+        
+        if self.flip_mirror() and self.do_flip:
+            
+            self.flip_mirror().set_state(self.flip_mirror().switch_names[0], 'Off')
+
+
         return self.spectrum
 
     def run_get_background(self, constant_acquisition=None, reset=True):

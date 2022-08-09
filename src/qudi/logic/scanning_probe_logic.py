@@ -373,6 +373,7 @@ class ScanningProbeLogic(LogicBase):
 
     def stop_scan(self):
         with self._thread_lock:
+            print(self.module_state())
             if self.module_state() == 'idle':
                 self.sigScanStateChanged.emit(False, self.scan_data, self._curr_caller_id)
                 return 0
@@ -380,7 +381,6 @@ class ScanningProbeLogic(LogicBase):
             self.__stop_timer()
 
             err = self._scanner().stop_scan() if self._scanner().module_state() != 'idle' else 0
-
             self.module_state.unlock()
 
             if self.scan_settings['save_to_history']:
