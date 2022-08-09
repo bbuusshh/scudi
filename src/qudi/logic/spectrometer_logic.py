@@ -168,7 +168,7 @@ class SpectrometerLogic(LogicBase):
 
         if self._constant_acquisition and not self._stop_acquisition \
                 and (not self.max_repetitions or self._repetitions_spectrum < self.max_repetitions):
-            return self.run_get_spectrum(reset=False)
+            return self.run_get_spectrum(reset=True)
         self._acquisition_running = False
         self.fit_region = self._fit_region
         self.sig_state_updated.emit()
