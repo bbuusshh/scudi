@@ -39,6 +39,7 @@ from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 from qudi.util.datastorage import ImageFormat, NpyDataStorage, TextDataStorage
 from qudi.util.units import ScaledFloat
+from qudi.util.colordefs import ColorScaleRdBuRev as ColorScale
 
 from qudi.interface.scanning_probe_interface import ScanData
 
@@ -388,8 +389,9 @@ class ScanningDataLogic(LogicBase):
         si_factor_cb = ScaledFloat(cbar_range[1]-cbar_range[0]).scale_val
 
         # Create image plot
+        #plt.colormaps.register(ColorScale().colormap, name='BuRd')
         cfimage = ax.imshow(image_arr.transpose()/si_factor_cb,
-                            cmap='inferno',  # FIXME: reference the right place in qudi
+                            cmap='coolwarm',#ColorScale().colormap,  # FIXME: reference the right place in qudi
                             origin='lower',
                             vmin=cbar_range[0]/si_factor_cb,
                             vmax=cbar_range[1]/si_factor_cb,
