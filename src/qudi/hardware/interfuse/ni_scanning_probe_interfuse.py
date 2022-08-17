@@ -161,7 +161,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         # Timer to free resources after pure ni ao
         self.__ni_ao_write_timer = QtCore.QTimer(parent=self)
         self.__ni_ao_write_timer.setSingleShot(True)
-        self._default_timer_interval = 1  # in ms
+        self._default_timer_interval = 5  # in ms
         self.__ni_ao_write_timer.setInterval(self._default_timer_interval)
         # TODO HW test if this Delta t works (used in move velo calculation) 1ms was causing issues on simulated Ni.
         self.__ni_ao_write_timer.timeout.connect(self.__ao_write_loop, QtCore.Qt.QueuedConnection)
