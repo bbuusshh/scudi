@@ -1,10 +1,8 @@
 from qtpy import QtCore
 
-from interface.wavemeter_interface import WavemeterInterface
-from core.module import Base
-from core.configoption import ConfigOption
-from core.pi3_utils import delay
-from logic.generic_logic import GenericLogic
+from qudi.interface.wavemeter_interface import WavemeterInterface
+from PySide2 import QtCore
+from qudi.core.configoption import ConfigOption
 import socket
 import numpy as np
 import pickle
@@ -23,7 +21,7 @@ def connect(func):
     return wrapper
 
     
-class HighFinesseWavemeterClient(Base, WavemeterInterface):
+class HighFinesseWavemeterClient(WavemeterInterface):
     wavelengths = np.array([])
     queryInterval = 25
     buffer_length = 10000
@@ -50,9 +48,6 @@ class HighFinesseWavemeterClient(Base, WavemeterInterface):
         self.queryTimer.start(self.queryInterval)
         self.wavelengths = np.append(self.wavelengths, self.__get_wavelength())[-self.buffer_length:]
 
-    def get_current_wavelength(self):
-        return self.wavelengths[-1] if len(self.wavelengths) > 0 else -1
-
     @connect
     @QtCore.Slot(str, str)
     def send_request(self, request, action=None):
@@ -76,10 +71,10 @@ class HighFinesseWavemeterClient(Base, WavemeterInterface):
     def on_deactivate(self):
         self.tcp_client.close()
 
-    def start_acqusition(self):
+    def start_acquisition(self):
         return self.send_request("start_measurements")
 
-    def stop_acqusition(self):
+    def stop_acquisition(self):
         return self.send_request("stop_measurements")
 
     def start_trigger(self):
@@ -113,5 +108,39 @@ class HighFinesseWavemeterClient(Base, WavemeterInterface):
         times = np.array([])
         for t in range(1000):
             times = np.append(times, time.time() - self.get_server_time())
-            delay(0.25)
+            #delay(0.25)
         return times.mean()
+
+    def get_current_wavelength(self, kind="vac"):
+        """ This method returns the current wavelength.
+
+        @param (str) kind: can either be "air" or "vac" for the wavelength in air or vacuum, respectively.
+
+        @return (float): wavelength (or negative value for errors)
+        """
+        return self.wavelengths[-1] if len(self.wavelengths) > 0 else -1
+
+    def get_current_wavelength2(self, kind="air"):
+        """ This method returns the current wavelength of the second input channel.
+
+        @param (str) kind: can either be "air" or "vac" for the wavelength in air or vacuum, respectively.
+
+        @return float: wavelength (or negative value for errors)
+        """
+        pass
+
+    def get_timing(self):
+        """ Get the timing of the internal measurement thread.
+
+        @return (float): clock length in second
+        """
+        pass
+
+    def set_timing(self, timing):
+        """ Set the timing of the internal measurement thread.
+
+        @param (float) timing: clock length in second
+
+        @return (int): error code (0:OK, -1:error)
+        """
+        pass

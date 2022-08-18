@@ -38,6 +38,7 @@ from qudi.util.widgets.fitting import FitConfigurationDialog, FitWidget
 from qudi.util.datastorage import TextDataStorage
 from qudi.util.datafitting import FitContainer, FitConfigurationsModel
 from qudi.core.statusvariable import StatusVar
+
 COUNT_DTYPE =  np.dtype([('wavelength', np.float64), ('counts', np.float64)])
 WAVELENGTH_DTYPE = np.dtype([('time', np.float64), ('wavelength', np.float64)])
 class WavemeterLoggerLogic(LogicBase):

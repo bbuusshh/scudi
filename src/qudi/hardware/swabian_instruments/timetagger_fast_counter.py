@@ -70,6 +70,8 @@ class TimeTaggerFastCounter(FastCounterInterface):
         self.log.info('TimeTagger (fast counter) configured to use  channel {0}'
                       .format(self._channel_apd))
 
+        self.configure(10, 10)
+
         self.statusvar = 0
 
     def get_constraints(self):
@@ -126,7 +128,7 @@ class TimeTaggerFastCounter(FastCounterInterface):
         self.pulsed.clear()
         self.pulsed = None
 
-    def configure(self, bin_width_s, record_length_s, number_of_gates=0):
+    def configure(self, bin_width_s, record_length_s, number_of_gates=1):
 
         """ Configuration of the fast counter.
 
