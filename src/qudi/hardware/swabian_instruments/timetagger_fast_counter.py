@@ -128,7 +128,7 @@ class TimeTaggerFastCounter(FastCounterInterface):
         self.pulsed.clear()
         self.pulsed = None
 
-    def configure(self, bin_width_s = 0.2, record_length_s = 10, number_of_gates=1):
+    def configure(self, bin_width_s = 1, record_length_s = 1, number_of_gates=1):
 
         """ Configuration of the fast counter.
 

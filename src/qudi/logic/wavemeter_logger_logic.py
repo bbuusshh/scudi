@@ -66,7 +66,7 @@ class WavemeterLoggerLogic(LogicBase):
          'custom_parameters': None}
          
     )
-    wavelength_buffer = 10000
+    wavelength_buffer = 50000
     default_settings = {
         'bin_width':20e6, #20 MHz
         'start_value':350e12, # 350 THz

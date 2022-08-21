@@ -74,8 +74,9 @@ class WavelengthDataWidget(QtWidgets.QWidget):
                        y_range: Optional[Tuple[float, float]] = None
                        ) -> None:
         vb = self._data_item.getViewBox()
-        vb.disableAutoRange()
+        
         vb.setRange(xRange=x_range, yRange=y_range)
+        vb.disableAutoRange(axis="x")
 
     def set_data(self, data) -> None:
         # Save reference for channel changes
