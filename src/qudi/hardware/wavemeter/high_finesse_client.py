@@ -23,7 +23,7 @@ def connect(func):
     
 class HighFinesseWavemeterClient(WavemeterInterface):
     wavelengths = np.array([])
-    queryInterval = 25
+    queryInterval = 20
     buffer_length = 10000
     sig_send_request = QtCore.Signal(str, str)
 
@@ -118,7 +118,10 @@ class HighFinesseWavemeterClient(WavemeterInterface):
 
         @return (float): wavelength (or negative value for errors)
         """
-        return self.wavelengths[-1] if len(self.wavelengths) > 0 else -1
+        if kind == "freq":
+            return self.wavelength_to_freq(self.wavelengths[-1]) if len(self.wavelengths) > 0 else -1
+        else:
+            return self.wavelengths[-1] if len(self.wavelengths) > 0 else -1
 
     def get_current_wavelength2(self, kind="air"):
         """ This method returns the current wavelength of the second input channel.
@@ -144,3 +147,11 @@ class HighFinesseWavemeterClient(WavemeterInterface):
         @return (int): error code (0:OK, -1:error)
         """
         pass
+
+    def wavelength_to_freq(self, wavelength):
+        if isinstance(wavelength, float):
+            return 299792458.0 * 1e9 / wavelength
+        wavelength = np.array(wavelength)
+        aa = 299792458.0 * 1e9 * np.ones(wavelength.shape[0])
+        freqs = np.divide(aa, wavelength, out=np.zeros_like(aa), where=wavelength!=0)
+        return freqs

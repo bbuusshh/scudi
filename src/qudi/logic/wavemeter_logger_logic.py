@@ -197,3 +197,10 @@ class WavemeterLoggerLogic(LogicBase):
         aa = 299792458.0 * 1e9 * np.ones(wavelength.shape[0])
         freqs = np.divide(aa, wavelength, out=np.zeros_like(aa), where=wavelength!=0)
         return freqs
+    def freq_to_wavelength(self, freq):
+        if isinstance(freq, float):
+            return 1e9 * 299792458.0 / freq
+        freq = np.array(freq)
+        aa = 1e9 * 299792458.0 * np.ones(freq.shape[0])
+        freqs = np.divide(aa, freq, out=np.zeros_like(aa), where=freq!=0)
+        return freqs

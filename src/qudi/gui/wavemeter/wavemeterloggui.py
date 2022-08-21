@@ -145,14 +145,13 @@ class WavemeterLogGui(GuiBase):
         @param ScanData scan_data:
         """
         if wavelengths.shape[0] > 0:
-            wavelength = np.round(wavelengths['wavelength'][-1], 6)
-            frequency = np.round(self.wavelog_logic.wavelength_to_freq(wavelengths['wavelength'][-1]) * 1e-12, 6)
-            # self._mw.wavelengthLabel.setText(f"{wavelength} nm")
-            self._mw.frequencyLabel.setText(f"{wavelength/1e12} THz")
+            freq = self.wavelog_logic.freq_to_wavelength(wavelengths['wavelength'][-1])
+            wavelength = np.round(freq, 6)
+            frequency = np.round(wavelengths['wavelength'][-1]/1e12 , 6)
+            self._mw.wavelengthLabel.setText(f"{wavelength} nm")
+            self._mw.frequencyLabel.setText(f"{frequency} THz")
             self._mw.wavelength_widget.set_data(wavelengths)
             self._mw.countlog_widget.set_data(count_data)
-
-
 
 
     def stop_resume_clicked(self):

@@ -70,7 +70,7 @@ class TimeTaggerFastCounter(FastCounterInterface):
         self.log.info('TimeTagger (fast counter) configured to use  channel {0}'
                       .format(self._channel_apd))
 
-        self.configure(10, 10)
+        self.configure()
 
         self.statusvar = 0
 
@@ -128,7 +128,7 @@ class TimeTaggerFastCounter(FastCounterInterface):
         self.pulsed.clear()
         self.pulsed = None
 
-    def configure(self, bin_width_s, record_length_s, number_of_gates=1):
+    def configure(self, bin_width_s = 0.2, record_length_s = 10, number_of_gates=1):
 
         """ Configuration of the fast counter.
 
@@ -145,35 +145,28 @@ class TimeTaggerFastCounter(FastCounterInterface):
                     number_of_gates: the number of gated, which are accepted
         """
         self._number_of_gates = number_of_gates
-        self._bin_width = bin_width_s * 1e9
-        self._record_length = 1 + int(record_length_s / bin_width_s)
+        #self._bin_width = bin_width_s * 1e9
+        #self._record_length = 1 + int(record_length_s / bin_width_s)
         self.statusvar = 1
-
-        #self.pulsed = tt.TimeDifferences(
-        #    tagger=self._tagger,
+        bin_width = int(bin_width_s*1e12)
+        n_values = int(record_length_s*1e12/bin_width)
+        self.pulsed = self._tagger.counter(channels = [self._channel_apd], bin_width=bin_width, n_values=n_values)
+        #self.pulsed = self._tagger.time_differences(
         #    click_channel=self._channel_apd,
         #    start_channel=self._channel_detect,
         #    next_channel=self._channel_detect,
-        #    sync_channel=tt.CHANNEL_UNUSED,
+        #    #sync_channel=tt.CHANNEL_UNUSED,
         #    binwidth=int(np.round(self._bin_width * 1000)),
         #    n_bins=int(self._record_length),
-        #    n_histograms=number_of_gates)
-        self.pulsed = self._tagger.time_differences(
-            click_channel=self._channel_apd,
-            start_channel=self._channel_detect,
-            next_channel=self._channel_detect,
-            #sync_channel=tt.CHANNEL_UNUSED,
-            binwidth=int(np.round(self._bin_width * 1000)),
-            n_bins=int(self._record_length),
-            n_histograms=number_of_gates
-        )
+        #    n_histograms=number_of_gates
+        #)
         self.pulsed.stop()
 
         return bin_width_s, record_length_s, number_of_gates
 
     def start_measure(self):
         """ Start the fast counter. """
-        self.module_state.lock()
+        #self.module_state.lock()
         self.pulsed.clear()
         self.pulsed.start()
         self.statusvar = 2
@@ -229,6 +222,7 @@ class TimeTaggerFastCounter(FastCounterInterface):
         """
         info_dict = {'elapsed_sweeps': None,
                      'elapsed_time': None}  # TODO : implement that according to hardware capabilities
+        
         return np.array(self.pulsed.getData(), dtype='int64'), info_dict
 
     def get_status(self):
