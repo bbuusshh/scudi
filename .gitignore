@@ -32,3 +32,5 @@
 *.log
 *.log.*
 
+# configs
+*.cfg

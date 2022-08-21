@@ -138,6 +138,11 @@ class PLEScannerLogic(ScanningProbeLogic):
             self._scan_ranges = new_settings['range']
             self._scan_resolution = new_settings['resolution']
             self._scan_frequency = new_settings['frequency']
+        
+        if not self._min_poll_interval:
+            # defaults to maximum scan frequency of scanner
+            self._min_poll_interval = 1/np.max([constr.axes[ax].frequency_range for ax in constr.axes])
+
         """
         if not isinstance(self._scan_ranges, dict):
             self._scan_ranges = {ax.name: ax.value_range for ax in constr.axes.values()}
@@ -151,6 +156,10 @@ class PLEScannerLogic(ScanningProbeLogic):
         self.__scan_poll_interval = 0
         self.__scan_stop_requested = True
         self._curr_caller_id = self.module_uuid
+
+        if not self._min_poll_interval:
+            # defaults to maximum scan frequency of scanner
+            self._min_poll_interval = 1/np.max([self.scanner_constraints.axes[ax].frequency_range for ax in self.scanner_constraints.axes])
 
         self.__scan_poll_timer = QtCore.QTimer()
         self.__scan_poll_timer.setSingleShot(True)

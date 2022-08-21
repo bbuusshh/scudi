@@ -42,6 +42,10 @@ gui:
         connect:
             _time_series_logic_con: time_series_reader_logic
 
+    pulsed_plot_gui:
+        module.Class: 'pulsed.pulsed_plotting.PulsedPlotting'
+        connect:
+            plotter: pulsed_plotting_logic
     scanner_gui:
         module.Class: 'scanning.scannergui.ScannerGui'
         options:
@@ -121,7 +125,7 @@ logic:
         module.Class: 'wavemeter_logger_logic.WavemeterLoggerLogic'
         connect:
             wavemeter: wavemeter_dummy
-            counter: fast_counter_dummy
+            
 
     scanning_probe_logic:
         module.Class: 'scanning_probe_logic.ScanningProbeLogic'
@@ -192,6 +196,10 @@ logic:
         connect:
             pulsegenerator: 'pulser_dummy'
 
+    pulsed_plotting_logic:
+        module.Class: 'pulsed.pulsed_plotting_logic.PulsedPlottingLogic'
+        connect:
+            pulsed: pulsed_master_logic
     pulsed_measurement_logic:
         module.Class: 'pulsed.pulsed_measurement_logic.PulsedMeasurementLogic'
         options:
@@ -361,6 +369,6 @@ hardware:
 
     spectrometer_dummy:
         module.Class: 'dummy.spectrometer_dummy.SpectrometerDummy'
-
+    
     wavemeter_dummy:
         module.Class: 'dummy.wavemeter_dummy.WavemeterDummy'

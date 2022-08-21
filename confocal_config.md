@@ -44,12 +44,7 @@ gui:
             scanning_logic: scanning_probe_logic
             data_logic: scanning_data_logic
             optimize_logic: scanning_optimize_logic
-
-    wavemeter_gui:
-        module.Class: 'wavemeter.wavemeterloggui.WavemeterLogGui'
-        connect:
-            wavemeterloggerlogic: 'wavelogger_logic'
-
+    
     time_series_gui:
         module.Class: 'time_series.time_series_gui.TimeSeriesGui'
         options:
@@ -175,12 +170,6 @@ logic:
         connect:
             pulsegenerator: "pulsestreamer"
 
-    wavelogger_logic:
-        module.Class: "wavemeter_logger_logic.WavemeterLoggerLogic"
-        connect:
-            wavemeter: "high_finesse_client"
-            counter: "fastcounter_timetagger"
-
     pulsed_measurement_logic:
         module.Class: 'pulsed.pulsed_measurement_logic.PulsedMeasurementLogic'
         options:
@@ -255,7 +244,7 @@ hardware:
                 #AI0: 'V'
                 #APD2: 'c/s'
                 #APD3: 'c/s'
-            backwards_line_resolution: 200 # optional
+            backwards_line_resolution: 50 # optional
             maximum_move_velocity: 400e-6 #m/s
 
     ni_laser_scanner:
@@ -304,9 +293,9 @@ hardware:
                 #ai0: [-10, 10]  # optional
                 #ai1: [-10, 10]  # optional
             output_voltage_ranges:
-                ao0: [0, 10]
-                ao1: [0, 10]
-                ao2: [0, 10]
+                ao0: [0, 4]
+                ao1: [0, 4]
+                ao2: [0, 4]
                 ao3: [-4, 4]
     
             
@@ -324,15 +313,15 @@ hardware:
             setpoint_channels:
                 ao0:
                     unit: 'V'
-                    limits: [0, 10]
+                    limits: [0, 4]
                     keep_value: True
                 ao1:
                     unit: 'V'
-                    limits: [0, 10]
+                    limits: [0, 4]
                     keep_value: True
                 ao2:
                     unit: 'V'
-                    limits: [0, 10]
+                    limits: [0, 4]
                     keep_value: True
                 ao3:
                     unit: 'V'
@@ -405,9 +394,6 @@ hardware:
         options:
             measurement_timing: 10.0 # in seconds
 
-    high_finesse_client:
-        module.Class: 'wavemeter.high_finesse_client.HighFinesseWavemeterClient'
-    
     pulsestreamer:
         module.Class: 'swabian_instruments.pulse_streamer.PulseStreamer'
         options:
