@@ -22,6 +22,8 @@ def connect(func):
     
 class PrincetonSpectrometerClient(SpectrometerInterface):
     _integration_time = StatusVar(name='integration_time', default=10)
+    _ip = ConfigOption('ip', missing='error')
+    _port = ConfigOption('port', 3336, missing='warn')
     _shift_wavelength = 0.57274
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -30,7 +32,7 @@ class PrincetonSpectrometerClient(SpectrometerInterface):
         
 
     def on_activate(self):
-        self.host_ip, self.server_port = '169.254.128.44', 3336
+        self.host_ip, self.server_port = self._ip, self._port
         try:
             self._integration_time = self.getExposure()
         except:
