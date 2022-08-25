@@ -1,5 +1,7 @@
+from cmath import isclose
 import numpy as np
 import socket
+from time import sleep
 
 from qudi.core.module import Base
 from qudi.core.configoption import ConfigOption
@@ -479,4 +481,19 @@ class AMI430(Base):
         return ans
 
 
+    def equalize_currents(self):
+        """Ramps the supply current to the value of the magnet current."""
+        curr_mag = self.get_magnet_current()
+        curr_sup = self.get_supply_current()
+        if np.isclose(curr_mag, curr_sup,atol=0.01):
+            return 0
+        else:
+            self.ramp(current_target=curr_mag)
+            while True: # run until currents are the same (should only take a couple of seconds if ramp speed is set correctly)
+                sleep(2) # TODO: find something that does not freezue qudi
+                if np.isclose(curr_mag, curr_sup,atol=0.01):
+                    return 0
 
+
+
+        
