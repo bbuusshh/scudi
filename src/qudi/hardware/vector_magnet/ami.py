@@ -187,6 +187,7 @@ class AMI430(Base):
 
     def get_number_of_segments(self):
         n_segments = self._query('RAMP:RATE:SEGMENTS?')
+        n_segments = int(n_segments[0])
         return n_segments
 
 

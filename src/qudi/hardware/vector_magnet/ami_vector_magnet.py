@@ -4,6 +4,7 @@ from datetime import datetime
 
 from qudi.core.module import Base
 from qudi.core.connector import Connector
+from qudi.core.configoption import ConfigOption
 
 
 class magnet_3d(Base):
@@ -16,8 +17,8 @@ class magnet_3d(Base):
     magnet_y = Connector(interface='AMI430')
     magnet_z = Connector(interface='AMI430')
 
-    B_max = ConfigOption(name='B_max', missing='warn')
-    Bz_max = ConfigOption(name='Bz_max', missing='warn')
+    constraints = ConfigOption(name='constraints', missing='warn')
+    timerIntervals = ConfigOption(name='timerIntervals', missing='warn')
 
     #internal signals
     sigFastRamp = QtCore.Signal()
@@ -34,12 +35,6 @@ class magnet_3d(Base):
         self._magnet_y = self.magnet_y()
         self._magnet_z = self.magnet_z()
 
-        # Would be nice if we could get the dict directly from the config
-        self.constraints = { 
-            'B_max' : self.B_max,
-            'Bz_max' : self.Bz_max
-        }
-
         # connect internal signals
         self.sigFastRamp.connect(self._fast_ramp_loop_body)
         self.sigSlowRamp.connect(self._slow_ramp_loop_body)
@@ -50,8 +45,6 @@ class magnet_3d(Base):
 
         # TODO: Get values from config
         self._abortRampLoop = False
-        self.fastRampTimerInterval = 10000
-        self.slowRampTimerInterval = 10000
         self._abortRampToZeroLoop = False
         self.rampToZeroTimerInterval = 10000
         self.pswCoolingTimerInterval = 60000
@@ -142,7 +135,7 @@ class magnet_3d(Base):
             return 0
 
 
-    def combine_fields(field1,field2):
+    def combine_fields(self,field1,field2):
         """Combines the given fields.
         
         Combined field is max of individual fields.
@@ -179,7 +172,12 @@ class magnet_3d(Base):
                 self.sigRampFinished.emit()
                 return
         else:
-            QtCore.QTimer.singleShot(self.fastRampTimerInterval, self.sigFastRamp.emit())
+            print('foo')
+            #TODO: This fires WAY too fast. FIx pls.
+            self.fastRampTimer = QtCore.QTimer()
+            self.fastRampTimer.setSingleShot(True)
+            self.fastRampTimer.timeout.connect(self.sigFastRamp.emit(), QtCore.Qt.QueuedConnection)
+            self.fastRampTimer.start(100000)#self.timerIntervals['fastRamp'])
             return
 
 
@@ -217,7 +215,7 @@ class magnet_3d(Base):
                     return
         else: # we are not holding --> still ramping
             # might be a problem with ramping to zero
-            QtCore.QTimer.singleShot(self.slowRampTimerInterval, self.sigSlowRamp.emit())
+            QtCore.QTimer.singleShot(self.timerIntervals['slowRamp'], self.sigSlowRamp.emit())
             return
 
 
@@ -292,7 +290,7 @@ class magnet_3d(Base):
             self.sigRampFinished.emit()
             return
         else:
-            QtCore.QTimer.singleShot(self.rampToZeroTimerInterval, self.sigZeroRamp.emit())
+            QtCore.QTimer.singleShot(self.timerIntervals['rampToZero'], self.sigZeroRamp.emit())
             return
 
 
@@ -301,7 +299,7 @@ class magnet_3d(Base):
         if mode == [1,1,1]:
             self.sigRampFinished.emit()
         else:
-            QtCore.QTimer.singleShot(self.pswCoolingTimerInterval, self.sigWaitPSwCool.emit())
+            QtCore.QTimer.singleShot(self.timerIntervals['pswCooling'], self.sigWaitPSwCool.emit())
             return
     
 
