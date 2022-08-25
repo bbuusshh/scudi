@@ -36,12 +36,12 @@ class HighFinesseWavemeterClient(WavemeterInterface):
     def on_activate(self):
         self.host_ip, self.server_port = '129.69.46.209', 1243
         # self.tcp_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sig_send_request.connect(self.send_request, QtCore.Qt.QueuedConnection)
-        self.queryTimer = QtCore.QTimer()
-        self.queryTimer.setInterval(self.queryInterval)
-        self.queryTimer.setSingleShot(True)
-        self.queryTimer.timeout.connect(self.loop_body)#, QtCore.Qt.QueuedConnection)     
-        self.queryTimer.start(self.queryInterval)
+        #self.sig_send_request.connect(self.send_request, QtCore.Qt.QueuedConnection)
+        # self.queryTimer = QtCore.QTimer()
+        # self.queryTimer.setInterval(self.queryInterval)
+        # self.queryTimer.setSingleShot(True)
+        # self.queryTimer.timeout.connect(self.loop_body)#, QtCore.Qt.QueuedConnection)     
+        # self.queryTimer.start(self.queryInterval)
 
     @QtCore.Slot()
     def loop_body(self):
@@ -53,13 +53,15 @@ class HighFinesseWavemeterClient(WavemeterInterface):
     def send_request(self, request, action=None):
         action = None if action == '' else action
         self.tcp_client.sendall(request.encode())
-        received = self.tcp_client.recv(1024)
+        received = self.tcp_client.recv(10024)
         response = pickle.loads(received[1:])
         flag = received[:1].decode()
         if flag == 'c':
             #get wavelength
             self.wlm_time = np.vstack((self.wlm_time, response))
             return response[0]
+        elif flag == 'd':
+            return response
         elif flag == 'k':
             if action != None:
                 self.tcp_client.sendall(action.encode())
@@ -111,17 +113,17 @@ class HighFinesseWavemeterClient(WavemeterInterface):
             #delay(0.25)
         return times.mean()
 
-    def get_current_wavelength(self, kind="vac"):
+    def get_current_wavelength(self, kind="freq"):
         """ This method returns the current wavelength.
 
         @param (str) kind: can either be "air" or "vac" for the wavelength in air or vacuum, respectively.
 
         @return (float): wavelength (or negative value for errors)
         """
-        if kind == "freq":
-            return self.wavelength_to_freq(self.wavelengths[-1]) if len(self.wavelengths) > 0 else -1
-        else:
-            return self.wavelengths[-1] if len(self.wavelengths) > 0 else -1
+        #   if kind == "freq":
+        #        return self.wavelength_to_freq(self.wavelengths[-1]) if len(self.wavelengths) > 0 else -1
+        #    else:
+        return self.send_request("get_wavelength")#1e12 * self.wavelengths[-1] if len(self.wavelengths) > 0 else -1
 
     def get_current_wavelength2(self, kind="air"):
         """ This method returns the current wavelength of the second input channel.

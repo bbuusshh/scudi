@@ -100,8 +100,10 @@ class WavemeterLoggerLogic(LogicBase):
         """ Initialisation performed during activation of the module.
         """
 
-        self._counter_logic = self.counter()
+        self._timetagger = self.timetagger()
         self._wavemeter = self.wavemeter()
+
+        
 
         self.sig_query_wavemeter.connect(self.query_wavemeter, QtCore.Qt.QueuedConnection)
         # connect the signals in and out of the threaded object
@@ -116,7 +118,7 @@ class WavemeterLoggerLogic(LogicBase):
         , QtCore.Qt.QueuedConnection)     
         
         self.recalculate_histogram()
-        self._counter_logic.start_measure()
+        self.configure_counter()
         self._wavemeter.start_acquisition()
         self._acquisition_start_time = time.time()
 
@@ -130,6 +132,16 @@ class WavemeterLoggerLogic(LogicBase):
         """
         if self.module_state() != 'idle' and self.module_state() != 'deactivated':
             self.stop_scanning()
+
+    def configure_counter(self):
+        bin_width = 1e9 #1 ms
+        n_values = 1000
+        self.counter = self._timetagger.counter(
+            channels = self._timetagger._counter['channels'], 
+            bin_width = bin_width, 
+            n_values = n_values
+        )
+        return 
 
     @QtCore.Slot(dict)
     def _udpate_settings(self, settings):
@@ -149,7 +161,31 @@ class WavemeterLoggerLogic(LogicBase):
                 self.module_state.unlock()
                 self.sig_query_wavemeter.emit()
                 
-
+    @QtCore.Slot()
+    def query_wavemeter(self):
+        with self._thread_lock:
+            self.current_wavelength = self._wavemeter.get_current_wavelength(kind='freq') #this give you a 1000 array of length ~ 1ms
+            self._time_elapsed = time.time() - self._acquisition_start_time
+            if self.current_wavelength > 0:
+                if self.wavelengths.shape[0] == 0:
+                    self.wavelengths = np.array([(self._time_elapsed, self.current_wavelength)], dtype=WAVELENGTH_DTYPE)
+                elif self._time_elapsed > self.wavelengths['time'][-1]:
+                    self.wavelengths = np.append(self.wavelengths, np.array([(time.time() - self._acquisition_start_time, self.current_wavelength)], dtype=WAVELENGTH_DTYPE))
+                    try:
+                        self.cts = self._counter_logic.get_data_trace()[0].mean()
+                        self.cts_ys[np.argmin(np.abs(self.current_wavelength - self.wlth_xs))] += self.cts
+                        self.samples_num[np.argmin(np.abs(self.current_wavelength - self.wlth_xs))] += 1
+                        
+                        self.plot_y = np.divide(self.cts_ys, self.samples_num, out = np.zeros_like(self.cts_ys), where=self.samples_num != 0)
+                        self.count_data = np.zeros(self.plot_x.shape[0], dtype = COUNT_DTYPE)
+                        self.count_data['wavelength'] = self.plot_x
+                        self.count_data['counts'] = self.plot_y
+                    except:
+                        pass
+            self.wavelengths = self.wavelengths[-self.wavelength_buffer:]
+            
+            if self.module_state() != 'idle':
+                self.sig_query_wavemeter.emit()
 
     @QtCore.Slot()
     def query_wavemeter(self):
