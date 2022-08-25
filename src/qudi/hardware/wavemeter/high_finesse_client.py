@@ -15,6 +15,8 @@ def connect(func):
             self.tcp_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.tcp_client.connect((self.host_ip, self.server_port))
             res = func(self, *arg, **kw)
+        except:
+            return 
         finally:
             self.tcp_client.close()
         return res

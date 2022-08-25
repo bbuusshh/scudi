@@ -50,7 +50,7 @@ class WavemeterLoggerLogic(LogicBase):
     sigFitUpdated = QtCore.Signal(object, str)
     # declare connectors
     wavemeter = Connector(interface='WavemeterInterface')
-    counter = Connector(interface='FastCounterInterface')
+    timetagger = Connector(interface='TT')
     _fit_config = StatusVar(name='fit_config', default=None)
     _fit_region = StatusVar(name='fit_region', default=[0, 1])
 
