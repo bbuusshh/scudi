@@ -85,10 +85,10 @@ class HighFinesseWavemeterClient(WavemeterInterface):
     def stop_trigger(self):
         return self.send_request("stop_trigger")
 
-    def __get_wavelength(self):
+    def get_wavelengths(self):
         """ This method returns the current wavelength in air.
         """
-        return self.send_request("get_wavelength")
+        return self.send_request("get_wavelengths") # gets 1000 entries recorded ~ approx whithin 1 s or return [] if the buffer is not filled
 
     def get_regulation_mode(self):
         return self.send_request("get_regulation_mode")
