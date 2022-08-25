@@ -4,14 +4,9 @@ import socket
 from qudi.core.module import Base
 from qudi.core.configoption import ConfigOption
 
-from qudi.interface.magnet_1d_interface import CoilMagnet1DInterface # TODO: create interface
-
-class AMI430(Base, CoilMagnet1DInterface):
+class AMI430(Base):
     _ip = ConfigOption(name='ip', missing='warn')
     _port = ConfigOption(name='port', missing='warn')
-
-# ------------------------------------------------------------------------------------------------
-# essential stuff
 
     def __init__(self, ip=None, port=None,**kwargs):
         if ip:
@@ -33,11 +28,69 @@ class AMI430(Base, CoilMagnet1DInterface):
         self.disconnect()
         return
 
-# essential stuff
-# ------------------------------------------------------------------------------------------------
 
-# ------------------------------------------------------------------------------------------------
-# stuff that is nice to have
+    def connect(self, ip=None, port=None):
+        if not ip:
+            ip = self._ip
+        if not port:
+            port = self._port
+        try:
+            self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self._socket.connect((ip, port))
+            greeting = self._read()
+            print(greeting)
+            if not "American Magnetics Model 430 IP Interface" in greeting:
+                raise RuntimeError(f"Device does not answer with correct greeting message.\nRecieved message:\n{greeting}")
+        except Exception as err:
+            self.disconnect()
+            raise
+
+
+    def disconnect(self):
+        try:
+            self._socket.close()
+        except Exception as err:
+            raise
+
+
+    def _read(self, length=1024):
+        """Reads the feedback from the device."""
+        return self._socket.recv(length).decode("ascii").strip().split("\r\n")
+
+
+    def _write(self, cmd):
+        """Writes the specified command to the decive without waiting for a response."""
+        return self._socket.send( (cmd+"\r\n").encode("ascii"))
+
+
+    def _query(self, cmd):
+        """Writes the specified command to the device and waits for a response. 
+        
+        Will take forever, if no response is given. In this case use _write."""
+        self._write(cmd)
+        return self._read()
+
+
+    def local(self):
+        """Enables the front panel.
+        
+        Local acess is now possible. """
+        self._write('SYST:LOC')
+
+
+    def remote(self):
+        """Disables the front control panel to prevent accidental operation."""
+        self._write('SYST:REM')
+
+
+    def idn(self):
+        """ Returns the identification string of the Model 430 Programmer.
+        
+        The identification string contains the AMI model number and firmware revision code.
+        """
+        return self._query("*IDN?")
+
+
     def read_error(self):
         """Reads out the error buffer.
         
@@ -72,6 +125,35 @@ class AMI430(Base, CoilMagnet1DInterface):
         return ans
 
 
+    def get_field_units(self):
+        """Returns the unit for the field.
+        "0" means kilogauss, "1" means tesla.
+        """
+        ans = self._query('FIELD:UNITS?')
+        ans=int(ans[0])
+        return ans
+    
+
+    def set_field_units(self, unit='1'):
+        """Sets the unit for the field.
+        
+        '0', 'kG' or 'kGs' sets it to kilogauss (default).
+
+        '1' or 'T' sets it to tesla.
+        """
+        unit = str(unit)
+        alias_seconds = ['0', 'kG', 'kGs']
+        alias_minutes = ['1', 'T']
+        if unit in alias_seconds:
+            # set field unit to kilogauss
+            self._write('CONF:FIELD:UNITS 0')
+        elif unit in alias_minutes:
+            # set field unit to tesla
+            self._write('CONF:FIELD:UNITS 1')
+        else:
+            raise Exception('Unknown unit entered.')
+
+
     def get_ramp_rate_units(self):
         """Returns the unit for the ramp rate.
         "0" means 1/s, "1" means 1/min.
@@ -101,34 +183,46 @@ class AMI430(Base, CoilMagnet1DInterface):
             raise Exception('Unknown unit entered.')
 
 
-    def get_field_units(self):
-        """Returns the unit for the field.
-        "0" means kilogauss, "1" means tesla.
-        """
-        ans = self._query('FIELD:UNITS?')
-        ans=int(ans[0])
-        return ans
-    
+    def get_number_of_segments(self):
+        n_segments = self._query('RAMP:RATE:SEGMENTS?')
+        return n_segments
 
-    def set_field_units(self, unit='1'):
-        """Sets the unit for the field.
+
+    def set_number_of_segments(self,n_segments):
+        """Sets the number of ramp rate segments.
+        """
+        write = f'CONFIGURE:RAMP:RATE:SEGEMNTS {n_segments}'
+        self._write(write)
+        return 0
+
+
+    def get_ramp_rates(self):
+        """ Returns the ramp rates in specified units and upper bound in amp.
+
+        @return list ramp_rates: list of lists. Each list consists of the ramp rate for the segment
+            and the upper bound of the segment. Units are the specified ones (kG, T, s, min).
+        """
+        n_segments = self.get_number_of_segments()
+        ramp_rates = []
+        for i in range(1,n_segments+1):
+            query = f'RAMP:RATE:FIELD:{i}?'
+            ramp_rate = self._query(query)
+            ramp_rates.append(ramp_rate)
+        return ramp_rates
+
+
+    def set_ramp_rate(self, segment_number, rate, upper_bound):
+        """Sets the ramp rate for the specified segement.
         
-        '0', 'kG' or 'kGs' sets it to kilogauss (default).
+        @param int segment_number: Number of the target segment. Firs segment has number 1.
 
-        '1' or 'T' sets it to tesla.
+        @param float rate: Ramp rate in specified units (kG,T per s,min).
+
+        @param float upper_bound: upper bound for the segemnt in kG or T.
         """
-        unit = str(unit)
-        alias_seconds = ['0', 'kG', 'kGs']
-        alias_minutes = ['1', 'T']
-        if unit in alias_seconds:
-            # set field unit to kilogauss
-            self._write('CONF:FIELD:UNITS 0')
-        elif unit in alias_minutes:
-            # set field unit to tesla
-            self._write('CONF:FIELD:UNITS 1')
-        else:
-            raise Exception('Unknown unit entered.')
-
+        write = f'CONF:RAMP:RATE:FIELD {segment_number},{rate},{upper_bound}'
+        self._write(write)
+        return 0
 
     def get_target_field(self):
         """Returns the target field in kilogauss or tesla, depending on the selected field units.
@@ -219,6 +313,20 @@ class AMI430(Base, CoilMagnet1DInterface):
         return
 
 
+    def get_persistent(self):
+        """ Returns mode of the magnet.
+
+        0 if in driven mode,
+        1 if in persistent mode.
+
+        Note: If current in magnet is less than 100 mA, AMI will not say that one is in persistent mode, eventhough PSW is cold.
+        """
+        ans = self._query('PERSISTENT?')
+        ans = int(ans[0])
+        return ans
+
+
+
     def get_pseudo_persistent(self):
         """Returns mode of the magnet.
 
@@ -272,79 +380,19 @@ class AMI430(Base, CoilMagnet1DInterface):
             raise RuntimeError('You need to give either field or current target.')
         
         self.continue_ramp()
-# stuff that is nice to have
-# ------------------------------------------------------------------------------------------------
 
-# ------------------------------------------------------------------------------------------------
-# maybe??
+
     def get_constraints(self): 
         pass
 
-    def idn(self):
-        """ Returns the identification string of the Model 430 Programmer.
-        
-        The identification string contains the AMI model number and firmware revision code.
-        """
-        return self._query("*IDN?")
-# maybe??
-# ------------------------------------------------------------------------------------------------
-
 # ------------------------------------------------------------------------------------------------
 # stuff that is used in the functions above
-    def connect(self, ip=None, port=None):
-        if not ip:
-            ip = self._ip
-        if not port:
-            port = self._port
-        try:
-            self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self._socket.connect((ip, port))
-            greeting = self._read()
-            print(greeting)
-            if not "American Magnetics Model 430 IP Interface" in greeting:
-                raise RuntimeError(f"Device does not answer with correct greeting message.\nRecieved message:\n{greeting}")
-        except Exception as err:
-            self.disconnect()
-            raise
-
-    def disconnect(self):
-        try:
-            self._socket.close()
-        except Exception as err:
-            raise
-
-    def _read(self, length=1024):
-        """Reads the feedback from the device."""
-        return self._socket.recv(length).decode("ascii").strip().split("\r\n")
-
-
-    def _write(self, cmd):
-        """Writes the specified command to the decive without waiting for a response."""
-        return self._socket.send( (cmd+"\r\n").encode("ascii"))
-
-
-    def _query(self, cmd):
-        """Writes the specified command to the device and waits for a response. 
-        
-        Will take forever, if no response is given. In this case use _write."""
-        self._write(cmd)
-        return self._read()
-
-    def local(self):
-        """Enables the front panel.
-        
-        Local acess is now possible. """
-        self._write('SYST:LOC')
-
-
-    def remote(self):
-        """Disables the front control panel to prevent accidental operation."""
-        self._write('SYST:REM')
+    
 
 
     def set_params_from_config(self):
         pass
-    
+
 
     def set_target_field(self,target,unit=None):
         """Sets the target field in kilogauss or tesla, depending on the selected field units.
@@ -431,16 +479,4 @@ class AMI430(Base, CoilMagnet1DInterface):
         return ans
 
 
-    def get_persistent(self):
-        """ Returns mode of the magnet.
 
-        0 if in driven mode,
-        1 if in persistent mode.
-
-        Note: If current in magnet is less than 100 mA, AMI will not say that one is in persistent mode, eventhough PSW is cold.
-        """
-        ans = self._query('PERSISTENT?')
-        ans = int(ans[0])
-        return ans
-# stuff that is used in the functions above
-# ------------------------------------------------------------------------------------------------
