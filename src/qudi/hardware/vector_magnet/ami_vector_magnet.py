@@ -22,6 +22,8 @@ class magnet_3d(Base):
     #internal signals
     sigFastRamp = QtCore.Signal()
     sigSlowRamp = QtCore.Signal()
+    sigZeroRamp = QtCore.Signal()
+    sigWaitPSwCool = QtCore.Signal()
 
     # external signals
     sigRampFinished = QtCore.Signal()
@@ -41,16 +43,18 @@ class magnet_3d(Base):
         # connect internal signals
         self.sigFastRamp.connect(self._fast_ramp_loop_body)
         self.sigSlowRamp.connect(self._slow_ramp_loop_body)
+        self.sigZeroRamp.connect(self._ramp_to_zero_loop_body)
+        self.sigWaitPSwCool.connect(self._psw_cooling_loop_body)
 
         self.debug = True
 
         # TODO: Get values from config
         self._abortRampLoop = False
-        self.rampTimerInterval = 10000
         self.fastRampTimerInterval = 10000
         self.slowRampTimerInterval = 10000
         self._abortRampToZeroLoop = False
         self.rampToZeroTimerInterval = 10000
+        self.pswCoolingTimerInterval = 60000
         return
 
 
@@ -147,7 +151,7 @@ class magnet_3d(Base):
         l1 = len(field1)
         l2 = len(field2)
         if l1 != l2:
-            raise RuntimeError('GIven fields are not of the same length.')
+            raise RuntimeError('Given fields are not of the same length.')
         field_combined = []
         for i in range(l1):
             field_combined.append(max(field1[i],field2[i]))
@@ -167,8 +171,13 @@ class magnet_3d(Base):
         ramping_state = self.get_ramping_state()
         if ramping_state == [2,2,2]: # might be a problem with pause?
             self._abortRampLoop = True
-            self.sigRampFinished.emit()
-            return
+            if self.enter_persistent:
+                self.set_psw_status(0)
+                self.sigWaitPSwCool.emit()
+                return
+            else:
+                self.sigRampFinished.emit()
+                return
         else:
             QtCore.QTimer.singleShot(self.fastRampTimerInterval, self.sigFastRamp.emit())
             return
@@ -199,8 +208,13 @@ class magnet_3d(Base):
             else:
                 # ramping done on all three axes
                 self._abortRampLoop = True
-                self.sigRampFinished.emit()
-                return
+                if self.enter_persistent:
+                    self.set_psw_status(0)
+                    self.sigWaitPSwCool.emit()
+                    return
+                else:
+                    self.sigRampFinished.emit()
+                    return
         else: # we are not holding --> still ramping
             # might be a problem with ramping to zero
             QtCore.QTimer.singleShot(self.slowRampTimerInterval, self.sigSlowRamp.emit())
@@ -265,5 +279,99 @@ class magnet_3d(Base):
         """Ramps the magnet to zero field and turns of the PSW heaters."""
         self._abortRampLoop = True
         self._abortRampToZeroLoop = False
-        self._ramp_to_zero_loop(first_time=True)
+        self.sigZeroRamp.emit()
+        return
+
+    
+    def _ramp_to_zero_loop_body(self):
+        if self._abortRampToZeroLoop:
+            self.pause_ramp()
+            return 
+        ramping_state = self.get_ramping_state()
+        if ramping_state == [8,8,8]:
+            self.sigRampFinished.emit()
+            return
+        else:
+            QtCore.QTimer.singleShot(self.rampToZeroTimerInterval, self.sigZeroRamp.emit())
+            return
+
+
+    def _psw_cooling_loop_body(self):
+        mode = self.get_pseudo_persistent()
+        if mode == [1,1,1]:
+            self.sigRampFinished.emit()
+        else:
+            QtCore.QTimer.singleShot(self.pswCoolingTimerInterval, self.sigWaitPSwCool.emit())
+            return
+    
+
+    def get_pseudo_persistent(self):
+        """Returns mode of the magnets as array.
+
+        [mode x, mode y, mode z]
+
+        0 if in driven mode,
+        1 if in persistent mode.
+
+        Note: If current in magnet is less than 100 mA, AMI will not say that magnet is in persistent mode, eventhough PSWs are cold.
+        This function fixes that issue.
+        If the heater is turned off and the magnet is in HOLDING or ZERO mode, the PSW should be cool and the magnet should be in persisent mode.
+        If the current inside the magnet is less than 100 mA, the AMI will not return 1, eventhough the magnet loop is superconducting.
+        This means that the function should return 1.
+        So if the above requirements are met (magnet in HOLDING or ZERO, PSW heater off, current less than 100 mA), this function will return 1.
+        """
+
+        mode_x = self._magnet_x.get_pseudo_persistent()
+        mode_y = self._magnet_y.get_pseudo_persistent()
+        mode_z = self._magnet_z.get_pseudo_persistent()
+
+        return [mode_x, mode_y, mode_z]
+
+    
+    def get_psw_status(self):
+        """Returns the status of the psw heaters as array. 
+
+        [status heater x, status heater y, status heater z]
+        
+        0 means heater is switched off.
+        1 means heateris switched on.
+        """
+
+        status_x = self._magnet_x.get_psw_status()
+        status_y = self._magnet_y.get_psw_status()
+        status_z = self._magnet_z.get_psw_status()
+
+        return [status_x, status_y, status_z]
+
+
+    def set_psw_status(self, status):
+        """Turns the PSWs of all 3 magnets on (1) or off(0).
+
+        If you change the current in one coil, all PSWs should be turned on to ensure the other coils are not affected.
+
+        Before PSW is heated and superconducting state is broken, the current inside the magnet and the current that is applied by the powersupply need to match.
+        Also, device needs to be in HOLDING mode (ramp has finished).
+        Otherwise the magnet might quench.
+        """
+
+        # check ramp state
+        ramping_state = self.get_ramping_state()
+        if not (ramping_state == [2,2,2] or ramping_state == [8,8,8]):
+            raise Exception(f'All magnets need to be in HOLDING or ZERO mode.\nRamping state is {ramping_state}')
+
+        # check if currents inside and outside magnet match
+        curr_mag = self.get_magnet_currents()
+        curr_sup = self.get_supply_currents()
+        if not np.allclose(curr_mag, curr_sup, atol=0.01):
+            raise Exception(f'Current on power supply does not match current inside magnet.\nSupply: {curr_sup}\nMagnet: {curr_mag}')
+
+        if type(status) == int:
+            if status == 0 or status == 1:
+                self._magnet_x.set_psw_status(status)
+                self._magnet_y.set_psw_status(status)
+                self._magnet_z.set_psw_status(status)
+            else:
+                raise Exception('Status needs to be either 0 or 1.')
+        else:
+            raise TypeError('Status needs to be integer.')
         return
