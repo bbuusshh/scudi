@@ -21,10 +21,6 @@ class magnet_3d(Base):
     timerIntervals = ConfigOption(name='timerIntervals', missing='warn')
 
     #internal signals
-    sigFastRamp = QtCore.Signal()
-    sigSlowRamp = QtCore.Signal()
-    sigZeroRamp = QtCore.Signal()
-    sigWaitPSwCool = QtCore.Signal()
 
     # external signals
     sigRampFinished = QtCore.Signal()
@@ -35,29 +31,65 @@ class magnet_3d(Base):
         self._magnet_y = self.magnet_y()
         self._magnet_z = self.magnet_z()
 
-        # connect internal signals
-        self.sigFastRamp.connect(self._fast_ramp_loop_body)
-        self.sigSlowRamp.connect(self._slow_ramp_loop_body)
-        self.sigZeroRamp.connect(self._ramp_to_zero_loop_body)
-        self.sigWaitPSwCool.connect(self._psw_cooling_loop_body)
-
         self.debug = True
 
-        # TODO: Get values from config
         self._abortRampLoop = False
         self._abortRampToZeroLoop = False
-        self.rampToZeroTimerInterval = 10000
-        self.pswCoolingTimerInterval = 60000
+
+        ## set up timers
+        #fast ramp
+        self.fastRampTimer = QtCore.QTimer()
+        self.fastRampTimer.setSingleShot(True)
+        self.fastRampTimer.timeout.connect(self._fast_ramp_loop_body, QtCore.Qt.QueuedConnection)
+        self.fastRampTimer.setInterval(self.timerIntervals['fastRamp'])
+        # slow ramp
+        self.slowRampTimer = QtCore.QTimer()
+        self.slowRampTimer.setSingleShot(True)
+        self.slowRampTimer.timeout.connect(self._slow_ramp_loop_body, QtCore.Qt.QueuedConnection)
+        self.slowRampTimer.setInterval(self.timerIntervals['slowRamp'])
+        # ramp to zero
+        self.zeroRampTimer = QtCore.QTimer()
+        self.zeroRampTimer.setSingleShot(True)
+        self.zeroRampTimer.timeout.connect(self._ramp_to_zero_loop_body, QtCore.Qt.QueuedConnection)
+        self.zeroRampTimer.setInterval(self.timerIntervals['rampToZero'])
+        # psw cooling
+        self.pswTimer = QtCore.QTimer()
+        self.pswTimer.setSingleShot(True)
+        self.pswTimer.timeout.connect(self._psw_status_change_loop_body, QtCore.Qt.QueuedConnection)
+        self.pswTimer.setInterval(self.timerIntervals['pswStatusChange'])
+        # equalizing currents
+        self.equalizeCurrentsTimer = QtCore.QTimer()
+        self.equalizeCurrentsTimer.setSingleShot(True)
+        self.equalizeCurrentsTimer.timeout.connect(self._equalize_currents_loop_body, QtCore.Qt.QueuedConnection)
+        self.equalizeCurrentsTimer.setInterval(self.timerIntervals['equalizeCurrents'])
         return
 
 
     def  on_deactivate(self):
+        # stop timers
+        self.fastRampTimer.stop()
+        self.fastRampTimer.timeout.disconnect()
+        # deactivate 1D magnets
         self._magnet_x.on_deactivate()
         self._magnet_y.on_deactivate()
         self._magnet_z.on_deactivate()
         return
 
-    
+
+    def get_magnet_currents(self):
+        curr_x = self._magnet_x.get_magnet_current()
+        curr_y = self._magnet_y.get_magnet_current()
+        curr_z = self._magnet_z.get_magnet_current()
+        return [curr_x,curr_y,curr_z]
+
+
+    def get_supply_currents(self):
+        curr_x = self._magnet_x.get_supply_current()
+        curr_y = self._magnet_y.get_supply_current()
+        curr_z = self._magnet_z.get_supply_current()
+        return [curr_x,curr_y,curr_z]
+
+
     def ramp(self, field_target=[None,None,None], enter_persistent=False):
         """Ramps the magnet."""
         # check if the target field is within constraints
@@ -74,7 +106,7 @@ class magnet_3d(Base):
         self._abortRampToZeroLoop = True
         if ret == 0:
             self.fast_ramp(field_target=field_target)
-            self.sigFastRamp.emit()
+            self._start_fastRampTimer()
             return
         else:
             # order the axes by ascending field strength
@@ -94,7 +126,7 @@ class magnet_3d(Base):
             self.current_axis_field_target = self.field_target_reordered.pop(0)
             cmd = f'self._magnet_{self.current_axis}.ramp(field_target={self.current_axis_field_target})'
             eval(cmd)
-            self.sigSlowRamp.emit()
+            self._start_slowRampTimer()
             return
 
         
@@ -151,12 +183,28 @@ class magnet_3d(Base):
         return field_combined
 
 
+    def _start_fastRampTimer(self):
+        if self.thread() is not QtCore.QThread.currentThread():
+            if self.debug:
+                print('_start_fastRampTimer, thread is not currentThread')
+            QtCore.QMetaObject.invokeMethod(self.fastRampTimer,
+                                            'start',
+                                            QtCore.Qt.BlockingQueuedConnection)
+        else:
+            if self.debug:
+                print('_start_fastRampTimer, thread is currentThread')
+            self.fastRampTimer.start()
+
+
+    @QtCore.Slot()
     def _fast_ramp_loop_body(self):
         """Loop that controls the ramping of the magnet.
         
         If target field has been reached and magnet is in holding mode, sigRampFinished is emitted.
         Otherwise it is called again later.
         """
+        if self.debug:
+            print('_fast_ramp_loop_body')
         # abort ramp loop if requested
         if self._abortRampLoop:
             self.pause_ramp()
@@ -165,22 +213,44 @@ class magnet_3d(Base):
         if ramping_state == [2,2,2]: # might be a problem with pause?
             self._abortRampLoop = True
             if self.enter_persistent:
+                if self.debug:
+                    print('fast ramp finished, cooling psw')
                 self.set_psw_status(0)
-                self.sigWaitPSwCool.emit()
+                self.pswTimer.start()
                 return
             else:
+                if self.debug:
+                    print('fast ramp finished')
                 self.sigRampFinished.emit()
                 return
         else:
-            print('foo')
-            #TODO: This fires WAY too fast. FIx pls.
-            self.fastRampTimer = QtCore.QTimer()
-            self.fastRampTimer.setSingleShot(True)
-            self.fastRampTimer.timeout.connect(self.sigFastRamp.emit(), QtCore.Qt.QueuedConnection)
-            self.fastRampTimer.start(100000)#self.timerIntervals['fastRamp'])
+            if self.debug:
+                print('fast ramping not finished')
+            self.fastRampTimer.start()
             return
 
 
+    def fast_ramp(self, field_target):
+        self._magnet_y.ramp(field_target = field_target[1])
+        self._magnet_x.ramp(field_target = field_target[0])
+        self._magnet_z.ramp(field_target = field_target[2])
+        return 0
+
+
+    def _start_slowRampTimer(self):
+        if self.thread() is not QtCore.QThread.currentThread():
+            if self.debug:
+                print('_start_slowRampTimer, thread is not currentThread')
+            QtCore.QMetaObject.invokeMethod(self.slowRampTimer,
+                                            'start',
+                                            QtCore.Qt.BlockingQueuedConnection)
+        else:
+            if self.debug:
+                print('_start_slowRampTimer, thread is currentThread')
+            self.slowRampTimer.start()
+
+
+    @QtCore.Slot()
     def _slow_ramp_loop_body(self):
         # abort ramp loop if requested
         if self._abortRampLoop:
@@ -208,22 +278,14 @@ class magnet_3d(Base):
                 self._abortRampLoop = True
                 if self.enter_persistent:
                     self.set_psw_status(0)
-                    self.sigWaitPSwCool.emit()
+                    self.pswTimer.start()
                     return
                 else:
                     self.sigRampFinished.emit()
                     return
         else: # we are not holding --> still ramping
-            # might be a problem with ramping to zero
-            QtCore.QTimer.singleShot(self.timerIntervals['slowRamp'], self.sigSlowRamp.emit())
+            self.slowRampTimer.start()
             return
-
-
-    def fast_ramp(self, field_target):
-        self._magnet_y.ramp(field_target = field_target[1])
-        self._magnet_x.ramp(field_target = field_target[0])
-        self._magnet_z.ramp(field_target = field_target[2])
-        return 0
 
     
     def get_ramping_state(self):
@@ -277,34 +339,48 @@ class magnet_3d(Base):
         """Ramps the magnet to zero field and turns of the PSW heaters."""
         self._abortRampLoop = True
         self._abortRampToZeroLoop = False
-        self.sigZeroRamp.emit()
+        self._magnet_y.ramp_to_zero()
+        self._magnet_x.ramp_to_zero()
+        self._magnet_z.ramp_to_zero()
+        self._start_zeroRampTimer()
         return
 
+
+    def _start_zeroRampTimer(self):
+        if self.thread() is not QtCore.QThread.currentThread():
+            if self.debug:
+                print('_start_zeroRampTimer, thread is not currentThread')
+            QtCore.QMetaObject.invokeMethod(self.zeroRampTimer,
+                                            'start',
+                                            QtCore.Qt.BlockingQueuedConnection)
+        else:
+            if self.debug:
+                print('_start_zeroRampTimer, thread is currentThread')
+            self.zeroRampTimer.start()
+
     
+    @QtCore.Slot()
     def _ramp_to_zero_loop_body(self):
+        if self.debug:
+            print('_ramp_to_zero_loop_body')
         if self._abortRampToZeroLoop:
             self.pause_ramp()
             return 
         ramping_state = self.get_ramping_state()
         if ramping_state == [8,8,8]:
+            if self.debug:
+                print('ramp to zero finished')
             self.sigRampFinished.emit()
             return
         else:
-            QtCore.QTimer.singleShot(self.timerIntervals['rampToZero'], self.sigZeroRamp.emit())
+            if self.debug:
+                print('still rmaping to zero')
+            self.zeroRampTimer.start()
             return
-
-
-    def _psw_cooling_loop_body(self):
-        mode = self.get_pseudo_persistent()
-        if mode == [1,1,1]:
-            self.sigRampFinished.emit()
-        else:
-            QtCore.QTimer.singleShot(self.timerIntervals['pswCooling'], self.sigWaitPSwCool.emit())
-            return
-    
+        
 
     def get_pseudo_persistent(self):
-        """Returns mode of the magnets as array.
+        """Returns mode of the magnets as array. TURNS OUT IT DOES NOT WORK!
 
         [mode x, mode y, mode z]
 
@@ -326,6 +402,50 @@ class magnet_3d(Base):
         return [mode_x, mode_y, mode_z]
 
     
+    def equalize_currents(self):
+        curr_mag = self.get_magnet_currents()
+        curr_sup = self.get_supply_currents()
+        if np.allclose(curr_mag, curr_sup,atol=0.01):
+            return 0
+        else:
+            self._magnet_x.equalize_currents()
+            self._magnet_y.equalize_currents()
+            self._magnet_z.equalize_currents()
+            self._start_eualizeCurrentTimer()
+            return
+
+
+    def _start_eualizeCurrentTimer(self):
+        if self.thread() is not QtCore.QThread.currentThread():
+            if self.debug:
+                print('_start_equalizeCurrentsTimer, thread is not currentThread')
+            QtCore.QMetaObject.invokeMethod(self.equalizeCurrentsTimer,
+                                            'start',
+                                            QtCore.Qt.BlockingQueuedConnection)
+        else:
+            if self.debug:
+                print('_startpswCoolingpTimer, thread is currentThread')
+            self.equalizeCurrentsTimer.start()
+
+    @QtCore.Slot()
+    def _equalize_currents_loop_body(self):
+        if self.debug:
+            print('_equalize_currents_loop_body')
+        curr_mag = self.get_magnet_currents()
+        curr_sup = self.get_supply_currents()
+        state = self.get_ramping_state()
+        if np.allclose(curr_mag, curr_sup,atol=0.01) and (state==[2,2,2]):
+            if self.debug:
+                print('currents equalized')
+            return
+        else:
+            if self.debug:
+                print('Currents not yet equalized')
+            self.equalizeCurrentsTimer.start()
+            return
+
+
+
     def get_psw_status(self):
         """Returns the status of the psw heaters as array. 
 
@@ -365,11 +485,50 @@ class magnet_3d(Base):
 
         if type(status) == int:
             if status == 0 or status == 1:
+                if self.debug:
+                    print(f'setting psw status to {status}')
                 self._magnet_x.set_psw_status(status)
                 self._magnet_y.set_psw_status(status)
                 self._magnet_z.set_psw_status(status)
+                psw = self.get_psw_status()
+                self.old_ramping_state = psw
+                self._start_pswTimer()
             else:
                 raise Exception('Status needs to be either 0 or 1.')
         else:
             raise TypeError('Status needs to be integer.')
         return
+
+
+    def _start_pswTimer(self):
+        if self.thread() is not QtCore.QThread.currentThread():
+            if self.debug:
+                print('_start_pswTimer, thread is not currentThread')
+            QtCore.QMetaObject.invokeMethod(self.pswTimer,
+                                            'start',
+                                            QtCore.Qt.BlockingQueuedConnection)
+        else:
+            if self.debug:
+                print('_startpswCoolingpTimer, thread is currentThread')
+            self.pswTimer.start()
+    
+
+    @QtCore.Slot()
+    def _psw_status_change_loop_body(self):
+        if self.debug:
+            print('_psw_status_change_loop_body')
+        state = self.get_ramping_state()
+        psw = self.get_psw_status()
+        if state == [3,3,3]:
+            # magnet goes into PAUSE (3) state after PSWs are warmed up/cooled down
+            # you can not enter paused mode manually while cooling/heating
+            if psw == [0,0,0]:
+                # PSW heaters are off
+                if self.debug:
+                    print('PSWs are cold')
+            elif psw == [1,1,1]:
+                # PSW heaters are on
+                if self.debug:
+                    print('PSWs are warm')
+        else:
+            self.pswTimer.start()
