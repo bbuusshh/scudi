@@ -75,6 +75,8 @@ class WavemeterLoggerLogic(LogicBase):
     _settings = StatusVar(name = 'wavelogger_settings', default=default_settings)
     current_wavelength = -1
     count_data = np.array([], dtype = COUNT_DTYPE)
+    wavelengths = np.array([], dtype = WAVELENGTH_DTYPE)
+
     plot_x = []
     plot_y = []
 
@@ -163,7 +165,15 @@ class WavemeterLoggerLogic(LogicBase):
     @QtCore.Slot()
     def query_wavemeter(self):
         with self._thread_lock:
-            self.current_wavelength = self._wavemeter.get_wavelength(kind='freq')
+            self.current_wavelength = self._wavemeter.get_current_wavelength(kind='freq')
+            self._time_elapsed = time.time() - self._acquisition_start_time
+            if self.wavelengths.shape[0] == 0:
+                    self.wavelengths = np.array([(self._time_elapsed, self.current_wavelength)], dtype=WAVELENGTH_DTYPE)
+            elif self._time_elapsed > self.wavelengths['time'][-1]:
+                    self.wavelengths = np.append(self.wavelengths, np.array([(time.time() - self._acquisition_start_time, self.current_wavelength)], dtype=WAVELENGTH_DTYPE))
+            self.wavelengths = self.wavelengths[-self.wavelength_buffer:]
+
+
             self.current_wavelengths = self._wavemeter.get_wavelengths(kind='freq') #this give you a 1000 array of length ~ 1ms
             self._time_elapsed = time.time() - self._acquisition_start_time
             if len(self.current_wavelengths) > 0: # if there is smth in buffer do your job
