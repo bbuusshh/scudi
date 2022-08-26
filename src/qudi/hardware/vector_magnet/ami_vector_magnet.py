@@ -66,13 +66,20 @@ class magnet_3d(Base):
 
 
     def  on_deactivate(self):
-        # stop timers
+        # note: connected 1D magnet are running their on_deactivate automatcally,
+        # no need to run it here by hand
+        
+        # stop timers, don't know if this is really necessary
         self.fastRampTimer.stop()
         self.fastRampTimer.timeout.disconnect()
-        # deactivate 1D magnets
-        self._magnet_x.on_deactivate()
-        self._magnet_y.on_deactivate()
-        self._magnet_z.on_deactivate()
+        self.slowRampTimer.stop()
+        self.slowRampTimer.timeout.disconnect()
+        self.zeroRampTimer.stop()
+        self.zeroRampTimer.timeout.disconnect()
+        self.pswTimer.stop()
+        self.pswTimer.timeout.disconnect()
+        self.equalizeCurrentsTimer.stop()
+        self.equalizeCurrentsTimer.timeout.disconnect()
         return
 
 
