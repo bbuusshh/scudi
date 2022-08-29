@@ -5,6 +5,9 @@
 import typing
 import enum
 import socket
+from qtpy import QtCore
+from qudi.core.module import Base
+from qudi.core.configoption import ConfigOption
 
 class Log(typing.NamedTuple):
     '''Contains all status data of the device'''
@@ -78,31 +81,42 @@ class StatusBit(enum.IntEnum):
     RefTemp = 9
     OpoStable = 10
 
-class CWave:
+class CWave(Base):
     '''Represents a handle to the C-WAVE device.'''
+    __socket = None
+    _connected = False
+    _ip = ConfigOption('ip', '129.69.46.217', missing='warn')
+    _port = ConfigOption('port', 10001, missing='warn')
 
-    def __init__(self):
-        self.__socket = None
-        self.__connected = False
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+    def on_activate(self):
 
-    def connect(self, address: str, port: int = 10001):
+        self._port = int(self._port)
+        self.connect(self._ip, self._port)
+
+    def on_deactivate(self):
+        self.disconnect()
+
+    def connect(self, address: str, port: int) -> bool:
         '''Connect to device'''
         assert isinstance(address, str)
         assert isinstance(port, int)
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__socket.connect((address, port))
-        self.__connected = True
+        self._connected = True
         # sanity check if there is really a C-WAVE behind this connection
         if not self.get_firmware_version().startswith('CWave '):
             self.disconnect()
             raise ConnectionAbortedError('Invalid device')
+        return self._connected
 
     def disconnect(self):
         '''Disconnects from device'''
         if not self.__socket is None:
             self.__socket.close()
         self.__socket = None
-        self.__connected = False
+        self._connected = False
 
     def dial(self, wavelength: float, request_shg: bool) -> None:
         '''Sets a new wavelength (OPO) to dial'''
@@ -226,6 +240,12 @@ class CWave:
         '''Gets whether current state of a shutter is open or closed'''
         return bool(int(self.__query('shtter_{}?'.format(shutter.value))))
 
+    def get_shutters(self):
+        shutters_dict = {}
+        for shutter in ShutterChannel:
+            shutters_dict[shutter.value] = bool(int(self.__query('shtter_{}?'.format(shutter.value))))
+        return shutters_dict
+
     def set_mirror(self, position: bool) -> None:
         '''Sets mirror to either 0 or 1 position'''
         assert isinstance(position, bool)
@@ -237,7 +257,15 @@ class CWave:
 
     def get_status_bits(self) -> int:
         '''Gets raw representation of status bits'''
-        return self.get_log().statusBits
+        return bin(self.get_log().statusBits)[2:]
+
+    def get_status_dict(self):
+        status_dict = {}
+        status_bits = self.get_status_bits()
+        for idx, status in enumerate(StatusBit):
+            status_dict[status.value] = status_bits[idx]
+        return 
+
 
     def get_external_pump(self) -> bool:
         '''Gets whether device has an external pump'''
@@ -308,7 +336,7 @@ class CWave:
 
     def __query(self, cmd: str) -> str:
         assert isinstance(cmd, str)
-        if not self.__connected:
+        if not self._connected:
             raise ConnectionError('Not connected to device.')
         # flush input
         self.__socket.settimeout(0.001)
@@ -342,7 +370,7 @@ class CWave:
 
     def __query_value(self, cmd: str, val: any) -> str:
         assert isinstance(cmd, str)
-        if not self.__connected:
+        if not self._connected:
             raise ConnectionError('Not connected to device.')
         cmd += ':' if cmd[-1] != '?' else ''
         if not isinstance(val, typing.Iterable):

@@ -5,7 +5,6 @@ from core.configoption import ConfigOption
 import math
 import random
 import time
-from qudi.hardware.cwave import cwave_api
 from ctypes import c_char_p, CDLL, c_int
 import os
 from types import SimpleNamespace
@@ -51,7 +50,7 @@ class CwaveLaser(Base):
         cwave_ip: '192.168.202.52 :10001 '
         cwave_dll: './cwave/CWAVE_DLL.dll'
     """
-    _cwave_ip = ConfigOption('cwave_ip', '129.69 .46 .217:10001 ', missing='warn')
+    _cwave_ip = ConfigOption('cwave_ip', '192.168.202.52 :10001', missing='warn')
    
 # self.status_keys = ['ready', 'OPOstepper', 'OPOtemp', 'SHGstepper', 'SHGtemp', 'Thin etalon', 'lockOPO', 'lockSHG', 'lockEtalon', 'laserEmission', 'refTemp']
 
@@ -67,6 +66,11 @@ class CwaveLaser(Base):
     def on_activate(self):
         """ Activate module.
         """
+        this_dir = os.path.dirname(__file__)
+        prev_dir = os.getcwd()
+        os.chdir(this_dir)
+        self.cwave_dll = CDLL("CWAVE_DLL.dll")
+        os.chdir(prev_dir)
         self.cwstate = 0
         self.scanner_setpoint = 0
         self.shutters = {'laser_en':True,
@@ -94,7 +98,7 @@ class CwaveLaser(Base):
 
             @return LaserState: actual laser state
         """
-        self.cwstate = int(self.cwave_api.connect(address = self._cwave_ip, port = 10001))
+        self.cwstate = self.cwave_dll.cwave_connect(c_char_p(self._cwave_ip.encode('utf-8')))
         if self.cwstate != 1:
             raise Exception('Apparently cwave is connected somewhere else.')
         self.cwstate = 1
@@ -104,7 +108,7 @@ class CwaveLaser(Base):
         """ Turn on laser.
             @return LaserState: actual laser state
         """
-        self.cwave_api.disconnect()
+        self.cwave_dll.cwave_disconnect()
         self.cwstate = 0
         return self.cwstate
 
@@ -124,8 +128,10 @@ class CwaveLaser(Base):
             scancw = self.cwave_dll.set_regopo_extramp(c_char_p(int(scan_duration)), c_char_p(int(scan_mode)), c_char_p(int(lowerlimit)), c_char_p(int(upperlimit)))
             self.select_monitor_out(MonitorOut.PIEZO_OPO)
             return scancw
-
-            
+    @laser_is_connected
+    def get_wavelength(self):
+        self.wavelength = int(self.get_int_value('opo_lambda')/100)
+        return self.wavelength
     @laser_is_connected
     def set_regopo_mode(self, mode=RegMode.CONTROL):
         return self.set_int_value('regopo_on', mode)
