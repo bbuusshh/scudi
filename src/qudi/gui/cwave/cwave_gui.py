@@ -4,16 +4,14 @@ import os
 import pyqtgraph as pg
 import time
 
-from core.connector import Connector
-from gui.colordefs import QudiPalettePale as palette
-from gui.guibase import GUIBase
-from gui.guiutils import ColorBar
-from gui.colordefs import ColorScaleInferno
-from qtpy import QtGui
-from qtpy import QtCore
-from qtpy import QtWidgets
-from qtpy import uic
-from core.pi3_utils import delay, wavelength_to_freq
+from qudi.core.connector import Connector
+from qudi.core.module import GuiBase
+# from gui.colordefs import ColorScaleInferno
+from PySide2 import QtCore, QtGui, QtWidgets
+import pyqtgraph as pg
+from qudi.hardware.cwave.cwave_api import PiezoChannel, StatusBit, PiezoMode, ExtRampMode, StepperChannel, Log
+import qudi.util.uic as uic
+# from core.pi3_utils import delay, wavelength_to_freq
 
 
 class CwaveWindow(QtWidgets.QMainWindow):
@@ -29,7 +27,7 @@ class CwaveWindow(QtWidgets.QMainWindow):
         uic.loadUi(ui_file, self)
         self.show()
 
-class CwaveGui(GUIBase):
+class CwaveGui(GuiBase):
     """
     """
     # declare connectors
@@ -42,7 +40,7 @@ class CwaveGui(GUIBase):
     sig_connect_cwave = QtCore.Signal()
     sig_set_shutter_state = QtCore.Signal(str, bool)
     sig_optimize_cwave = QtCore.Signal(str)
-    sig_change_lock_mode = QtCore.Signal(str, str)
+    sig_change_lock_mode = QtCore.Signal(object, object)
     sig_save_measurement = QtCore.Signal()
     
 
@@ -58,25 +56,29 @@ class CwaveGui(GUIBase):
         """ 
         """
         self._cwavelogic = self.cwavelogic()
-        self._savelogic = self.savelogic()
         self._mw = CwaveWindow()     
         #! Get the images from the logic
-        self.set_up_images()
         self.set_up_cwave_control_panel()
         self._cwavelogic.sig_update_gui.connect(self.update_gui)
+        self._cwavelogic.sig_cwave_connected.connect(self.cwave_connected)
+        #! set shutters initially and then consider button states synced with the laser
+        #! update on connect
+        for shutter, state in self._cwavelogic.shutters.items():
+            eval(f"self._mw.checkBox_shtter_{shutter}.setChecked({state})")
+
         self._mw.show()
 
     def set_up_cwave_control_panel(self):
         self._mw.pushButton_connectCwave.clicked.connect(self.changeCwaveState)
         for shutter in self._cwavelogic.shutters.keys():
-            eval(f"self._mw.checkBox_{shutter}.stateChanged.connect(self.flip_shutter)")
+            eval(f"self._mw.checkBox_shtter_{shutter}.stateChanged.connect(self.flip_shutter)")
          
-        self._mw.pushButtonOpt_opt_stop.clicked.connect(self.optimizing)
-        self._mw.pushButtonOpt_opt_tempshg.clicked.connect(self.optimizing)
-        self._mw.pushButtonOpt_regeta_catch.clicked.connect(self.optimizing)
+        self._mw.pushButtonOpt_stop.clicked.connect(self.optimizing)
+        self._mw.pushButtonOpt_temp.clicked.connect(self.optimizing)
+        self._mw.pushButtonOpt_etalon.clicked.connect(self.optimizing)
 
-        self._mw.eta_lock_checkBox.clicked.connect(self.change_lock_mode)
-        self._mw.opo_lock_checkBox.clicked.connect(self.change_lock_mode)
+        self._mw.eta_lock_checkBox.stateChanged.connect(self.change_lock_mode)
+        self._mw.opo_lock_checkBox.stateChanged.connect(self.change_lock_mode)
         self._mw.thick_eta_spinBox.editingFinished.connect(self.adjust_thick_etalon)
         self._mw.opo_lambda_spinBox.editingFinished.connect(self.adjust_opo_lambda)
         self._mw.ref_cav_doubleSpinBox.editingFinished.connect(self.update_setpoint)
@@ -118,56 +120,66 @@ class CwaveGui(GUIBase):
         if setpoint is None:
             setpoint = self._mw.ref_cav_doubleSpinBox.value()
         self.sig_set_refcav.emit(setpoint)
+
     @QtCore.Slot()
-    def change_lock_mode(self, param=None, mode=None):
-        if (param is None) or (mode is None):
+    def change_lock_mode(self, stage=None, mode=None):
+        if (stage is None) or (mode is None):
             sender = self.sender()
+            print("Sender", sender)
             if "_lock_checkBox" in sender.objectName():
-                    param = sender.objectName().split('_lock_checkBox')[0].strip()
-                    mode = 'control' if sender.isChecked() else 'manual'
+                    stage = sender.objectName().split('_lock_checkBox')[0].strip()
+                    stage = PiezoChannel.Opo if stage == 'opo' else PiezoChannel.Etalon
+                    mode = PiezoMode.Control if sender.isChecked() else PiezoMode.Manual
             else:
                 raise Exception("Wrong button for this function!")
                 return
-        self.sig_change_lock_mode.emit(param, mode)
+        self.sig_change_lock_mode.emit(stage, mode)
+    
     @QtCore.Slot()
-    def optimizing(self, opt_param=None):
-        if opt_param is None: 
+    def optimizing(self, opt_param = None):
+       
+        if opt_param is False: #SOme bug I do not know how to fix
             sender = self.sender()
             if "pushButtonOpt_" in sender.objectName():
+                
                 opt_param = sender.objectName().split('pushButtonOpt_')[-1].strip()
             else:
                 raise Exception("Wrong button for this function!")
                 return
         self.sig_optimize_cwave.emit(opt_param)
+        
 
     @QtCore.Slot()
     def flip_shutter(self, shutter=None, state=None):
         if (shutter is None) or (state is None):
             sender = self.sender()
+            print("Sender", sender)
             state = sender.isChecked()
             if "checkBox_shtter" in sender.objectName():
-                shutter = sender.objectName().split('checkBox_')[-1].strip()
+                shutter = sender.objectName().split('checkBox_shtter_')[-1].strip()
             elif "checkBox_laser_en" in sender.objectName():
-                shutter = sender.objectName().split('checkBox_')[-1].strip()
+                shutter = sender.objectName().split('checkBox_laser_en_')[-1].strip()
             else:
                 raise Exception("Wrong button for this function!")
                 return  
+        # print("Shutter", shutter)
         self.sig_set_shutter_state.emit(shutter, state)
     @QtCore.Slot()
     def update_cwave_panel(self):
         """ Logic told us to update our button states, so set the buttons accordingly. """
         #! connect button 
-        if self._cwavelogic.cwstate == 0:
+        if self._cwavelogic.connected == 0:
             self._mw.pushButton_connectCwave.setText('Connect')
             self._mw.radioButton_connectCwave.setChecked(False)
         else:
             self._mw.pushButton_connectCwave.setText('Disconnect')
             self._mw.radioButton_connectCwave.setChecked(True)
         
-
-        #! shutters:
-        for shutter, state in self._cwavelogic.shutters.items():
-            eval(f"self._mw.checkBox_{shutter}.setChecked({state})")
+        #! disalbed style 
+        #https://stackoverflow.com/questions/66734842/setting-background-color-of-a-checkable-qpushbutton-for-button-is-disabled
+        # #! shutters:
+        # for shutter, state in self._cwavelogic.shutters.items():
+        #     eval(f"self._mw.checkBox_shtter_{shutter}.setChecked({state})")
         #! states:
         for param, state in self._cwavelogic.status_cwave.items():
             eval(f"self._mw.radioButton_{param}.setChecked({state})")
@@ -176,18 +188,39 @@ class CwaveGui(GUIBase):
         #TODO: read wavelength from the wavelengthmeter
       
         #! photodiodes  
-        self._mw.label_laserPD.setText(f"{self._cwavelogic.laserPD}")
-        self._mw.label_opoPD.setText(f"{self._cwavelogic.opoPD}")
-        self._mw.label_shgPD.setText(f"{self._cwavelogic.shgPD}")
-        if self._cwavelogic.reg_modes is not None:
-            self._mw.eta_lock_checkBox.setEnabled(True)
-            self._mw.opo_lock_checkBox.setEnabled(True)
-            self._mw.eta_lock_checkBox.setChecked(True if self._cwavelogic.reg_modes['eta'] == 2 else False)
-            self._mw.opo_lock_checkBox.setChecked(True if self._cwavelogic.reg_modes['opo'] == 2 else False)
-        else:
-            self._mw.eta_lock_checkBox.setEnabled(False)
-            self._mw.opo_lock_checkBox.setEnabled(False)
+        self._mw.label_laserPD.setText(f"{self._cwavelogic.cwave_log.pdPump}")
+        self._mw.label_opoPD.setText(f"{self._cwavelogic.cwave_log.pdSignal}")
+        self._mw.label_shgPD.setText(f"{self._cwavelogic.cwave_log.pdShg}")
+
     @QtCore.Slot()
     def changeCwaveState(self):
-        # print(self._cwavelogic.cwstate)
+        # print(self._cwavelogic.connected)
+        if self._cwavelogic.connected == 0:
+            self._mw.pushButton_connectCwave.setText('Disconnect')
+            self._mw.radioButton_connectCwave.setChecked(True)
+            
+        else:
+            self._mw.pushButton_connectCwave.setText('Connect')
+            self._mw.radioButton_connectCwave.setChecked(False)
+            #!DISABLE ALL
+        # self._mw._mw.radioButton_connectCwave.setChecked(False)
         self.sig_connect_cwave.emit()
+
+    
+    @QtCore.Slot()
+    def cwave_connected(self):
+        self._mw.pushButton_connectCwave.setText('Disconnect')
+        self._mw.radioButton_connectCwave.setChecked(True)
+        
+        for shutter, state in self._cwavelogic.shutters.items():
+            eval(f"self._mw.checkBox_shtter_{shutter}.setChecked({state})")
+        
+        # if self._cwavelogic.reg_modes != {}:
+            # self._mw.eta_lock_checkBox.setEnabled(True)
+            # self._mw.opo_lock_checkBox.setEnabled(True)
+        if self._cwavelogic.reg_modes != {}:
+            self._mw.eta_lock_checkBox.setChecked(True if self._cwavelogic.reg_modes['eta'].value == 2 else False)
+            self._mw.opo_lock_checkBox.setChecked(True if self._cwavelogic.reg_modes['opo'].value == 2 else False)
+        # else:
+        #     self._mw.eta_lock_checkBox.setEnabled(False)
+        #     self._mw.opo_lock_checkBox.setEnabled(False)

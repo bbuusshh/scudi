@@ -2,6 +2,7 @@
 
 # pylint: disable=R0904
 
+from logging import exception
 import typing
 import enum
 import socket
@@ -93,15 +94,19 @@ class CWave(Base):
     def on_activate(self):
 
         self._port = int(self._port)
-        self.connect(self._ip, self._port)
+        # self.connect()
 
     def on_deactivate(self):
         self.disconnect()
 
-    def connect(self, address: str, port: int) -> bool:
+    def connect(self, address: str = None, port: int = None) -> bool:
+        if address is None:
+            address = self._ip
+        if port is None:
+            port = self._port
         '''Connect to device'''
-        assert isinstance(address, str)
-        assert isinstance(port, int)
+        # assert isinstance(address, str)
+        # assert isinstance(port, int)
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__socket.connect((address, port))
         self._connected = True
@@ -120,8 +125,8 @@ class CWave(Base):
 
     def dial(self, wavelength: float, request_shg: bool) -> None:
         '''Sets a new wavelength (OPO) to dial'''
-        assert isinstance(wavelength, (float, int))
-        assert isinstance(request_shg, bool)
+        # assert isinstance(wavelength, (float, int))
+        # assert isinstance(request_shg, bool)
         wavelength = wavelength/2 if request_shg else wavelength
         self.__query_value('opo_lambda', int(wavelength*100))
 
@@ -151,42 +156,50 @@ class CWave(Base):
     def optimize_etalon(self) -> None:
         '''Optimizes etalon'''
         self.__query('regeta_catch')
+    
+    def optimize_shg_temperature(self) -> None:
+        '''Optimizes etalon'''
+        self.__query('opt_tempshg')
 
     def etalon_move(self, delta_wavelength: float) -> None:
         '''Moves etalon wavelength wise'''
-        assert isinstance(delta_wavelength, (float, int))
+        # assert isinstance(delta_wavelength, (float, int))
         self.__query_value('thicketa_rel_hr', int(delta_wavelength*1000))
 
     def elements_move(self, delta_wavelength: float) -> None:
         '''Moves all elements wavelength wise'''
-        assert isinstance(delta_wavelength, (float, int))
+        # assert isinstance(delta_wavelength, (float, int))
         self.__query_value('opo_rlambda', int(delta_wavelength*100))
 
     def set_stepper_period(self, channel: StepperChannel, period: (int)) -> None:
         '''Sets stepper period'''
-        assert isinstance(channel, StepperChannel)
-        assert isinstance(period, int)
+        # assert isinstance(channel, StepperChannel)
+        # assert isinstance(period, int)
         self.__query_value('{}_pos_i'.format(channel.value), period)
 
     def set_piezo_mode(self, channel: PiezoChannel, mode: PiezoMode) -> None:
         '''Sets piezo operation mode'''
-        assert isinstance(channel, PiezoChannel)
-        assert isinstance(mode, PiezoMode)
+        # assert isinstance(channel, PiezoChannel)
+        # assert isinstance(mode, PiezoMode)
         if mode == PiezoMode.Manual and not (channel in [PiezoChannel.Opo, PiezoChannel.Shg]):
             raise Exception('Manual Mode only allowed OPO und SHG Channels')
         if mode == PiezoMode.ExtRamp and channel != PiezoChannel.Opo:
             raise Exception('ExtRamp Mode only allowed OPO Channel')
+        print(channel.value, mode.value  )
         self.__query_value('reg{}_on'.format(channel.value), mode.value)
 
     def get_piezo_mode(self, channel: PiezoChannel) -> PiezoMode:
         '''Gets piezo operation mode'''
-        assert isinstance(channel, PiezoChannel)
+        # print("ChannelAPI", channel) 
+        #! Assertion with enum prevents from calling this funcition from the logic.
+        #! I guess because enum when imported is not the same enum anymore.
+        # # assert isinstance(channel, PiezoChannel)
         return PiezoMode(int(self.__query('reg{}_on?'.format(channel.value))))
 
     def set_piezo_manual_output(self, channel: PiezoChannel, value: int) -> None:
         '''Sets piezo output when in manual mode'''
-        assert isinstance(channel, PiezoChannel)
-        assert isinstance(value, int)
+        # assert isinstance(channel, PiezoChannel)
+        # assert isinstance(value, int)
         if channel == PiezoChannel.Etalon:
             raise Exception(
                 'Operation not allowed for etalon channel.\n' +
@@ -196,7 +209,7 @@ class CWave(Base):
 
     def get_piezo_manual_output(self, channel: PiezoChannel) -> int:
         '''Sets piezo output when in manual mode'''
-        assert isinstance(channel, PiezoChannel)
+        # assert isinstance(channel, PiezoChannel)
         if channel == PiezoChannel.Etalon:
             raise Exception(
                 'Operation not allowed for etalon channel.\n' +
@@ -206,7 +219,7 @@ class CWave(Base):
 
     def set_etalon_offset(self, value: int) -> None:
         '''Sets etalon control offset'''
-        assert isinstance(value, int)
+        # assert isinstance(value, int)
         self.__query_value('regeta_off', value)
 
     def get_etalon_offset(self) -> int:
@@ -215,7 +228,7 @@ class CWave(Base):
 
     def set_galvo_position(self, value: int) -> None:
         '''Sets thick etalon position'''
-        assert isinstance(value, int)
+        # assert isinstance(value, int)
         self.__query_value('galvo', value)
 
     def get_galvo_position(self) -> None:
@@ -224,17 +237,23 @@ class CWave(Base):
 
     def set_laser(self, enable: bool) -> None:
         '''Sets enabled state of internal pump laser'''
-        assert isinstance(enable, bool)
+        # assert isinstance(enable, bool)
         self.__query_value('laser_en', int(enable))
 
     def get_laser(self) -> bool:
         '''Gets enabled state of internal pump laser'''
         return bool(self.__query('laser_en?'))
 
-    def set_shutter(self, shutter: ShutterChannel, open_shutter: bool) -> None:
+    def set_shutter(self, shutter, open_shutter: bool) -> None:
         '''Sets a shutter open or closed'''
-        assert isinstance(open_shutter, bool)
-        self.__query_value('shtter_{}'.format(shutter.value), int(open_shutter))
+        # assert isinstance(open_shutter, bool)
+        if isinstance(shutter, ShutterChannel):
+            shutter_val = shutter.value
+        elif isinstance(shutter, str):
+            shutter_val = shutter
+        else:
+            exception 
+        self.__query_value('shtter_{}'.format(shutter_val), int(open_shutter))
 
     def get_shutter(self, shutter: ShutterChannel) -> bool:
         '''Gets whether current state of a shutter is open or closed'''
@@ -243,12 +262,12 @@ class CWave(Base):
     def get_shutters(self):
         shutters_dict = {}
         for shutter in ShutterChannel:
-            shutters_dict[shutter.value] = bool(int(self.__query('shtter_{}?'.format(shutter.value))))
+            shutters_dict[shutter.value] = bool(int(self.__query('shtter_{}?'.format(shutter.value)))) if self._connected else False
         return shutters_dict
 
     def set_mirror(self, position: bool) -> None:
         '''Sets mirror to either 0 or 1 position'''
-        assert isinstance(position, bool)
+        # assert isinstance(position, bool)
         self.__query_value('mirror', int(position))
 
     def get_mirror(self) -> bool:
@@ -257,15 +276,13 @@ class CWave(Base):
 
     def get_status_bits(self) -> int:
         '''Gets raw representation of status bits'''
-        return bin(self.get_log().statusBits)[2:]
+        return self.get_log().statusBits
 
     def get_status_dict(self):
         status_dict = {}
-        status_bits = self.get_status_bits()
         for idx, status in enumerate(StatusBit):
-            status_dict[status.value] = status_bits[idx]
-        return 
-
+            status_dict[status.value] = bin(self.get_log().statusBits)[2:] 
+        return status_dict
 
     def get_external_pump(self) -> bool:
         '''Gets whether device has an external pump'''
@@ -273,18 +290,18 @@ class CWave(Base):
 
     def set_temperature_setpoint(self, channel: TemperatureChannel, setpoint: float) -> None:
         '''Sets temperature setpoint'''
-        assert isinstance(channel, TemperatureChannel)
-        assert isinstance(setpoint, (float, int))
+        # assert isinstance(channel, TemperatureChannel)
+        # assert isinstance(setpoint, (float, int))
         self.__query_value('t{}_set'.format(channel.value), int(setpoint*1000))
 
     def get_temperature_setpoint(self, channel: TemperatureChannel) -> float:
         '''Gets temperature setpoint'''
-        assert isinstance(channel, TemperatureChannel)
+        # assert isinstance(channel, TemperatureChannel)
         return float(self.__query('t{}_set?'.format(channel.value)))/1000
 
     def get_mapping_temperature(self, channel: MappingChannel, wavelength: float) -> float:
         '''Gets corresponding temperature of a wavelength according to mapping'''
-        assert isinstance(wavelength, (int, float))
+        # assert isinstance(wavelength, (int, float))
         return float(
             self.__query('mapping_{}?{}'.format(channel.value, int(wavelength*100))).split(':')[1]
         )/1000
@@ -295,10 +312,10 @@ class CWave(Base):
                                  lower_limit_percent: int,
                                  upper_limit_percent: int):
         '''Sets ExtRamp OPO mode parameters'''
-        assert isinstance(period_milliseconds, int)
-        assert isinstance(mode, ExtRampMode)
-        assert isinstance(lower_limit_percent, int)
-        assert isinstance(upper_limit_percent, int)
+        # assert isinstance(period_milliseconds, int)
+        # assert isinstance(mode, ExtRampMode)
+        # assert isinstance(lower_limit_percent, int)
+        # assert isinstance(upper_limit_percent, int)
         self.__query_value('regopo_extramp', [
             period_milliseconds,
             mode.value,
@@ -328,14 +345,14 @@ class CWave(Base):
         '''Test whether a list list of status bits are all true'''
         status_bits = self.get_status_bits()
         for bit in bits:
-            assert isinstance(bit, StatusBit)
+            # assert isinstance(bit, StatusBit)
             # bits are "inverted": 0 -> OK, 1 -> FAIL
             if status_bits & (1 << bit.value) > 0:
                 return False
         return True
 
     def __query(self, cmd: str) -> str:
-        assert isinstance(cmd, str)
+        # assert isinstance(cmd, str)
         if not self._connected:
             raise ConnectionError('Not connected to device.')
         # flush input
@@ -369,7 +386,7 @@ class CWave(Base):
         raise ConnectionError('Command Failed: ' + cmd)
 
     def __query_value(self, cmd: str, val: any) -> str:
-        assert isinstance(cmd, str)
+        # assert isinstance(cmd, str)
         if not self._connected:
             raise ConnectionError('Not connected to device.')
         cmd += ':' if cmd[-1] != '?' else ''

@@ -5,28 +5,30 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 from time import sleep
-from core.connector import Connector
-from core.statusvariable import StatusVar
-from core.configoption import ConfigOption
-from core.util.mutex import Mutex
-from logic.generic_logic import GenericLogic
-from qtpy import QtCore
-from PyQt5.QtCore import QObject
-from core.threadmanager import ThreadManager
-from core.pi3_utils import delay
+from qudi.core.connector import Connector
+from qudi.core.statusvariable import StatusVar
+from qudi.core.configoption import ConfigOption
+from qudi.util.mutex import RecursiveMutex
+from qudi.core.module import LogicBase
+from qudi.hardware.cwave.cwave_api import PiezoChannel, StatusBit, PiezoMode, ExtRampMode, StepperChannel, Log, ShutterChannel
+from PySide2 import QtCore
+
+# from qudi.core.pi3_utils import delay
+from time import sleep
 import numpy as np
 
-class CwaveLogic(GenericLogic):
+class CwaveLogic(LogicBase):
     """This logic module controls scans of DC voltage on the fourth analog
     output channel of the NI Card.  It collects countrate as a function of voltage.
     """
     # declare connectors
-    cwavelaser = Connector(interface='CwaveLaser')
+    cwavelaser = Connector(interface='CWave')
   
-    queryInterval = ConfigOption('query_interval', 100)
+    queryInterval = ConfigOption('query_interval', 500)
 
     sig_update_gui = QtCore.Signal()
     sig_update_cwave_states = QtCore.Signal()
+    sig_cwave_connected = QtCore.Signal()
     sig_update_guiPanelPlots = QtCore.Signal()
     sig_update_guiPlotsRefInt = QtCore.Signal()
     sig_update_guiPlotsOpoReg = QtCore.Signal()
@@ -42,23 +44,8 @@ class CwaveLogic(GenericLogic):
         """ Initialisation performed during activation of the module.
         """
         self._cwavelaser = self.cwavelaser()
-
-        self.shutters = self._cwavelaser.get_shutters()
-        self.status_cwave = self._cwavelaser.get_status_dict()
-        self.cwave_log = self._cwavelaser.get_log()
-        self.connected = self._cwavelaser._connected
-    
-        self.reg_modes = self._cwavelaser.get_piezo_mode()
-    
-        self.sig_update_cwave_states.connect(self.update_cwave_states)
-        # Initialie data matrix
-        # delay timer for querying laser
-        self.queryTimer = QtCore.QTimer()
-        self.queryTimer.setInterval(self.queryInterval)
-        self.queryTimer.setSingleShot(True)
-        self.queryTimer.timeout.connect(self.loop_body)#, QtCore.Qt.QueuedConnection)     
-        self.queryTimer.start(self.queryInterval)
-        self.sig_update_gui.emit()
+        
+        self.connect_cwave()
         return 
 
     def on_deactivate(self):
@@ -71,6 +58,29 @@ class CwaveLogic(GenericLogic):
         for i in range(5):
             QtCore.QCoreApplication.processEvents()
         return 
+    
+    def connect_cwave(self):
+        
+        self._cwavelaser.connect()
+        self.connected = self._cwavelaser._connected
+        if self.connected:
+            self.shutters = self._cwavelaser.get_shutters()
+            self.status_cwave = {}#self._cwavelaser.get_dial_done()
+            self.cwave_log = self._cwavelaser.get_log()
+            
+        
+            self.reg_modes = {}
+        
+            self.sig_update_cwave_states.connect(self.update_cwave_states)
+            # Initialie data matrix
+            # delay timer for querying laser
+            self.queryTimer = QtCore.QTimer()
+            self.queryTimer.setInterval(self.queryInterval)
+            self.queryTimer.setSingleShot(True)
+            self.queryTimer.timeout.connect(self.loop_body)#, QtCore.Qt.QueuedConnection)     
+            self.queryTimer.start(self.queryInterval)
+        self.sig_update_gui.emit()
+
     # @thread_safety
     def save_data(self):
         print("here we save")
@@ -86,48 +96,70 @@ class CwaveLogic(GenericLogic):
     #! Laser control panel:
     @QtCore.Slot(str)
     def optimize_cwave(self, opt_command):
-        self._cwavelaser.set_command(opt_command)
+        if opt_command == 'etalon':
+            self._cwavelaser.optimize_etalon()
+        elif opt_command == 'temp':
+            self._cwavelaser.optimize_shg_temperature()
+        else:
+            self._cwavelaser.optimize_stop()
+
 
     @QtCore.Slot(str, bool)
     def change_shutter_state(self, shutter, state):
-        self._cwavelaser.shutters.update({shutter: state})
-        self._cwavelaser.set_shutters_states()
-        self.shutters = self._cwavelaser.get_shutters()
+        # self._cwavelaser.shutters.update({shutter: state})
+        self._cwavelaser.set_shutter(shutter, state)
+        # self.shutters = self._cwavelaser.get_shutters()
         self.sig_update_gui.emit()
 
     @QtCore.Slot()
     def update_cwave_states(self):
         self.shutters = self._cwavelaser.get_shutters()
-        self.status_cwave = self._cwavelaser.get_status_dict()
+        # self.status_cwave = self._cwavelaser.get_status_dict()
         self.cwave_log = self._cwavelaser.get_log()
         self.connected = self._cwavelaser._connected
-    
-        self.reg_modes = self._cwavelaser.get_piezo_mode()
-     
+
+        for idx, channel in enumerate(PiezoChannel):
+            # print("Chann", channel)
+            # self._cwavelaser.get_piezo_mode(channel)
+            self.reg_modes[channel.value] = self._cwavelaser.get_piezo_mode(channel)
+
+        for idx, bit in enumerate(StatusBit):
+            # print("Chann", channel)
+            # self._cwavelaser.get_piezo_mode(channel)
+            self.status_cwave[bit.name] = self._cwavelaser.test_status_bits([
+            bit
+        ])
+
         self.sig_update_gui.emit()
     
     @QtCore.Slot()
     def connection_cwave(self):
         """ Connect to the cwave """
-        if self.connected == 0:
-            self._cwavelaser.connect()
+        
+        if not self.connected:
+            self.connect_cwave()
+            self.sig_cwave_connected.emit()
+            # self._cwavelaser.connect()
+            # self.queryTimer.start(self.queryInterval)
         else:
             self._cwavelaser.disconnect()
+            self.queryTimer.stop()
         self.connected = self._cwavelaser._connected
-        print('CWAVE state:', self.connected)
+        
         self.sig_update_gui.emit()
 
     @QtCore.Slot(int)
     def adj_thick_etalon(self, adj):
         # print("here_we_go", adj)
         self._cwavelaser.set_galvo_position(adj)
-        delay(2)
+        sleep(2)
+        # delay(2)
 
     @QtCore.Slot(int)
     def adj_opo_lambda(self, adj):
         # print("here_we_go", adj)
         self._cwavelaser.set_wavelength(adj)
-        delay(5)
+        sleep(5)
 
     @QtCore.Slot(float)
     def refcav_setpoint(self, new_voltage):
@@ -142,8 +174,6 @@ class CwaveLogic(GenericLogic):
         self.setpoint  = new_voltage
 
     @QtCore.Slot(str, str)
-    def change_lock_mode(self, param, mode): 
-        if mode == 'control':
-            self._cwavelaser.set_regmode_control(param)
-        elif mode =='manual':
-            self._cwavelaser.set_regmode_manual(param)
+    def change_lock_mode(self, stage, mode): 
+        self._cwavelaser.set_piezo_mode(stage, mode)
+       
