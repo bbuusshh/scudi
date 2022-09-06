@@ -151,15 +151,15 @@ class CwaveLogic(LogicBase):
     @QtCore.Slot(int)
     def adj_thick_etalon(self, adj):
         # print("here_we_go", adj)
-        self._cwavelaser.set_galvo_position(adj)
-        sleep(2)
+        self._cwavelaser.etalon_move(adj)
+        # sleep(2)
         # delay(2)
 
     @QtCore.Slot(int)
     def adj_opo_lambda(self, adj):
-        # print("here_we_go", adj)
-        self._cwavelaser.set_wavelength(adj)
-        sleep(5)
+        print("here_we_go", adj)
+        self._cwavelaser.elements_move(adj)
+        # sleep(5)
 
     @QtCore.Slot(float)
     def refcav_setpoint(self, new_voltage):

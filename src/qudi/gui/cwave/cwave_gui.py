@@ -33,8 +33,8 @@ class CwaveGui(GuiBase):
     # declare connectors
     cwavelogic = Connector(interface='CwaveLogic')
     
-    sig_adj_thick_etalon = QtCore.Signal(int)
-    sig_adj_opo = QtCore.Signal(int)
+    sig_adj_thick_etalon = QtCore.Signal(float)
+    sig_adj_opo = QtCore.Signal(float)
     sig_set_refcav = QtCore.Signal(float)
     
     sig_connect_cwave = QtCore.Signal()
@@ -79,8 +79,8 @@ class CwaveGui(GuiBase):
 
         self._mw.eta_lock_checkBox.stateChanged.connect(self.change_lock_mode)
         self._mw.opo_lock_checkBox.stateChanged.connect(self.change_lock_mode)
-        self._mw.thick_eta_spinBox.editingFinished.connect(self.adjust_thick_etalon)
-        self._mw.opo_lambda_spinBox.editingFinished.connect(self.adjust_opo_lambda)
+        self._mw.thick_eta_doubleSpinBox.editingFinished.connect(self.adjust_thick_etalon)
+        self._mw.opo_lambda_doubleSpinBox.editingFinished.connect(self.adjust_opo_lambda)
         self._mw.ref_cav_doubleSpinBox.editingFinished.connect(self.update_setpoint)
 
         #? Connect signals
@@ -106,14 +106,14 @@ class CwaveGui(GuiBase):
     @QtCore.Slot()
     def adjust_thick_etalon(self, delta_eta=None):
         if delta_eta is None:
-            delta_eta = int(self._mw.thick_eta_spinBox.value())
-      
+            delta_eta = self._mw.thick_eta_doubleSpinBox.value()
+        print(delta_eta)
         self.sig_adj_thick_etalon.emit(delta_eta) 
     @QtCore.Slot()
     def adjust_opo_lambda(self, delta_lam = None):
         if delta_lam is None:
-            delta_lam = int(self._mw.opo_lambda_spinBox.value())
-
+            delta_lam = self._mw.opo_lambda_doubleSpinBox.value()
+        print(delta_lam)
         self.sig_adj_opo.emit(delta_lam) 
     @QtCore.Slot()
     def update_setpoint(self, setpoint=None):
