@@ -70,8 +70,10 @@ class CwaveLogic(LogicBase):
             
         
             self.reg_modes = {}
-        
+            self.pump_state = None
+
             self.sig_update_cwave_states.connect(self.update_cwave_states)
+            self.sig_update_cwave_states.emit()
             # Initialie data matrix
             # delay timer for querying laser
             self.queryTimer = QtCore.QTimer()
@@ -79,6 +81,9 @@ class CwaveLogic(LogicBase):
             self.queryTimer.setSingleShot(True)
             self.queryTimer.timeout.connect(self.loop_body)#, QtCore.Qt.QueuedConnection)     
             self.queryTimer.start(self.queryInterval)
+        
+        self.sig_update_cwave_states.emit()
+        self.sig_cwave_connected.emit()
         self.sig_update_gui.emit()
 
     # @thread_safety
@@ -103,6 +108,9 @@ class CwaveLogic(LogicBase):
         else:
             self._cwavelaser.optimize_stop()
 
+    def pump_switched(self, state):
+        state = True if state != 0 else False
+        self._cwavelaser.set_laser(state)
 
     @QtCore.Slot(str, bool)
     def change_shutter_state(self, shutter, state):
@@ -116,36 +124,50 @@ class CwaveLogic(LogicBase):
         self.shutters = self._cwavelaser.get_shutters()
         # self.status_cwave = self._cwavelaser.get_status_dict()
         self.cwave_log = self._cwavelaser.get_log()
+        self.pump_state = self._cwavelaser.get_laser()
+        
         self.connected = self._cwavelaser._connected
 
         for idx, channel in enumerate(PiezoChannel):
             # print("Chann", channel)
             # self._cwavelaser.get_piezo_mode(channel)
-            self.reg_modes[channel.value] = self._cwavelaser.get_piezo_mode(channel)
+            if channel != PiezoChannel.Galvo:
+                self.reg_modes[channel.value] = self._cwavelaser.get_piezo_mode(channel)
 
         for idx, bit in enumerate(StatusBit):
             # print("Chann", channel)
             # self._cwavelaser.get_piezo_mode(channel)
             self.status_cwave[bit.name] = self._cwavelaser.test_status_bits([
             bit
-        ])
-
+        ]) if bit != StatusBit.LaserEmission else not self._cwavelaser.test_status_bits([
+            bit
+        ]) 
+        
         self.sig_update_gui.emit()
     
+    @QtCore.Slot(int, int, int)
+    def ramp_opo(self, duration, start, stop):
+        self._cwavelaser.set_opo_extramp_settings(period_milliseconds = duration,
+        mode = ExtRampMode.Triangle,
+        lower_limit_percent = start,
+        upper_limit_percent = stop)
+        self._cwavelaser.set_piezo_mode(PiezoChannel.Opo, PiezoMode.ExtRamp)
+        return 
+
     @QtCore.Slot()
     def connection_cwave(self):
         """ Connect to the cwave """
         
         if not self.connected:
             self.connect_cwave()
-            self.sig_cwave_connected.emit()
+            
             # self._cwavelaser.connect()
             # self.queryTimer.start(self.queryInterval)
         else:
             self._cwavelaser.disconnect()
             self.queryTimer.stop()
         self.connected = self._cwavelaser._connected
-        
+        self.sig_update_cwave_states.emit()
         self.sig_update_gui.emit()
 
     @QtCore.Slot(int)
@@ -160,20 +182,29 @@ class CwaveLogic(LogicBase):
         print("here_we_go", adj)
         self._cwavelaser.elements_move(adj)
         # sleep(5)
-
-    @QtCore.Slot(float)
-    def refcav_setpoint(self, new_voltage):
-        # print("New setpoint:", new_voltage)
-        new_voltage_hex = int(65535 * new_voltage / 100)
-        res = self._cwavelaser.set_int_value('x', new_voltage_hex)
-        # delay(wait_time = 1)
-        if res == 1:
-            return
+    
+    def get_piezo_output(self, channel: PiezoChannel) -> int:
+        output = self._cwavelaser.get_piezo_manual_output(channel)
+        return output
+    
+    def set_piezo_output(self, channel: PiezoChannel, value: float) -> None:
+        # if (channel in [PiezoChannel.Opo, PiezoChannel.Shg]):
+        #     print("Hello")
+        #     self._cwavelaser.set_piezo_mode(channel, PiezoMode.Manual)
+        
+            
+        value = int(65535 * value / 10)
+        print(value)
+        if channel.name == PiezoChannel.Etalon.name:
+            self._cwavelaser.set_etalon_offset(value)
+        elif channel.name == PiezoChannel.Galvo:
+            self._cwavelaser.set_galvo_position(value)
         else:
-            raise Exception('The ref cavity set setpoint command failed.')
-        self.setpoint  = new_voltage
+            self._cwavelaser.set_piezo_manual_output(channel, value)
+        
 
-    @QtCore.Slot(str, str)
+    @QtCore.Slot(object, object)
     def change_lock_mode(self, stage, mode): 
+        print(stage, mode)
         self._cwavelaser.set_piezo_mode(stage, mode)
        

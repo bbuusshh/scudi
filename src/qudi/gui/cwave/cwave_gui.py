@@ -35,7 +35,7 @@ class CwaveGui(GuiBase):
     
     sig_adj_thick_etalon = QtCore.Signal(float)
     sig_adj_opo = QtCore.Signal(float)
-    sig_set_refcav = QtCore.Signal(float)
+    sig_set_piezo_output = QtCore.Signal(object, float)
     
     sig_connect_cwave = QtCore.Signal()
     sig_set_shutter_state = QtCore.Signal(str, bool)
@@ -61,6 +61,7 @@ class CwaveGui(GuiBase):
         self.set_up_cwave_control_panel()
         self._cwavelogic.sig_update_gui.connect(self.update_gui)
         self._cwavelogic.sig_cwave_connected.connect(self.cwave_connected)
+        self._cwavelogic.sig_cwave_connected.emit()
         #! set shutters initially and then consider button states synced with the laser
         #! update on connect
         for shutter, state in self._cwavelogic.shutters.items():
@@ -73,15 +74,21 @@ class CwaveGui(GuiBase):
         for shutter in self._cwavelogic.shutters.keys():
             eval(f"self._mw.checkBox_shtter_{shutter}.stateChanged.connect(self.flip_shutter)")
          
+        self._mw.pump_checkBox.stateChanged.connect(self.pump_switched)
+
         self._mw.pushButtonOpt_stop.clicked.connect(self.optimizing)
         self._mw.pushButtonOpt_temp.clicked.connect(self.optimizing)
         self._mw.pushButtonOpt_etalon.clicked.connect(self.optimizing)
 
-        self._mw.eta_lock_checkBox.stateChanged.connect(self.change_lock_mode)
+        self._mw.shg_lock_checkBox.stateChanged.connect(self.change_lock_mode)
         self._mw.opo_lock_checkBox.stateChanged.connect(self.change_lock_mode)
         self._mw.thick_eta_doubleSpinBox.editingFinished.connect(self.adjust_thick_etalon)
         self._mw.opo_lambda_doubleSpinBox.editingFinished.connect(self.adjust_opo_lambda)
-        self._mw.ref_cav_doubleSpinBox.editingFinished.connect(self.update_setpoint)
+        self._mw.ramp_checkBox.stateChanged.connect(self.start_ramp)
+        self._mw.piezo_comboBox.currentTextChanged.connect(self.piezo_channel_changed)
+        for channel in PiezoChannel:
+            self._mw.piezo_comboBox.addItem(channel.name)
+        self._mw.piezo_doubleSpinBox.editingFinished.connect(self.update_setpoint)
 
         #? Connect signals
         self.sig_set_shutter_state.connect(self._cwavelogic.change_shutter_state)
@@ -90,7 +97,7 @@ class CwaveGui(GuiBase):
         self.sig_change_lock_mode.connect(self._cwavelogic.change_lock_mode)
         self.sig_adj_thick_etalon.connect(self._cwavelogic.adj_thick_etalon)
         self.sig_adj_opo.connect(self._cwavelogic.adj_opo_lambda)
-        self.sig_set_refcav.connect(self._cwavelogic.refcav_setpoint)
+        self.sig_set_piezo_output.connect(self._cwavelogic.set_piezo_output)
     
     
     def show(self):
@@ -99,6 +106,10 @@ class CwaveGui(GuiBase):
         self._mw.activateWindow()
         self._mw.raise_()
     
+    @QtCore.Slot(str)
+    def piezo_channel_changed(self, channel):
+        self.piezo_channel = channel
+
     @QtCore.Slot()
     def update_gui(self):
         self.update_cwave_panel()
@@ -118,8 +129,23 @@ class CwaveGui(GuiBase):
     @QtCore.Slot()
     def update_setpoint(self, setpoint=None):
         if setpoint is None:
-            setpoint = self._mw.ref_cav_doubleSpinBox.value()
-        self.sig_set_refcav.emit(setpoint)
+            setpoint = self._mw.piezo_doubleSpinBox.value()
+        print("Update setpoint", setpoint, self.piezo_channel)
+        self.sig_set_piezo_output.emit(PiezoChannel[self.piezo_channel], setpoint)
+
+    @QtCore.Slot(int)
+    def start_ramp(self, state):
+        duration = self._mw.duration_spinBox.value()
+        start = self._mw.start_spinBox.value()
+        stop = self._mw.stop_spinBox.value()
+        print(state, "Ra mp")
+        if bool(state):
+            self._mw.opo_lock_checkBox.setChecked(False)
+            self._cwavelogic.ramp_opo(duration, start, stop)
+        else:
+            self._mw.opo_lock_checkBox.setChecked(True)
+            self.change_lock_mode(PiezoChannel.Opo, PiezoMode.Control)
+        return 
 
     @QtCore.Slot()
     def change_lock_mode(self, stage=None, mode=None):
@@ -128,11 +154,12 @@ class CwaveGui(GuiBase):
             print("Sender", sender)
             if "_lock_checkBox" in sender.objectName():
                     stage = sender.objectName().split('_lock_checkBox')[0].strip()
-                    stage = PiezoChannel.Opo if stage == 'opo' else PiezoChannel.Etalon
+                    stage = PiezoChannel.Opo if stage == 'opo' else PiezoChannel.Shg
                     mode = PiezoMode.Control if sender.isChecked() else PiezoMode.Manual
             else:
                 raise Exception("Wrong button for this function!")
                 return
+        print(stage ,mode)
         self.sig_change_lock_mode.emit(stage, mode)
     
     @QtCore.Slot()
@@ -147,7 +174,10 @@ class CwaveGui(GuiBase):
                 raise Exception("Wrong button for this function!")
                 return
         self.sig_optimize_cwave.emit(opt_param)
-        
+    
+    @QtCore.Slot(bool)
+    def pump_switched(self, state):
+        self._cwavelogic.pump_switched(state)
 
     @QtCore.Slot()
     def flip_shutter(self, shutter=None, state=None):
@@ -186,7 +216,7 @@ class CwaveGui(GuiBase):
 
         #! wavelength
         #TODO: read wavelength from the wavelengthmeter
-      
+        # self._mw.pump_checkBox.setChecked(self._cwavelogic.pump_state)
         #! photodiodes  
         self._mw.label_laserPD.setText(f"{self._cwavelogic.cwave_log.pdPump}")
         self._mw.label_opoPD.setText(f"{self._cwavelogic.cwave_log.pdSignal}")
@@ -214,13 +244,14 @@ class CwaveGui(GuiBase):
         
         for shutter, state in self._cwavelogic.shutters.items():
             eval(f"self._mw.checkBox_shtter_{shutter}.setChecked({state})")
-        
+        self._mw.pump_checkBox.setChecked(self._cwavelogic.pump_state)
         # if self._cwavelogic.reg_modes != {}:
-            # self._mw.eta_lock_checkBox.setEnabled(True)
+            # self._mw.shg_lock_checkBox.setEnabled(True)
             # self._mw.opo_lock_checkBox.setEnabled(True)
-        if self._cwavelogic.reg_modes != {}:
-            self._mw.eta_lock_checkBox.setChecked(True if self._cwavelogic.reg_modes['eta'].value == 2 else False)
-            self._mw.opo_lock_checkBox.setChecked(True if self._cwavelogic.reg_modes['opo'].value == 2 else False)
+        # if self._cwavelogic.reg_modes != {}:
+        print("Dict", self._cwavelogic.reg_modes)
+        self._mw.shg_lock_checkBox.setChecked(True if self._cwavelogic.reg_modes['shg'].value == PiezoMode.Control.value else False)
+        self._mw.opo_lock_checkBox.setChecked(True if self._cwavelogic.reg_modes['opo'].value == PiezoMode.Control.value else False)
         # else:
-        #     self._mw.eta_lock_checkBox.setEnabled(False)
+        #     self._mw.shg_lock_checkBox.setEnabled(False)
         #     self._mw.opo_lock_checkBox.setEnabled(False)
