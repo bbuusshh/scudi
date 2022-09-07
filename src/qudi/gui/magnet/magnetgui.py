@@ -10,15 +10,14 @@ class MagnetmainWindow(QtWidgets.QMainWindow):
     """Creates the Magnet GUI window.
     """
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
         ui_file = os.path.join(this_dir, 'ui_vectormagnet_prelim.ui')
 
         # Load it
-        super().__init__()
+        super().__init__(*args, **kwargs)
         uic.loadUi(ui_file, self)
-        self.show()
 
 
 class MagnetWindow(GuiBase):
@@ -29,14 +28,25 @@ class MagnetWindow(GuiBase):
     # internal signals
 
     # external signals
-    sigStartScanPressed = QtCore.Signal(np.array) # [[axis0_start, axis0_stop, axis0_steps], [axis1_start, axis1_stop, axis1_steps], [axis2_start, axis2_stop, axis2_steps]]
+    sigStartScanPressed = QtCore.Signal(np.ndarray) # [[axis0_start, axis0_stop, axis0_steps], [axis1_start, axis1_stop, axis1_steps], [axis2_start, axis2_stop, axis2_steps]]
     sigStopScanPressed = QtCore.Signal()
 
-    def on_activat(self):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
+    def on_activate(self):
         self._mw = MagnetmainWindow()
 
         self._magnetlogic = self.magnetlogic()
+
+        ## connect buttons
+        self._mw.start_scan_pushButton.clicked.connect(self.start_scan_pressed)
+        self._mw.stop_scan_pushButton.clicked.connect(self.stop_scan_pressed)
+
         ## connect signals
+        self.sigStartScanPressed.connect(self._magnetlogic._start_scan)
 
         self.show()
 
