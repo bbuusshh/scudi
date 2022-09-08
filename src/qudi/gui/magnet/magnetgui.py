@@ -28,7 +28,9 @@ class MagnetWindow(GuiBase):
     # internal signals
 
     # external signals
-    sigStartScanPressed = QtCore.Signal(np.ndarray) # [[axis0_start, axis0_stop, axis0_steps], [axis1_start, axis1_stop, axis1_steps], [axis2_start, axis2_stop, axis2_steps]]
+    # array: params [[axis0_start, axis0_stop, axis0_steps], [axis1_start, axis1_stop, axis1_steps], [axis2_start, axis2_stop, axis2_steps]]
+    # float: integration time
+    sigStartScanPressed = QtCore.Signal(np.ndarray, float)
     sigStopScanPressed = QtCore.Signal()
 
 
@@ -46,7 +48,7 @@ class MagnetWindow(GuiBase):
         self._mw.stop_scan_pushButton.clicked.connect(self.stop_scan_pressed)
 
         ## connect signals
-        self.sigStartScanPressed.connect(self._magnetlogic._start_scan)
+        self.sigStartScanPressed.connect(self._magnetlogic.set_up_scan)
 
         self.show()
 
