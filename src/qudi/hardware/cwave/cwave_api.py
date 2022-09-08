@@ -182,12 +182,12 @@ class CWave(Base):
         '''Sets piezo operation mode'''
         # assert isinstance(channel, PiezoChannel)
         # assert isinstance(mode, PiezoMode)
-        print("Hi")
+       
         if mode.value == PiezoMode.Manual.value and not (channel.name in [PiezoChannel.Opo.name, PiezoChannel.Shg.name]):
             raise Exception('Manual Mode only allowed OPO und SHG Channels')
         if mode.value == PiezoMode.ExtRamp.value and channel.name != PiezoChannel.Opo.name:
             raise Exception('ExtRamp Mode only allowed OPO Channel')
-        print("Piezo Mode", channel.value, mode.value  )
+     
         self.__query_value('reg{}_on'.format(channel.value), mode.value)
 
     def get_piezo_mode(self, channel: PiezoChannel) -> PiezoMode:
@@ -202,7 +202,7 @@ class CWave(Base):
         '''Sets piezo output when in manual mode'''
         # assert isinstance(channel, PiezoChannel)
         # assert isinstance(value, int)
-        print(channel, value)
+  
         if channel == PiezoChannel.Etalon:
             raise Exception(
                 'Operation not allowed for etalon channel.\n' +

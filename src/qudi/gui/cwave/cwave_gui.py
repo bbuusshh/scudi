@@ -118,19 +118,18 @@ class CwaveGui(GuiBase):
     def adjust_thick_etalon(self, delta_eta=None):
         if delta_eta is None:
             delta_eta = self._mw.thick_eta_doubleSpinBox.value()
-        print(delta_eta)
+
         self.sig_adj_thick_etalon.emit(delta_eta) 
     @QtCore.Slot()
     def adjust_opo_lambda(self, delta_lam = None):
         if delta_lam is None:
             delta_lam = self._mw.opo_lambda_doubleSpinBox.value()
-        print(delta_lam)
         self.sig_adj_opo.emit(delta_lam) 
     @QtCore.Slot()
     def update_setpoint(self, setpoint=None):
         if setpoint is None:
             setpoint = self._mw.piezo_doubleSpinBox.value()
-        print("Update setpoint", setpoint, self.piezo_channel)
+
         self.sig_set_piezo_output.emit(PiezoChannel[self.piezo_channel], setpoint)
 
     @QtCore.Slot(int)
@@ -138,7 +137,7 @@ class CwaveGui(GuiBase):
         duration = self._mw.duration_spinBox.value()
         start = self._mw.start_spinBox.value()
         stop = self._mw.stop_spinBox.value()
-        print(state, "Ra mp")
+
         if bool(state):
             self._mw.opo_lock_checkBox.setChecked(False)
             self._cwavelogic.ramp_opo(duration, start, stop)
@@ -151,7 +150,7 @@ class CwaveGui(GuiBase):
     def change_lock_mode(self, stage=None, mode=None):
         if (stage is None) or (mode is None):
             sender = self.sender()
-            print("Sender", sender)
+  
             if "_lock_checkBox" in sender.objectName():
                     stage = sender.objectName().split('_lock_checkBox')[0].strip()
                     stage = PiezoChannel.Opo if stage == 'opo' else PiezoChannel.Shg
@@ -159,7 +158,6 @@ class CwaveGui(GuiBase):
             else:
                 raise Exception("Wrong button for this function!")
                 return
-        print(stage ,mode)
         self.sig_change_lock_mode.emit(stage, mode)
     
     @QtCore.Slot()
@@ -183,7 +181,6 @@ class CwaveGui(GuiBase):
     def flip_shutter(self, shutter=None, state=None):
         if (shutter is None) or (state is None):
             sender = self.sender()
-            print("Sender", sender)
             state = sender.isChecked()
             if "checkBox_shtter" in sender.objectName():
                 shutter = sender.objectName().split('checkBox_shtter_')[-1].strip()
@@ -192,7 +189,7 @@ class CwaveGui(GuiBase):
             else:
                 raise Exception("Wrong button for this function!")
                 return  
-        # print("Shutter", shutter)
+      
         self.sig_set_shutter_state.emit(shutter, state)
     @QtCore.Slot()
     def update_cwave_panel(self):
@@ -224,7 +221,6 @@ class CwaveGui(GuiBase):
 
     @QtCore.Slot()
     def changeCwaveState(self):
-        # print(self._cwavelogic.connected)
         if self._cwavelogic.connected == 0:
             self._mw.pushButton_connectCwave.setText('Disconnect')
             self._mw.radioButton_connectCwave.setChecked(True)
@@ -249,7 +245,6 @@ class CwaveGui(GuiBase):
             # self._mw.shg_lock_checkBox.setEnabled(True)
             # self._mw.opo_lock_checkBox.setEnabled(True)
         # if self._cwavelogic.reg_modes != {}:
-        print("Dict", self._cwavelogic.reg_modes)
         self._mw.shg_lock_checkBox.setChecked(True if self._cwavelogic.reg_modes['shg'].value == PiezoMode.Control.value else False)
         self._mw.opo_lock_checkBox.setChecked(True if self._cwavelogic.reg_modes['opo'].value == PiezoMode.Control.value else False)
         # else:

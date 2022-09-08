@@ -125,7 +125,7 @@ class CwaveLogic(LogicBase):
         # self.status_cwave = self._cwavelaser.get_status_dict()
         self.cwave_log = self._cwavelaser.get_log()
         self.pump_state = self._cwavelaser.get_laser()
-        
+
         self.connected = self._cwavelaser._connected
 
         for idx, channel in enumerate(PiezoChannel):
@@ -179,7 +179,7 @@ class CwaveLogic(LogicBase):
 
     @QtCore.Slot(int)
     def adj_opo_lambda(self, adj):
-        print("here_we_go", adj)
+       
         self._cwavelaser.elements_move(adj)
         # sleep(5)
     
@@ -194,7 +194,7 @@ class CwaveLogic(LogicBase):
         
             
         value = int(65535 * value / 10)
-        print(value)
+        
         if channel.name == PiezoChannel.Etalon.name:
             self._cwavelaser.set_etalon_offset(value)
         elif channel.name == PiezoChannel.Galvo:
@@ -205,6 +205,6 @@ class CwaveLogic(LogicBase):
 
     @QtCore.Slot(object, object)
     def change_lock_mode(self, stage, mode): 
-        print(stage, mode)
+      
         self._cwavelaser.set_piezo_mode(stage, mode)
        
