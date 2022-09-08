@@ -14,6 +14,7 @@ class MagnetLogic(LogicBase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.debug = True
 
 
     def on_activate(self):
@@ -32,11 +33,11 @@ class MagnetLogic(LogicBase):
 
 
     def set_up_scan(self, params, int_time):
+        if self.debug:
+            print('set_up_scan')
         self.int_time = int_time
         # set up counter
         self.set_up_counter(int_time)
-        # set up timer for taking counts
-
         # build line for scanning
         self.scanning_line = self.build_3d_scan_line(params)
         # turn into list for more efficient memory usage
@@ -53,6 +54,8 @@ class MagnetLogic(LogicBase):
         
         @param float int_time: integration time in ns.
         """
+        if self.debug:
+            print('set_up_counter')
         apdChannels = self._tagger._counter['channels']
         # convert ms into ps
         self.ctr = self._tagger.counter(bin_width=int(int_time*1e9),n_values=1,channels=apdChannels)
@@ -94,6 +97,8 @@ class MagnetLogic(LogicBase):
             [x1,y2,z1]
         ]
         """
+        if self.debug:
+            print('build_3d_scan_line')
         # build axes
         axes = []
         for i in range(3):
@@ -112,36 +117,49 @@ class MagnetLogic(LogicBase):
         ax1 = np.tile(axes[1], (steps[0],1))
         ax1 = np.transpose(ax1)
         ax1 = np.reshape(ax1,steps[0]*steps[1])
-        ax1 = np.tile(ax1, 2)
+        ax1 = np.tile(ax1, steps[2])
         scanning_line[:,1] = ax1
         # ax2 into matrix
         ax2 = np.tile(axes[2], (steps[0]*steps[1],1))
         ax2 = np.transpose(ax2)
         ax2 = np.reshape(ax2,np.prod(steps))
         scanning_line[:,2] = ax2
-
+        if self.debug:
+            print(f'scanning line is \n {scanning_line}')
         return scanning_line
 
 
     def _set_up_next_pixel(self):
+        if self.debug:
+            print('setting up next pixel')
         if len(self._scanning_line) > 0: # if we still have pixels to scan
             self._rampForPixel = True # the ramp of the magnet was initiated by this script
             # choose next pixel
             self.pixel = self._scanning_line[0]
+            if self.debug:
+                print(f'current pixel is {self.pixel}')
             # remove the pixel from the stack
             self._scanning_line = self._scanning_line[1:]
             # turn spherical coordinates into carthesian
             carthesian = self.spherical_to_carthesian(self.pixel)
+            if self.debug:
+                print(carthesian)
             # ramp the magnet
             self._magnet.ramp(field_target=carthesian, enter_persistent=False)
             return
         else: # if we are finished
+            if self.debug:
+                print('scan finished')
+            # turn counts from list into array for faster processing later on
+            self.counts = np.array(self.counts)
             self._rampForPixel = False
             self.sigScanFinished.emit()
             return
 
 
     def _start_pixelIntegrationTimer(self):
+        if self.debug:
+            print('_start_pixelIntegrationTimer')
         if self._rampForPixel: # only do sth if ramp was initiated for the pixel
             if self.thread() is not QtCore.QThread.currentThread():
                 if self.debug:
@@ -154,14 +172,19 @@ class MagnetLogic(LogicBase):
                     print('_start_pixelIntegrationTimer, thread is currentThread')
                 self.pixelIntegrationTimer.start()
         else:
-            pass
+            if self.debug:
+                print('ramp was not initiated by this file, doing noting.')
 
 
     @QtCore.Slot()
     def _scan_pixel(self):
         """ Gets counts and sets up next pixel.
         """
+        if self.debug:
+            print('_scan_pixel')
         cts = self.ctr.getData()
+        if self.debug:
+            print(f'counts were {cts}')
         self.counts.append(cts) # store counts in list
         self._set_up_next_pixel()
         return
@@ -174,6 +197,8 @@ class MagnetLogic(LogicBase):
 
         @return array carthesian: carthesian coordinates in [x, y, z]
         """
+        if self.debug:
+            print('spherical_to_carthesian')
         r = spherical[0]
         theta = spherical[1]
         phi = spherical[2]

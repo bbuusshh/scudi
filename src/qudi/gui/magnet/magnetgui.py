@@ -36,6 +36,7 @@ class MagnetWindow(GuiBase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.debug = True
 
 
     def on_activate(self):
@@ -65,15 +66,20 @@ class MagnetWindow(GuiBase):
 
     
     def start_scan_pressed(self):
+        if self.debug:
+            print('start_scan_pressed')
         # get values from gui
+        # B_abs
         ax0_start = self._mw.axis0_start_value_doubleSpinBox.value()
         ax0_stop = self._mw.axis0_stop_value_doubleSpinBox.value()
         ax0_steps = self._mw.axis0_steps_doubleSpinBox.value()
         ax0_steps = int(ax0_steps)
+        # theta
         ax1_start = self._mw.axis1_start_value_doubleSpinBox.value()
         ax1_stop = self._mw.axis1_stop_value_doubleSpinBox.value()
         ax1_steps = self._mw.axis1_steps_doubleSpinBox.value()
         ax1_steps = int(ax1_steps)
+        # phi
         ax2_start = self._mw.axis2_start_value_doubleSpinBox.value()
         ax2_stop = self._mw.axis2_stop_value_doubleSpinBox.value()
         ax2_steps = self._mw.axis2_steps_doubleSpinBox.value()
@@ -84,7 +90,7 @@ class MagnetWindow(GuiBase):
                             [ax2_start,ax2_stop,ax2_steps]
                         ])
         # emit the signal
-        self.sigStartScanPressed.emit(params)
+        self.sigStartScanPressed.emit(params,1000) #TODO: add field in gui to get this data
         return
 
     

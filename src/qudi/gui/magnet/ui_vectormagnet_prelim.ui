@@ -29,7 +29,7 @@
        <item>
         <widget class="QLabel" name="label_4">
          <property name="text">
-          <string>axis 0</string>
+          <string>axis 0 (B)</string>
          </property>
         </widget>
        </item>
@@ -41,7 +41,7 @@
             <number>0</number>
            </property>
            <property name="value">
-            <double>10.000000000000000</double>
+            <double>1.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -72,7 +72,7 @@
             <double>999.000000000000000</double>
            </property>
            <property name="value">
-            <double>180.000000000000000</double>
+            <double>0.050000000000000</double>
            </property>
           </widget>
          </item>
@@ -80,6 +80,9 @@
           <widget class="QDoubleSpinBox" name="axis0_start_value_doubleSpinBox">
            <property name="maximum">
             <double>999.000000000000000</double>
+           </property>
+           <property name="value">
+            <double>0.050000000000000</double>
            </property>
           </widget>
          </item>
@@ -92,7 +95,7 @@
        <item>
         <widget class="QLabel" name="label_5">
          <property name="text">
-          <string>axis 1</string>
+          <string>axis 1 (theta)</string>
          </property>
         </widget>
        </item>
@@ -135,7 +138,7 @@
             <double>999.000000000000000</double>
            </property>
            <property name="value">
-            <double>360.000000000000000</double>
+            <double>180.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -153,7 +156,7 @@
          <item>
           <widget class="QLabel" name="label_9">
            <property name="text">
-            <string>axis 2</string>
+            <string>axis 2 (phi)</string>
            </property>
           </widget>
          </item>
@@ -165,7 +168,7 @@
               <number>0</number>
              </property>
              <property name="value">
-              <double>1.000000000000000</double>
+              <double>10.000000000000000</double>
              </property>
             </widget>
            </item>
@@ -196,7 +199,7 @@
               <double>999.000000000000000</double>
              </property>
              <property name="value">
-              <double>0.050000000000000</double>
+              <double>360.000000000000000</double>
              </property>
             </widget>
            </item>
@@ -206,7 +209,7 @@
               <double>999.000000000000000</double>
              </property>
              <property name="value">
-              <double>0.050000000000000</double>
+              <double>0.000000000000000</double>
              </property>
             </widget>
            </item>
