@@ -33,7 +33,7 @@ class MagnetLogic(LogicBase):
         self.sigChangePswStatus.connect(self._magnet.set_psw_status)
         self.sigPauseRamp.connect(self._magnet.pause_ramp)
         self.sigContinueRamp.connect(self._magnet.continue_ramp)
-        self.sigRamToZero.connect(self._magnet.ramp_to_zero)
+        self.sigRampToZero.connect(self._magnet.ramp_to_zero)
         self.sigRamp.connect(self._magnet.ramp)
 
         # switches
