@@ -19,7 +19,7 @@ See the GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License along with qudi.
 If not, see <https://www.gnu.org/licenses/>.
 """
-
+#! TODO WHEN we get an array with wavelengths from the wavemeter -- iterpolate the missing one (since we get batchezz -- we can interpolate already on the server side)
 from itertools import count
 from PySide2 import QtCore
 from collections import OrderedDict
@@ -66,7 +66,9 @@ class WavemeterLoggerLogic(LogicBase):
          'custom_parameters': None}
          
     )
-    wavelength_buffer = 50000
+    wavelength_buffer = 5000
+    wavelengths_log = None
+    average_times = 4
     default_settings = {
         'bin_width':20e6, #20 MHz
         'start_value':350e12, # 350 THz
@@ -79,11 +81,14 @@ class WavemeterLoggerLogic(LogicBase):
 
     plot_x = []
     plot_y = []
+    accumulated_data = []
 
     # config opts
-    _logic_update_timing = ConfigOption('logic_query_timing', 200.0, missing='warn')
+    _logic_update_timing = ConfigOption('logic_query_timing', 400.0, missing='warn') # has to be larger than the count time
     sig_query_wavemeter = QtCore.Signal()
+    sig_update_current_wavelength = QtCore.Signal(float)
     sig_update_data = QtCore.Signal(object,object)
+    sig_toggle_log = QtCore.Signal(bool)
     
     def __init__(self, config, **kwargs):
         """ Create WavemeterLoggerLogic object with connectors.
@@ -92,7 +97,8 @@ class WavemeterLoggerLogic(LogicBase):
           @param dict kwargs: optional parameters
         """
         super().__init__(config=config, **kwargs)
-
+        self.count_time = 0
+        self.counter = 0
         # locking for thread safety
         self._thread_lock = RecursiveMutex()
         # internal min and max wavelength determined by the measured wavelength
@@ -104,9 +110,11 @@ class WavemeterLoggerLogic(LogicBase):
         self._timetagger = self.timetagger()
         self._wavemeter = self.wavemeter()
 
-        
+        self.determine_count_time()
+        self.recalculate_histogram()
+        self.configure_counter()
 
-        self.sig_query_wavemeter.connect(self.query_wavemeter, QtCore.Qt.QueuedConnection)
+        # self.sig_query_wavemeter.connect(self.query_wavemeter, QtCore.Qt.QueuedConnection)
         # connect the signals in and out of the threaded object
 
         self.sigUpdateSettings.connect(self._udpate_settings)
@@ -114,17 +122,14 @@ class WavemeterLoggerLogic(LogicBase):
         self._queryTimer = QtCore.QTimer()
         self._queryTimer.setInterval(self._logic_update_timing)
         self._queryTimer.setSingleShot(False)
-        self._queryTimer.timeout.connect(
-            lambda : self.sig_update_data.emit(self.wavelengths, self.count_data)
-        , QtCore.Qt.QueuedConnection)     
+        self._queryTimer.timeout.connect(self.update_data, QtCore.Qt.QueuedConnection)     
         
-        self.recalculate_histogram()
-        self.configure_counter()
-        self._wavemeter.start_acquisition()
         self._acquisition_start_time = time.time()
+        # self._wavemeter.start_acquisition()
+        # self._acquisition_start_time = time.time()
 
         self._queryTimer.start()
-        self.sig_query_wavemeter.emit()
+        # self.sig_query_wavemeter.emit()
 
         
 
@@ -134,15 +139,65 @@ class WavemeterLoggerLogic(LogicBase):
         if self.module_state() != 'idle' and self.module_state() != 'deactivated':
             self.stop_scanning()
 
+    @QtCore.Slot()
+    def update_data(self):
+        self.wavelengths, count_time = self._wavemeter.get_wavelengths() # calling for wavelengths with callback
+        count_data = None
+        self.wavelengths = np.array(self.wavelengths)
+        self.current_wavelength = self.wavelengths[self.wavelengths > 0].mean() *1e12
+        self._time_elapsed = time.time() - self._acquisition_start_time
+        
+        if self.wavelengths_log is None:
+            self.wavelengths_log = np.array([(self._time_elapsed, self.current_wavelength)], dtype=WAVELENGTH_DTYPE)
+        else:
+            self.wavelengths_log = np.append(self.wavelengths_log, np.array([(time.time() - self._acquisition_start_time, self.current_wavelength)], dtype=WAVELENGTH_DTYPE))
+        self.wavelengths_log = self.wavelengths_log[-self.wavelength_buffer:]
+
+        self._time_elapsed = time.time() - self._acquisition_start_time
+            
+
+        if self.start_toggled:
+            count_data = self.update_histogram()
+            self.sig_update_data.emit(self.wavelengths_log, count_data)
+
+    @QtCore.Slot()
+    def start_scan(self):
+        self.accumulated_data = 0 # data
+        #emit scan next line
+
+    def determine_count_time(self):
+        #get average time for the wavemeter server to send signal to the client
+        for i in range(self.average_times):
+            self.wavelengths, count_time = self._wavemeter.get_wavelengths() # calling for wavelengths with callback
+            self.count_time = (self.count_time + count_time) / 2 # determine the average counting time
+            print(count_time)
+            #!TODO delay from utils istead of sleep
+            time.sleep(0.2 + self._logic_update_timing/1000) #! TODO safely determine the count time (update time should be for this function larget than the count time)
+        if self.count_time > self._logic_update_timing / 1000 + 0.1:
+            self._logic_update_timing = self.count_time + 0.1
+            
+        return self.count_time
+    
     def configure_counter(self):
-        bin_width = 1e9 #1 ms
-        n_values = 1000
-        self.counter = self._timetagger.counter(
-            channels = self._timetagger._counter['channels'], 
-            bin_width = bin_width, 
-            n_values = n_values
-        )
-        return 
+        n_values = len(self.wavelengths)
+        bin_width = int(1e12 * self.count_time/n_values)
+        self.counter = self._timetagger.counter(channels = self._timetagger._counter['channels'], 
+                                                bin_width = bin_width, 
+                                                n_values = n_values)
+    
+    def update_histogram(self):
+        self.cts = self.counter.getData().mean(axis=0) # should have a shape of N -- the same as wavelengths
+        wavelengths = np.array(self.wavelengths) * 1e12
+        detected_wavelengths = np.argmin(np.abs(wavelengths[:, np.newaxis] - self.wlth_xs), axis=1)
+        self.cts_ys[detected_wavelengths] += self.cts
+        self.samples_num[detected_wavelengths] += 1
+        
+        self.plot_y = np.divide(self.cts_ys, self.samples_num, out = np.zeros_like(self.cts_ys), where=self.samples_num != 0)
+        count_data = np.zeros(self.plot_x.shape[0], dtype = COUNT_DTYPE)
+        count_data['wavelength'] = self.plot_x
+        count_data['counts'] = self.plot_y
+
+        return count_data
 
     @QtCore.Slot(dict)
     def _udpate_settings(self, settings):
@@ -152,46 +207,21 @@ class WavemeterLoggerLogic(LogicBase):
             # settings['mode'] # frequency or vac or air
         return 
 
-
+    @QtCore.Slot(bool)
     def toggle_log(self, start):
+        self.start_toggled = start
         with self._thread_lock:
             if start:
                 self.module_state.lock()
-                self.sig_query_wavemeter.emit()
-            else:
-                self.module_state.unlock()
-                self.sig_query_wavemeter.emit()
+                self.recalculate_histogram()
+                self._queryTimer.start(self._logic_update_timing)
                 
-    @QtCore.Slot()
-    def query_wavemeter(self):
-        with self._thread_lock:
-            self.current_wavelength = self._wavemeter.get_current_wavelength(kind='freq')
-            self._time_elapsed = time.time() - self._acquisition_start_time
-            if self.wavelengths.shape[0] == 0:
-                    self.wavelengths = np.array([(self._time_elapsed, self.current_wavelength)], dtype=WAVELENGTH_DTYPE)
-            elif self._time_elapsed > self.wavelengths['time'][-1]:
-                    self.wavelengths = np.append(self.wavelengths, np.array([(time.time() - self._acquisition_start_time, self.current_wavelength)], dtype=WAVELENGTH_DTYPE))
-            self.wavelengths = self.wavelengths[-self.wavelength_buffer:]
-
-
-            self.current_wavelengths = self._wavemeter.get_wavelengths(kind='freq') #this give you a 1000 array of length ~ 1ms
-            self._time_elapsed = time.time() - self._acquisition_start_time
-            if len(self.current_wavelengths) > 0: # if there is smth in buffer do your job
-                try:
-                    self.cts = self.counter.mean(axis=1) # should have a shape on (1000, )
-
-                    self.cts_ys[np.argmin(np.abs(self.current_wavelengths - self.wlth_xs))] += self.cts
-                    self.samples_num[np.argmin(np.abs(self.current_wavelengths - self.wlth_xs))] += 1
-                    
-                    self.plot_y = np.divide(self.cts_ys, self.samples_num, out = np.zeros_like(self.cts_ys), where=self.samples_num != 0)
-                    self.count_data = np.zeros(self.plot_x.shape[0], dtype = COUNT_DTYPE)
-                    self.count_data['wavelength'] = self.plot_x
-                    self.count_data['counts'] = self.plot_y
-                except:
-                    pass
-
-            if self.module_state() != 'idle':
-                self.sig_query_wavemeter.emit()
+                # self.sig_query_wavemeter.emit()
+            else:
+                self._queryTimer.stop()
+                self.module_state.unlock()
+                
+                # self.sig_query_wavemeter.emit()
     
     def recalculate_histogram(self):
         if self.module_state() != 'locked':
@@ -214,8 +244,8 @@ class WavemeterLoggerLogic(LogicBase):
         return freqs
     def freq_to_wavelength(self, freq):
         if isinstance(freq, float):
-            return 1e9 * 299792458.0 / freq
+            return 299792458.0 / freq
         freq = np.array(freq)
-        aa = 1e9 * 299792458.0 * np.ones(freq.shape[0])
+        aa = 299792458.0 * np.ones(freq.shape[0])
         freqs = np.divide(aa, freq, out=np.zeros_like(aa), where=freq!=0)
         return freqs

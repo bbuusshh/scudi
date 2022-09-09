@@ -105,7 +105,7 @@ class WavemeterLogGui(GuiBase):
         # self.wavelog_logic.sig_new_data_point.connect(self.add_data_point)
 
         self.wavelog_logic.sig_update_data.connect(self._update_data, QtCore.Qt.QueuedConnection)
-        # self.wavelog_logic.sig_new_wavelength.connect(self._update_live_wavelength)
+        self.wavelog_logic.sig_toggle_log.connect(self.wavelog_logic.toggle_log)
 
         # Connect signals
         # self._mw.actionFit_settings.triggered.connect(self._fsd.show)
@@ -146,16 +146,15 @@ class WavemeterLogGui(GuiBase):
         
         """
         #We receive wavelengths in THz
-        freq = wavelengths['wavelength'][-1] if len(wavelengths) > 0 else -1.0
-        print(freq)
-        wavelength = self.wavelog_logic.freq_to_wavelength(freq)
-        wavelength = np.round(freq, 6)
+        freq = wavelengths['wavelength'][-1]/1e12 if len(wavelengths) > 0 else -1.0
+        wavelength = self.wavelog_logic.freq_to_wavelength(freq)/1e3
+        wavelength = np.round(wavelength, 6)
         
         self._mw.wavelengthLabel.setText(f"{wavelength} nm")
         self._mw.frequencyLabel.setText(f"{freq} THz")
         self._mw.wavelength_widget.set_data(wavelengths)
-        self._mw.countlog_widget.set_data(count_data)
-
+        if count_data is not None:
+            self._mw.countlog_widget.set_data(count_data)
 
     def stop_resume_clicked(self):
         """ Handling the Start button to stop and restart the counter.
@@ -163,14 +162,14 @@ class WavemeterLogGui(GuiBase):
         # If running, then we stop the measurement and enable inputs again
         if self.wavelog_logic.module_state() != 'idle':
             self._mw.actionStop_resume_scan.setText('Resume')
-            self.wavelog_logic.toggle_log(False)
+            self.wavelog_logic.sig_toggle_log.emit(False)
             self._mw.actionStop_resume_scan.setEnabled(True)
             self._mw.actionStart_scan.setEnabled(True)
             self._mw.binDoubleSpinBox.setEnabled(True)
         # Otherwise, we start a measurement and disable some inputs.
         else:
             self._mw.actionStop_resume_scan.setText('Stop')
-            self.wavelog_logic.toggle_log(True)
+            self.wavelog_logic.sig_toggle_log.emit(True)
             self._mw.actionStart_scan.setEnabled(False)
             self._mw.binDoubleSpinBox.setEnabled(False)
         self._mw.countlog_widget.selected_region.show()
@@ -181,7 +180,7 @@ class WavemeterLogGui(GuiBase):
         if self.wavelog_logic.module_state() == 'idle':
             # self._scatterplot.clear()
             # self.wavelog_logic.start_scanning()
-            self.wavelog_logic.toggle_log(True)
+            self.wavelog_logic.sig_toggle_log.emit(True)
             self._mw.countlog_widget.selected_region.hide()
             # Enable the stop button once a scan starts.
             self._mw.actionStop_resume_scan.setText('Stop')

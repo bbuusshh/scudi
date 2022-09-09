@@ -217,7 +217,8 @@ class CwaveGui(GuiBase):
         #     eval(f"self._mw.checkBox_shtter_{shutter}.setChecked({state})")
         #! states:
         for param, state in self._cwavelogic.status_cwave.items():
-            eval(f"self._mw.radioButton_{param}.setChecked({state})")
+            if state is not None: #! FIX IT
+                eval(f"self._mw.radioButton_{param}.setChecked({state})")
 
         #! wavelength
         #TODO: read wavelength from the wavelengthmeter
