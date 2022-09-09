@@ -1,5 +1,6 @@
 import numpy as np
 from qtpy import QtCore
+import inspect
 
 from qudi.core.module import LogicBase
 from qudi.core.connector import Connector
@@ -159,6 +160,7 @@ class MagnetLogic(LogicBase):
             # turn counts from list into array for faster processing later on
             self.counts = np.array(self.counts)
             self._rampForPixel = False
+            del self.ctr
             self.sigScanFinished.emit()
             return
 
@@ -239,7 +241,37 @@ class MagnetLogic(LogicBase):
 
     
     def set_psw_status(self,status):
+        if self.debug:
+            print(f'{__name__}, {inspect.stack()[0][3]}: passing psw status {status}')
         self._magnet.set_psw_status(status)
+        return
+
+
+    def pause_ramp(self):
+        if self.debug:
+            print(f'{__name__}, {inspect.stack()[0][3]}')
+        self._magnet.pause_ramp()
+        return
+
+
+    def continue_ramp(self):
+        if self.debug:
+            print(f'{__name__}, {inspect.stack()[0][3]}')
+        self._magnet.continue_ramp()
+        return
+
+    
+    def ramp_to_zero(self):
+        if self.debug:
+            print(f'{__name__}, {inspect.stack()[0][3]}')
+        self._magnet.ramp_to_zero()
+        return
+
+
+    def ramp(self,axes):
+        if self.debug:
+            print(f'{__name__}, {inspect.stack()[0][3]}')
+        self._magnet.ramp(field_target=axes)
         return
 
 

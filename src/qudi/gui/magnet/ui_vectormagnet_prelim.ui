@@ -263,27 +263,93 @@
      </item>
     </layout>
    </widget>
-   <widget class="QWidget" name="horizontalLayoutWidget_2">
+   <widget class="QWidget" name="gridLayoutWidget">
     <property name="geometry">
      <rect>
-      <x>190</x>
-      <y>20</y>
+      <x>170</x>
+      <y>10</y>
       <width>160</width>
-      <height>80</height>
+      <height>190</height>
      </rect>
     </property>
-    <layout class="QHBoxLayout" name="horizontalLayout_3">
-     <item>
-      <widget class="QPushButton" name="heat_PSW_pushButton">
+    <layout class="QGridLayout" name="gridLayout_4">
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_14">
+       <property name="text">
+        <string>axis 0 (B)</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="0">
+      <widget class="QPushButton" name="continue_ramp_pushButton">
+       <property name="text">
+        <string>continue ramp</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QDoubleSpinBox" name="axis1_doubleSpinBox">
+       <property name="maximum">
+        <double>180.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_15">
+       <property name="text">
+        <string>axis 1 (theta)</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_16">
+       <property name="text">
+        <string>axis 2 (phi)</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="0">
+      <widget class="QPushButton" name="heat_psw_pushButton">
        <property name="text">
         <string>heat PSWs</string>
        </property>
       </widget>
      </item>
-     <item>
-      <widget class="QPushButton" name="cool_PSW_pushButton">
+     <item row="2" column="1">
+      <widget class="QDoubleSpinBox" name="axis2_doubleSpinBox">
+       <property name="maximum">
+        <double>360.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="QPushButton" name="cool_psw_pushButton">
        <property name="text">
         <string>cool PSWs</string>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="0">
+      <widget class="QPushButton" name="ramp_to_zero_pushButton">
+       <property name="text">
+        <string>ramp to zero</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="1">
+      <widget class="QPushButton" name="pause_ramp_pushButton">
+       <property name="text">
+        <string>pause ramp</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QDoubleSpinBox" name="axis0_doubleSpinBox"/>
+     </item>
+     <item row="3" column="0">
+      <widget class="QPushButton" name="start_ramp_pushButton">
+       <property name="text">
+        <string>ramp</string>
        </property>
       </widget>
      </item>

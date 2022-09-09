@@ -1,6 +1,7 @@
 import os
 from qtpy import QtWidgets, QtCore
 import numpy as np
+import inspect # for getting name of functions
 
 from qudi.core.connector import Connector
 from qudi.core.module import GuiBase
@@ -34,6 +35,10 @@ class MagnetWindow(GuiBase):
     sigStopScanPressed = QtCore.Signal()
     # int: psw status. Either 0 (turn off) or 1 (turn on)
     sigChangePswStatus = QtCore.Signal(int)
+    sigPauseRamp = QtCore.Signal()
+    sigContinueRamp = QtCore.Signal()
+    sigRamToZero = QtCore.Signal()
+    sigRamp = QtCore.Signal(np.ndarray)
 
 
     def __init__(self, *args, **kwargs):
@@ -51,12 +56,20 @@ class MagnetWindow(GuiBase):
         self._mw.stop_scan_pushButton.clicked.connect(self.stop_scan_pressed)
         self._mw.heat_psw_pushButton.clicked.connect(self.heat_psw_pressed)
         self._mw.cool_psw_pushButton.clicked.connect(self.cool_psw_pressed)
+        self._mw.pause_ramp_pushButton.clicked.connect(self.pause_ramp_pressed)
+        self._mw.continue_ramp_pushButton.clicked.connect(self.continue_ramp_pressed)
+        self._mw.ramp_to_zero_pushButton.clicked.connect(self.ramp_to_zero_pressed)
+        self._mw.start_ramp_pushButton.clicked.connect(self.ramp_pressed)
 
 
         ## connect signals
         self.sigStartScanPressed.connect(self._magnetlogic.set_up_scan)
         self.sigStartScanPressed.connect(self._magnetlogic.stop_scan)
         self.sigChangePswStatus.connect(self._magnetlogic.set_psw_status)
+        self.sigPauseRamp.connect(self._magnetlogic.pause_ramp)
+        self.sigContinueRamp.connect(self._magnetlogic.continue_ramp)
+        self.sigRamToZero.connect(self._magnetlogic.ramp_to_zero)
+        self.sigRamp.connect(self._magnetlogic.ramp)
         
 
         self.show()
@@ -113,11 +126,50 @@ class MagnetWindow(GuiBase):
 
     def heat_psw_pressed(self):
         # TODO: (de)activate buttons
+        if self.debug:
+            print('heat_psw_pressed')
         self.sigChangePswStatus.emit(1)
         return
 
 
     def cool_psw_pressed(self):
         # TODO: (de)activate buttons
+        if self.debug:
+            print('cool_psw_pressed')
         self.sigChangePswStatus.emit(0)
         return
+
+
+    def pause_ramp_pressed(self):
+        if self.debug:
+            print(f'{__name__}, {inspect.stack()[0][3]}')
+        self.sigPauseRamp.emit()
+        return
+
+
+    def continue_ramp_pressed(self):
+        if self.debug:
+            # prints name of file and function
+            print(f'{__name__}, {inspect.stack()[0][3]}') 
+        self.sigContinueRamp.emit()
+        return
+
+    
+    def ramp_to_zero_pressed(self):
+        if self.debug:
+            print(f'{__name__}, {inspect.stack()[0][3]}')
+        self.sigRamToZero.emit()
+        return
+
+
+    def ramp_pressed(self):
+        if self.debug:
+            # prints name of file and function
+            print(f'{__name__}, {inspect.stack()[0][3]}') 
+        ax0 = self._mw.axis0_doubleSpinBox.value()
+        ax1 = self._mw.axis1_doubleSpinBox.value()
+        ax2 = self._mw.axis2_doubleSpinBox.value()
+        params = np.array([ax0,ax1,ax2])
+        self.sigRamp.emit(params)
+        return
+        

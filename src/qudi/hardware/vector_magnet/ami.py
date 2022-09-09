@@ -497,4 +497,15 @@ class AMI430(Base):
 
 
 
+    def set_target_field(self,target,unit=None):
+        """Sets the target field in kilogauss or tesla, depending on the selected field units.
         
+        A coil constant needs to be defined for this command.
+
+        @param target: target field
+
+        @param unit: unit for the field. See set_field_units() for details. Skip if units should not be changed.
+        """
+        if not unit == None:
+            self.set_field_units(unit)
+        self._write('CONF:FIELD:TARG ' + str(target))

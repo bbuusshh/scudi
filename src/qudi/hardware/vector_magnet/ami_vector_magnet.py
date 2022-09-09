@@ -335,7 +335,6 @@ class magnet_3d(Base):
         
         The current/field will stay at the level it has now.
         """
-        self.abort_ramp()
         self._magnet_x.pause_ramp()
         self._magnet_y.pause_ramp()
         self._magnet_z.pause_ramp()
@@ -343,9 +342,17 @@ class magnet_3d(Base):
 
 
     def ramp_to_zero(self):
-        """Ramps the magnet to zero field and turns of the PSW heaters."""
+        """Ramps the magnet to zero field and turns off the PSW heaters.
+        
+        Known bug: pausing and unpausing the ramp to zero cancels it.
+        The magnet will ramp to the last field target.
+        To solve this, theis function sets the field target to zero. ()
+        """
         self._abortRampLoop = True
         self._abortRampToZeroLoop = False
+        # Set the target field to zero. Not necessary for ramping
+        # but without it you will have problems when pausing and unpausing the ramp to zero.
+        self.set_target_fields([0,0,0])
         self._magnet_y.ramp_to_zero()
         self._magnet_x.ramp_to_zero()
         self._magnet_z.ramp_to_zero()
@@ -374,14 +381,22 @@ class magnet_3d(Base):
             self.pause_ramp()
             return 
         ramping_state = self.get_ramping_state()
-        if ramping_state == [8,8,8]:
+        currents = self.get_supply_currents()
+        # ramping to zero sometimes ends up in HOLDING (2) or PAUSED (3) or ZERO (8)
+        # no iddea why but this should fix it.
+        boolean = (ramping_state == [8,8,8]) or \
+            ( (ramping_state == [2,2,2]) and (np.allclose(currents, [0,0,0], atol = 0.1)) ) or \
+            ( (ramping_state == [3,3,3]) and (np.allclose(currents, [0,0,0], atol = 0.1)) )
+        if self.debug:
+            print(f'boolean turned out to be {boolean}')
+        if boolean:
             if self.debug:
                 print('ramp to zero finished')
             self.sigRampFinished.emit()
             return
         else:
             if self.debug:
-                print('still rmaping to zero')
+                print('still ramping to zero')
             self.zeroRampTimer.start()
             return
         
@@ -478,7 +493,8 @@ class magnet_3d(Base):
         Also, device needs to be in HOLDING mode (ramp has finished).
         Otherwise the magnet might quench.
         """
-
+        if self.debug:
+            print(f'vectormagnet: set_psw_status, setting to {status}')
         # check ramp state
         ramping_state = self.get_ramping_state()
         if not (ramping_state == [2,2,2] or ramping_state == [8,8,8]):
@@ -526,7 +542,13 @@ class magnet_3d(Base):
             print('_psw_status_change_loop_body')
         state = self.get_ramping_state()
         psw = self.get_psw_status()
-        if state == [3,3,3]:
+        # get all possible combinations of HOLDING and ZERO state
+        statemix = []
+        for i in [3,8]:
+            for j in [3,8]:
+                for k in [3,8]:
+                    statemix.append([i,j,k])
+        if state in statemix:
             # magnet goes into PAUSE (3) state after PSWs are warmed up/cooled down
             # you can not enter paused mode manually while cooling/heating
             if psw == [0,0,0]:
@@ -539,3 +561,10 @@ class magnet_3d(Base):
                     print('PSWs are warm')
         else:
             self.pswTimer.start()
+
+
+    def set_target_fields(self,target):
+        self._magnet_x.set_target_field(target[0])
+        self._magnet_y.set_target_field(target[1])
+        self._magnet_z.set_target_field(target[2])
+        return 0
