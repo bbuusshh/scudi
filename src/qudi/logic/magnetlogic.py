@@ -12,6 +12,11 @@ class MagnetLogic(LogicBase):
 
     ## external signals
     sigScanFinished = QtCore.Signal()
+    sigChangePswStatus = QtCore.Signal(int)
+    sigPauseRamp = QtCore.Signal()
+    sigContinueRamp = QtCore.Signal()
+    sigRampToZero = QtCore.Signal()
+    sigRamp = QtCore.Signal(np.ndarray,bool)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -25,6 +30,11 @@ class MagnetLogic(LogicBase):
 
         # connect external signals
         self._magnet.sigRampFinished.connect(self._start_pixelIntegrationTimer)
+        self.sigChangePswStatus.connect(self._magnet.set_psw_status)
+        self.sigPauseRamp.connect(self._magnet.pause_ramp)
+        self.sigContinueRamp.connect(self._magnet.continue_ramp)
+        self.sigRamToZero.connect(self._magnet.ramp_to_zero)
+        self.sigRamp.connect(self._magnet.ramp)
 
         # switches
         self._rampForPixel = False
@@ -152,7 +162,8 @@ class MagnetLogic(LogicBase):
             if self.debug:
                 print(carthesian)
             # ramp the magnet
-            self._magnet.ramp(field_target=carthesian, enter_persistent=False)
+            self.sigRamp.emit(carthesian,False)
+            # self._magnet.ramp(field_target=carthesian, enter_persistent=False)
             return
         else: # if we are finished
             if self.debug:
@@ -236,42 +247,48 @@ class MagnetLogic(LogicBase):
         # stops execution of scan loop
         self.abortScan = True
         # pauses the magnet ramp
-        self._magnet.pause_ramp()
+        self.sigPauseRamp.emit()
+        # self._magnet.pause_ramp()
         return
 
     
     def set_psw_status(self,status):
         if self.debug:
             print(f'{__name__}, {inspect.stack()[0][3]}: passing psw status {status}')
-        self._magnet.set_psw_status(status)
+        self.sigChangePswStatus.emit(status)
+        # self._magnet.set_psw_status(status)
         return
 
 
     def pause_ramp(self):
         if self.debug:
             print(f'{__name__}, {inspect.stack()[0][3]}')
-        self._magnet.pause_ramp()
+        self.sigPauseRamp.emit()
+        # self._magnet.pause_ramp()
         return
 
 
     def continue_ramp(self):
         if self.debug:
             print(f'{__name__}, {inspect.stack()[0][3]}')
-        self._magnet.continue_ramp()
+        self.sigContinueRamp.emit()
+        # self._magnet.continue_ramp()
         return
 
     
     def ramp_to_zero(self):
         if self.debug:
             print(f'{__name__}, {inspect.stack()[0][3]}')
-        self._magnet.ramp_to_zero()
+        self.sigRampToZero.emit()
+        # self._magnet.ramp_to_zero()
         return
 
 
     def ramp(self,axes):
         if self.debug:
             print(f'{__name__}, {inspect.stack()[0][3]}')
-        self._magnet.ramp(field_target=axes)
+        self.sigRamp.emit(axes,False)
+        # self._magnet.ramp(field_target=axes)
         return
 
 
