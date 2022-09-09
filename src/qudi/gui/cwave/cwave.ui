@@ -76,134 +76,14 @@
       </property>
       <widget class="QWidget" name="controlDockWidgetContents">
        <layout class="QGridLayout" name="gridLayout_2">
-        <item row="0" column="0" rowspan="2">
-         <widget class="QLabel" name="label_laserandshutters">
-          <property name="maximumSize">
-           <size>
-            <width>16777215</width>
-            <height>20</height>
-           </size>
-          </property>
-          <property name="text">
-           <string>Shutters:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QRadioButton" name="radioButton_connectCwave">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="text">
-           <string>Cwave connected</string>
-          </property>
-          <property name="checkable">
-           <bool>true</bool>
-          </property>
-          <property name="autoExclusive">
-           <bool>false</bool>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
+        <item row="2" column="1">
          <widget class="QPushButton" name="pushButton_connectCwave">
           <property name="text">
            <string>Connect</string>
           </property>
          </widget>
         </item>
-        <item row="2" column="0" rowspan="2">
-         <layout class="QVBoxLayout" name="verticalLayout_10">
-          <item>
-           <widget class="QCheckBox" name="pump_checkBox">
-            <property name="text">
-             <string>pump</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="checkBox_shtter_las">
-            <property name="enabled">
-             <bool>true</bool>
-            </property>
-            <property name="text">
-             <string> laser</string>
-            </property>
-            <property name="checkable">
-             <bool>true</bool>
-            </property>
-            <property name="checked">
-             <bool>false</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="checkBox_shtter_shg">
-            <property name="enabled">
-             <bool>true</bool>
-            </property>
-            <property name="text">
-             <string> SHG</string>
-            </property>
-            <property name="checkable">
-             <bool>true</bool>
-            </property>
-            <property name="checked">
-             <bool>false</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="checkBox_shtter_las_out">
-            <property name="enabled">
-             <bool>true</bool>
-            </property>
-            <property name="text">
-             <string> laser Out</string>
-            </property>
-            <property name="checkable">
-             <bool>true</bool>
-            </property>
-            <property name="checked">
-             <bool>false</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="checkBox_shtter_opo_out">
-            <property name="enabled">
-             <bool>true</bool>
-            </property>
-            <property name="text">
-             <string> OPO Out</string>
-            </property>
-            <property name="checkable">
-             <bool>true</bool>
-            </property>
-            <property name="checked">
-             <bool>false</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="checkBox_shtter_shg_out">
-            <property name="enabled">
-             <bool>true</bool>
-            </property>
-            <property name="text">
-             <string> SHG Out</string>
-            </property>
-            <property name="checkable">
-             <bool>true</bool>
-            </property>
-            <property name="checked">
-             <bool>false</bool>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item row="2" column="1">
+        <item row="3" column="1">
          <layout class="QVBoxLayout" name="verticalLayout_3">
           <item>
            <widget class="QCheckBox" name="opo_lock_checkBox">
@@ -221,7 +101,7 @@
           </item>
          </layout>
         </item>
-        <item row="3" column="1">
+        <item row="4" column="1">
          <layout class="QGridLayout" name="gridLayout_7">
           <item row="1" column="0">
            <widget class="QLabel" name="label_10">
@@ -274,45 +154,7 @@
           </item>
          </layout>
         </item>
-        <item row="4" column="0">
-         <widget class="QLabel" name="label_15">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="maximumSize">
-           <size>
-            <width>16777215</width>
-            <height>20</height>
-           </size>
-          </property>
-          <property name="text">
-           <string>Laser status:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="1">
-         <widget class="QLabel" name="label_16">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="maximumSize">
-           <size>
-            <width>16777215</width>
-            <height>20</height>
-           </size>
-          </property>
-          <property name="text">
-           <string>Optimize:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="0" rowspan="2">
+        <item row="6" column="0" rowspan="2">
          <layout class="QVBoxLayout" name="verticalLayout_4">
           <item>
            <widget class="QRadioButton" name="radioButton_LaserEmission">
@@ -547,7 +389,61 @@
           </item>
          </layout>
         </item>
+        <item row="0" column="1">
+         <widget class="QRadioButton" name="radioButton_connectCwave">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>Cwave connected</string>
+          </property>
+          <property name="checkable">
+           <bool>true</bool>
+          </property>
+          <property name="autoExclusive">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
         <item row="5" column="1">
+         <widget class="QLabel" name="label_16">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>16777215</width>
+            <height>20</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>Optimize:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="0">
+         <widget class="QLabel" name="label_15">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>16777215</width>
+            <height>20</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>Laser status:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="1">
          <layout class="QVBoxLayout" name="verticalLayout_9">
           <item>
            <widget class="QPushButton" name="pushButtonOpt_temp">
@@ -572,7 +468,20 @@
           </item>
          </layout>
         </item>
-        <item row="6" column="1">
+        <item row="0" column="0" rowspan="3">
+         <widget class="QLabel" name="label_laserandshutters">
+          <property name="maximumSize">
+           <size>
+            <width>16777215</width>
+            <height>20</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>Shutters:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="7" column="1">
          <layout class="QVBoxLayout" name="verticalLayout">
           <item>
            <widget class="QLabel" name="label_3">
@@ -674,7 +583,98 @@
           </item>
          </layout>
         </item>
-        <item row="7" column="0" colspan="2">
+        <item row="3" column="0" rowspan="2">
+         <layout class="QVBoxLayout" name="verticalLayout_10">
+          <item>
+           <widget class="QCheckBox" name="pump_checkBox">
+            <property name="text">
+             <string>pump</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="checkBox_shtter_las">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+            <property name="text">
+             <string> laser</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+            <property name="checked">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="checkBox_shtter_shg">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+            <property name="text">
+             <string> SHG</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+            <property name="checked">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="checkBox_shtter_las_out">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+            <property name="text">
+             <string> laser Out</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+            <property name="checked">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="checkBox_shtter_opo_out">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+            <property name="text">
+             <string> OPO Out</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+            <property name="checked">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="checkBox_shtter_shg_out">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+            <property name="text">
+             <string> SHG Out</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+            <property name="checked">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="8" column="0" colspan="2">
          <layout class="QHBoxLayout" name="horizontalLayout">
           <item>
            <widget class="QSpinBox" name="duration_spinBox">
@@ -744,6 +744,16 @@
            </widget>
           </item>
          </layout>
+        </item>
+        <item row="1" column="1">
+         <widget class="QCheckBox" name="updating_checkBox">
+          <property name="text">
+           <string>updating</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
         </item>
        </layout>
       </widget>

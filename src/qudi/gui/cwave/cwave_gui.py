@@ -71,6 +71,9 @@ class CwaveGui(GuiBase):
 
     def set_up_cwave_control_panel(self):
         self._mw.pushButton_connectCwave.clicked.connect(self.changeCwaveState)
+        self._mw.updating_checkBox.stateChanged.connect(
+            lambda: self._cwavelogic.sig_pause_updates.emit(not self._mw.updating_checkBox.isChecked())
+        )
         for shutter in self._cwavelogic.shutters.keys():
             eval(f"self._mw.checkBox_shtter_{shutter}.stateChanged.connect(self.flip_shutter)")
          
