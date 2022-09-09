@@ -32,6 +32,8 @@ class MagnetWindow(GuiBase):
     # float: integration time
     sigStartScanPressed = QtCore.Signal(np.ndarray, float)
     sigStopScanPressed = QtCore.Signal()
+    # int: psw status. Either 0 (turn off) or 1 (turn on)
+    sigChangePswStatus = QtCore.Signal(int)
 
 
     def __init__(self, *args, **kwargs):
@@ -47,9 +49,15 @@ class MagnetWindow(GuiBase):
         ## connect buttons
         self._mw.start_scan_pushButton.clicked.connect(self.start_scan_pressed)
         self._mw.stop_scan_pushButton.clicked.connect(self.stop_scan_pressed)
+        self._mw.heat_psw_pushButton.clicked.connect(self.heat_psw_pressed)
+        self._mw.cool_psw_pushButton.clicked.connect(self.cool_psw_pressed)
+
 
         ## connect signals
         self.sigStartScanPressed.connect(self._magnetlogic.set_up_scan)
+        self.sigStartScanPressed.connect(self._magnetlogic.stop_scan)
+        self.sigChangePswStatus.connect(self._magnetlogic.set_psw_status)
+        
 
         self.show()
 
@@ -66,9 +74,10 @@ class MagnetWindow(GuiBase):
 
     
     def start_scan_pressed(self):
+        # TODO: (de)activate buttons
         if self.debug:
             print('start_scan_pressed')
-        # get values from gui
+        # get scanning parameters from gui
         # B_abs
         ax0_start = self._mw.axis0_start_value_doubleSpinBox.value()
         ax0_stop = self._mw.axis0_stop_value_doubleSpinBox.value()
@@ -89,11 +98,26 @@ class MagnetWindow(GuiBase):
                             [ax1_start,ax1_stop,ax1_steps],
                             [ax2_start,ax2_stop,ax2_steps]
                         ])
+        # get integration time from gui
+        int_time = self._mw.integration_time_doubleSpinBox.value()
         # emit the signal
-        self.sigStartScanPressed.emit(params,1000) #TODO: add field in gui to get this data
+        self.sigStartScanPressed.emit(params,int_time)
         return
 
     
     def stop_scan_pressed(self):
+        # TODO: (de)activate buttons
         self.sigStopScanPressed.emit()
+        return
+
+
+    def heat_psw_pressed(self):
+        # TODO: (de)activate buttons
+        self.sigChangePswStatus.emit(1)
+        return
+
+
+    def cool_psw_pressed(self):
+        # TODO: (de)activate buttons
+        self.sigChangePswStatus.emit(0)
         return

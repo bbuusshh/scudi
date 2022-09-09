@@ -15,6 +15,7 @@ class MagnetLogic(LogicBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.debug = True
+        self.abortScan = True
 
 
     def on_activate(self):
@@ -35,6 +36,7 @@ class MagnetLogic(LogicBase):
     def set_up_scan(self, params, int_time):
         if self.debug:
             print('set_up_scan')
+        self.abortScan = False
         self.int_time = int_time
         # set up counter
         self.set_up_counter(int_time)
@@ -132,6 +134,10 @@ class MagnetLogic(LogicBase):
     def _set_up_next_pixel(self):
         if self.debug:
             print('setting up next pixel')
+        if self.abortScan:
+            if self.debug:
+                print('aborting scan')
+            return
         if len(self._scanning_line) > 0: # if we still have pixels to scan
             self._rampForPixel = True # the ramp of the magnet was initiated by this script
             # choose next pixel
@@ -160,6 +166,10 @@ class MagnetLogic(LogicBase):
     def _start_pixelIntegrationTimer(self):
         if self.debug:
             print('_start_pixelIntegrationTimer')
+        if self.abortScan:
+            if self.debug:
+                print('aborting scan')
+            return
         if self._rampForPixel: # only do sth if ramp was initiated for the pixel
             if self.thread() is not QtCore.QThread.currentThread():
                 if self.debug:
@@ -182,6 +192,10 @@ class MagnetLogic(LogicBase):
         """
         if self.debug:
             print('_scan_pixel')
+        if self.abortScan:
+            if self.debug:
+                print('aborting scan')
+            return
         cts = self.ctr.getData()
         if self.debug:
             print(f'counts were {cts}')
@@ -212,8 +226,21 @@ class MagnetLogic(LogicBase):
         return carthesian
 
 
+    def stop_scan(self):
+        """Aborts the scan.
+        
+        Also stops the ramp. Magnetic field will stay at the value it had when scan got aborted.
+        """
+        # stops execution of scan loop
+        self.abortScan = True
+        # pauses the magnet ramp
+        self._magnet.pause_ramp()
+        return
+
     
-    
+    def set_psw_status(self,status):
+        self._magnet.set_psw_status(status)
+        return
 
 
 
