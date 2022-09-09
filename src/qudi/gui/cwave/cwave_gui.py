@@ -144,10 +144,12 @@ class CwaveGui(GuiBase):
         if bool(state):
             self._cwavelogic.sig_pause_updates.emit(True)
             self._mw.opo_lock_checkBox.setChecked(False)
+            self._mw.updating_checkBox.setChecked(False)
             self._cwavelogic.ramp_opo(duration, start, stop)
             #!DISABLE ALL
         else:
             self._cwavelogic.sig_pause_updates.emit(False)
+            self._mw.updating_checkBox.setChecked(True)
             self._mw.opo_lock_checkBox.setChecked(True)
             self.change_lock_mode(PiezoChannel.Opo, PiezoMode.Control)
         return 
