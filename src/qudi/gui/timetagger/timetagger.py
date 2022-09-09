@@ -56,6 +56,8 @@ class TTGui(GuiBase):
     _hist_bin_width = StatusVar('hist_bin_width', default=50)
     _hist_record_length = StatusVar('hist_record_length', default=10)
     _display_state = StatusVar('display_state', default=None)
+
+    save_folderpath = StatusVar('save_folderpath', default='Default')
    
 
     def __init__(self, *args, **kwargs):
@@ -222,6 +224,11 @@ class TTGui(GuiBase):
             self._timetaggerlogic.configure_hist, QtCore.Qt.QueuedConnection)
         self._timetaggerlogic.sigHistDataChanged.connect(
             self.update_hist_data, QtCore.Qt.QueuedConnection)
+        self._mw.saveAllPushButton.clicked.connect(self._save_data_clicked)
+        self._mw.currPathLabel.setText(self.save_folderpath)
+        self._mw.DailyPathCheckBox.clicked.connect(lambda: self._mw.newPathCheckBox.setEnabled(not self._mw.DailyPathCheckBox.isChecked()))
+
+        self._mw.radioButton_3.setChecked(True)
 
         if  self._display_state:
             self._mw.restoreState(self._display_state)
@@ -289,3 +296,18 @@ class TTGui(GuiBase):
     def update_hist_data(self, data):
         x_arr, y_arr = data['hist_data']
         self.curves['hist'].setData(y=y_arr, x=x_arr)
+    
+    def _save_data_clicked(self):
+        save_types = {'counter': self._mw.radioButton_3.isChecked(), 'corr': self._mw.radioButton.isChecked(), 'hist': self._mw.radioButton_2.isChecked()}
+        for st in save_types:
+            if save_types[st]:
+                save_type = st
+                break
+        if self._mw.newPathCheckBox.isChecked() and self._mw.newPathCheckBox.isEnabled():
+            self.save_folderpath = QtWidgets.QFileDialog.getExistingDirectory(self._mw, 'Select Folder')
+            self._mw.currPathLabel.setText(self.save_folderpath)
+            self._mw.newPathCheckBox.setChecked(False)
+        if self._mw.DailyPathCheckBox.isChecked():
+            self.save_folderpath = 'Default'
+            self._mw.currPathLabel.setText(self.save_folderpath)
+        self._timetaggerlogic._save_recorded_data(to_file=True, name_tag=self._mw.saveTagLineEdit.text(), save_figure=True, save_type=save_type, save_path = self.save_folderpath)
