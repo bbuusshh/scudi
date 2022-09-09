@@ -83,6 +83,15 @@ class StatusBit(enum.IntEnum):
     RefTemp = 9
     OpoStable = 10
 
+def silent(func):
+    def execute(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+
+        except:
+            return #! to do write into cwave log file
+    return execute
+
 class CWave(Base):
     '''Represents a handle to the C-WAVE device.'''
     __socket = None
@@ -187,7 +196,7 @@ class CWave(Base):
             raise Exception('Manual Mode only allowed OPO und SHG Channels')
         if mode.value == PiezoMode.ExtRamp.value and channel.name != PiezoChannel.Opo.name:
             raise Exception('ExtRamp Mode only allowed OPO Channel')
-     
+
         self.__query_value('reg{}_on'.format(channel.value), mode.value)
 
     def get_piezo_mode(self, channel: PiezoChannel) -> PiezoMode:
@@ -238,11 +247,13 @@ class CWave(Base):
         '''Gets thick etalon position'''
         return int(self.__query('galvo?'))
 
+    @silent
     def set_laser(self, enable: bool) -> None:
         '''Sets enabled state of internal pump laser'''
         # assert isinstance(enable, bool)
         self.__query_value('laser_en', int(enable))
 
+    @silent
     def get_laser(self) -> bool:
         '''Gets enabled state of internal pump laser'''
         return bool(self.__query('laser_en?'))
@@ -258,6 +269,7 @@ class CWave(Base):
             exception 
         self.__query_value('shtter_{}'.format(shutter_val), int(open_shutter))
 
+    @silent
     def get_shutter(self, shutter: ShutterChannel) -> bool:
         '''Gets whether current state of a shutter is open or closed'''
         return bool(int(self.__query('shtter_{}?'.format(shutter.value))))
@@ -265,7 +277,7 @@ class CWave(Base):
     def get_shutters(self):
         shutters_dict = {}
         for shutter in ShutterChannel:
-            shutters_dict[shutter.value] = bool(int(self.__query('shtter_{}?'.format(shutter.value)))) if self._connected else False
+            shutters_dict[shutter.value] = self.get_shutter(shutter) if self._connected else False
         return shutters_dict
 
     def set_mirror(self, position: bool) -> None:
@@ -326,6 +338,7 @@ class CWave(Base):
             upper_limit_percent,
         ])
 
+    @silent
     def get_log(self) -> Log:
         '''Gets latest device status summary'''
         ret = self.__query('get_log?')
@@ -344,6 +357,7 @@ class CWave(Base):
             int(split[10]),      # statusBits
         )
 
+    @silent
     def test_status_bits(self, bits) -> bool:
         '''Test whether a list list of status bits are all true'''
         status_bits = self.get_status_bits()

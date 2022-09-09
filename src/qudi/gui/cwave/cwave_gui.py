@@ -37,7 +37,7 @@ class CwaveGui(GuiBase):
     sig_adj_opo = QtCore.Signal(float)
     sig_set_piezo_output = QtCore.Signal(object, float)
     
-    sig_connect_cwave = QtCore.Signal()
+    sig_connect_cwave = QtCore.Signal(bool)
     sig_set_shutter_state = QtCore.Signal(str, bool)
     sig_optimize_cwave = QtCore.Signal(str)
     sig_change_lock_mode = QtCore.Signal(object, object)
@@ -61,7 +61,7 @@ class CwaveGui(GuiBase):
         self.set_up_cwave_control_panel()
         self._cwavelogic.sig_update_gui.connect(self.update_gui)
         self._cwavelogic.sig_cwave_connected.connect(self.cwave_connected)
-        self._cwavelogic.sig_cwave_connected.emit()
+        # self._cwavelogic.sig_cwave_connected.emit()
         #! set shutters initially and then consider button states synced with the laser
         #! update on connect
         for shutter, state in self._cwavelogic.shutters.items():
@@ -139,9 +139,12 @@ class CwaveGui(GuiBase):
         stop = self._mw.stop_spinBox.value()
 
         if bool(state):
+            self._cwavelogic.sig_pause_updates.emit(True)
             self._mw.opo_lock_checkBox.setChecked(False)
             self._cwavelogic.ramp_opo(duration, start, stop)
+            #!DISABLE ALL
         else:
+            self._cwavelogic.sig_pause_updates.emit(False)
             self._mw.opo_lock_checkBox.setChecked(True)
             self.change_lock_mode(PiezoChannel.Opo, PiezoMode.Control)
         return 
@@ -195,12 +198,12 @@ class CwaveGui(GuiBase):
     def update_cwave_panel(self):
         """ Logic told us to update our button states, so set the buttons accordingly. """
         #! connect button 
-        if self._cwavelogic.connected == 0:
-            self._mw.pushButton_connectCwave.setText('Connect')
-            self._mw.radioButton_connectCwave.setChecked(False)
-        else:
-            self._mw.pushButton_connectCwave.setText('Disconnect')
-            self._mw.radioButton_connectCwave.setChecked(True)
+        # if self._cwavelogic.connected == 0:
+        #     self._mw.pushButton_connectCwave.setText('Connect')
+        #     self._mw.radioButton_connectCwave.setChecked(False)
+        # else:
+        #     self._mw.pushButton_connectCwave.setText('Disconnect')
+        #     self._mw.radioButton_connectCwave.setChecked(True)
         
         #! disalbed style 
         #https://stackoverflow.com/questions/66734842/setting-background-color-of-a-checkable-qpushbutton-for-button-is-disabled
@@ -224,13 +227,12 @@ class CwaveGui(GuiBase):
         if self._cwavelogic.connected == 0:
             self._mw.pushButton_connectCwave.setText('Disconnect')
             self._mw.radioButton_connectCwave.setChecked(True)
-            
+            self.sig_connect_cwave.emit(True)
         else:
             self._mw.pushButton_connectCwave.setText('Connect')
             self._mw.radioButton_connectCwave.setChecked(False)
+            self.sig_connect_cwave.emit(False)
             #!DISABLE ALL
-        # self._mw._mw.radioButton_connectCwave.setChecked(False)
-        self.sig_connect_cwave.emit()
 
     
     @QtCore.Slot()
@@ -241,12 +243,6 @@ class CwaveGui(GuiBase):
         for shutter, state in self._cwavelogic.shutters.items():
             eval(f"self._mw.checkBox_shtter_{shutter}.setChecked({state})")
         self._mw.pump_checkBox.setChecked(self._cwavelogic.pump_state)
-        # if self._cwavelogic.reg_modes != {}:
-            # self._mw.shg_lock_checkBox.setEnabled(True)
-            # self._mw.opo_lock_checkBox.setEnabled(True)
-        # if self._cwavelogic.reg_modes != {}:
+
         self._mw.shg_lock_checkBox.setChecked(True if self._cwavelogic.reg_modes['shg'].value == PiezoMode.Control.value else False)
         self._mw.opo_lock_checkBox.setChecked(True if self._cwavelogic.reg_modes['opo'].value == PiezoMode.Control.value else False)
-        # else:
-        #     self._mw.shg_lock_checkBox.setEnabled(False)
-        #     self._mw.opo_lock_checkBox.setEnabled(False)

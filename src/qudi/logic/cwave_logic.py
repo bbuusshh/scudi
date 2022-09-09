@@ -29,6 +29,7 @@ class CwaveLogic(LogicBase):
     sig_update_gui = QtCore.Signal()
     sig_update_cwave_states = QtCore.Signal()
     sig_cwave_connected = QtCore.Signal()
+    sig_pause_updates = QtCore.Signal(bool)
     sig_update_guiPanelPlots = QtCore.Signal()
     sig_update_guiPlotsRefInt = QtCore.Signal()
     sig_update_guiPlotsOpoReg = QtCore.Signal()
@@ -39,13 +40,18 @@ class CwaveLogic(LogicBase):
           @param dict kwargs: optional parameters
         """
         super().__init__(**kwargs)
+        self.shutters = {channel.value: False for channel in ShutterChannel}
+        self.pump_state = False
+        self.reg_modes = {channel.value : PiezoMode.Manual for channel in PiezoChannel}
+        self.status_cwave = {}#self._cwavelaser.get_dial_done()
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
         self._cwavelaser = self.cwavelaser()
-        
-        self.connect_cwave()
+        self.connected = self._cwavelaser._connected
+        self.sig_pause_updates.connect(self.pause_updates)
+        # self.connect_cwave()
         return 
 
     def on_deactivate(self):
@@ -59,17 +65,15 @@ class CwaveLogic(LogicBase):
             QtCore.QCoreApplication.processEvents()
         return 
     
+
+    
     def connect_cwave(self):
         
         self._cwavelaser.connect()
         self.connected = self._cwavelaser._connected
         if self.connected:
             self.shutters = self._cwavelaser.get_shutters()
-            self.status_cwave = {}#self._cwavelaser.get_dial_done()
             self.cwave_log = self._cwavelaser.get_log()
-            
-        
-            self.reg_modes = {}
             self.pump_state = None
 
             self.sig_update_cwave_states.connect(self.update_cwave_states)
@@ -121,22 +125,19 @@ class CwaveLogic(LogicBase):
 
     @QtCore.Slot()
     def update_cwave_states(self):
-        self.shutters = self._cwavelaser.get_shutters()
-        # self.status_cwave = self._cwavelaser.get_status_dict()
-        self.cwave_log = self._cwavelaser.get_log()
-        self.pump_state = self._cwavelaser.get_laser()
+        
 
         self.connected = self._cwavelaser._connected
+        if self.connected:
+            self.shutters = self._cwavelaser.get_shutters()
+            self.cwave_log = self._cwavelaser.get_log()
+            self.pump_state = self._cwavelaser.get_laser()
 
         for idx, channel in enumerate(PiezoChannel):
-            # print("Chann", channel)
-            # self._cwavelaser.get_piezo_mode(channel)
             if channel != PiezoChannel.Galvo:
                 self.reg_modes[channel.value] = self._cwavelaser.get_piezo_mode(channel)
 
         for idx, bit in enumerate(StatusBit):
-            # print("Chann", channel)
-            # self._cwavelaser.get_piezo_mode(channel)
             self.status_cwave[bit.name] = self._cwavelaser.test_status_bits([
             bit
         ]) if bit != StatusBit.LaserEmission else not self._cwavelaser.test_status_bits([
@@ -154,18 +155,19 @@ class CwaveLogic(LogicBase):
         self._cwavelaser.set_piezo_mode(PiezoChannel.Opo, PiezoMode.ExtRamp)
         return 
 
-    @QtCore.Slot()
-    def connection_cwave(self):
+    @QtCore.Slot(bool)
+    def connection_cwave(self, connect):
         """ Connect to the cwave """
         
-        if not self.connected:
+        if connect:
             self.connect_cwave()
             
             # self._cwavelaser.connect()
             # self.queryTimer.start(self.queryInterval)
         else:
-            self._cwavelaser.disconnect()
             self.queryTimer.stop()
+            self._cwavelaser.disconnect()
+            
         self.connected = self._cwavelaser._connected
         self.sig_update_cwave_states.emit()
         self.sig_update_gui.emit()
@@ -201,7 +203,15 @@ class CwaveLogic(LogicBase):
             self._cwavelaser.set_galvo_position(value)
         else:
             self._cwavelaser.set_piezo_manual_output(channel, value)
-        
+    
+    @QtCore.Slot(bool)
+    def pause_updates(self, pause):
+        print(pause)
+        if pause:
+            self.queryTimer.stop()
+        else:
+            
+            self.queryTimer.start(self.queryInterval)
 
     @QtCore.Slot(object, object)
     def change_lock_mode(self, stage, mode): 

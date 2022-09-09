@@ -37,7 +37,13 @@
   <property name="dockNestingEnabled">
    <bool>true</bool>
   </property>
+  <property name="dockOptions">
+   <set>QMainWindow::AllowNestedDocks|QMainWindow::AllowTabbedDocks|QMainWindow::AnimatedDocks|QMainWindow::VerticalTabs</set>
+  </property>
   <widget class="QWidget" name="centralwidget">
+   <property name="acceptDrops">
+    <bool>true</bool>
+   </property>
    <layout class="QGridLayout" name="gridLayout">
     <item row="0" column="0">
      <widget class="QDockWidget" name="scan_control_DockWidget">
@@ -58,6 +64,15 @@
         <width>249</width>
         <height>700</height>
        </size>
+      </property>
+      <property name="acceptDrops">
+       <bool>true</bool>
+      </property>
+      <property name="floating">
+       <bool>false</bool>
+      </property>
+      <property name="features">
+       <set>QDockWidget::DockWidgetClosable|QDockWidget::DockWidgetMovable</set>
       </property>
       <widget class="QWidget" name="controlDockWidgetContents">
        <layout class="QGridLayout" name="gridLayout_2">
@@ -735,28 +750,6 @@
      </widget>
     </item>
    </layout>
-  </widget>
-  <widget class="QMenuBar" name="menubar">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>249</width>
-     <height>21</height>
-    </rect>
-   </property>
-   <widget class="QMenu" name="menu_File">
-    <property name="title">
-     <string>&amp;File</string>
-    </property>
-   </widget>
-   <widget class="QMenu" name="menu_Options">
-    <property name="title">
-     <string>O&amp;ptions</string>
-    </property>
-   </widget>
-   <addaction name="menu_File"/>
-   <addaction name="menu_Options"/>
   </widget>
  </widget>
  <resources/>
