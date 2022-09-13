@@ -21,6 +21,7 @@ If not, see <https://www.gnu.org/licenses/>.
 """
 #! TODO WHEN we get an array with wavelengths from the wavemeter -- iterpolate the missing one (since we get batchezz -- we can interpolate already on the server side)
 from itertools import count
+import wave
 from PySide2 import QtCore
 from collections import OrderedDict
 import numpy as np
@@ -144,7 +145,10 @@ class WavemeterLoggerLogic(LogicBase):
         self.wavelengths, count_time = self._wavemeter.get_wavelengths() # calling for wavelengths with callback
         count_data = None
         self.wavelengths = np.array(self.wavelengths)
-        self.current_wavelength = self.wavelengths[self.wavelengths > 0].mean() *1e12
+        wavelengths = self.wavelengths[self.wavelengths > 0]
+        if len(wavelengths) > 0:   
+            self.current_wavelength = wavelengths.mean() *1e12 
+        
         self._time_elapsed = time.time() - self._acquisition_start_time
         
         if self.wavelengths_log is None:
