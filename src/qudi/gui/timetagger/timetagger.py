@@ -299,15 +299,21 @@ class TTGui(GuiBase):
     
     def _save_data_clicked(self):
         save_types = {'counter': self._mw.radioButton_3.isChecked(), 'corr': self._mw.radioButton.isChecked(), 'hist': self._mw.radioButton_2.isChecked()}
+        save = False
         for st in save_types:
             if save_types[st]:
                 save_type = st
                 break
         if self._mw.newPathCheckBox.isChecked() and self._mw.newPathCheckBox.isEnabled():
-            self.save_folderpath = QtWidgets.QFileDialog.getExistingDirectory(self._mw, 'Select Folder')
-            self._mw.currPathLabel.setText(self.save_folderpath)
-            self._mw.newPathCheckBox.setChecked(False)
+            new_path = QtWidgets.QFileDialog.getExistingDirectory(self._mw, 'Select Folder')
+            if new_path:
+                self.save_folderpath = new_path
+                self._mw.currPathLabel.setText(self.save_folderpath)
+                self._mw.newPathCheckBox.setChecked(False)
+                save = True
         if self._mw.DailyPathCheckBox.isChecked():
             self.save_folderpath = 'Default'
             self._mw.currPathLabel.setText(self.save_folderpath)
-        self._timetaggerlogic._save_recorded_data(to_file=True, name_tag=self._mw.saveTagLineEdit.text(), save_figure=True, save_type=save_type, save_path = self.save_folderpath)
+            save = True
+        if save:
+            self._timetaggerlogic._save_recorded_data(to_file=True, name_tag=self._mw.saveTagLineEdit.text(), save_figure=True, save_type=save_type, save_path = self.save_folderpath)
