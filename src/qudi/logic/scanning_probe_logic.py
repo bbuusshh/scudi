@@ -167,6 +167,13 @@ class ScanningProbeLogic(LogicBase):
                     'frequency': self.scan_frequency,
                     'save_to_history': cp.copy(self._scan_saved_to_hist)}
 
+    def set_temperature_regime(self, regime):
+        print("Temperature regime", regime) #LT or RT
+        if regime == "Room Temperature":
+            self.ni_carddlas
+        elif regime == 'Low Temperature':
+            eslf.nic sds low t regime
+    
     def set_scan_settings(self, settings):
         with self._thread_lock:
             if 'range' in settings:

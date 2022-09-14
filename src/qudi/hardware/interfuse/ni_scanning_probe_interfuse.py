@@ -354,6 +354,10 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
 
         return self._voltage_dict_to_position_dict(self._ni_ao().setpoints)
 
+    def set_temperature_regime(self, regime):
+        if regime == "Room Temperature":
+            self._ni_ao._setpoint_channels
+
     def start_scan(self):
         #return self._start_scan()
         try:

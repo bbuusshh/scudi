@@ -37,6 +37,7 @@ from qudi.logic.scanning_optimize_logic import OptimizerScanSequence
 
 from qudi.gui.scanning.axes_control_dockwidget import AxesControlDockWidget
 from qudi.gui.scanning.optimizer_setting_dialog import OptimizerSettingDialog
+from qudi.gui.scanning.temperature_regime_dialog import TemperatureRegimeDialog
 from qudi.gui.scanning.scan_settings_dialog import ScannerSettingDialog
 from qudi.gui.scanning.scan_dockwidget import ScanDockWidget
 from qudi.gui.scanning.optimizer_dockwidget import OptimizerDockWidget
@@ -103,6 +104,7 @@ class ScannerGui(GuiBase):
     sigScanSettingsChanged = QtCore.Signal(dict)
     sigToggleScan = QtCore.Signal(bool, tuple, object)
     sigOptimizerSettingsChanged = QtCore.Signal(dict)
+    sigTemperatureRegimeChanged = QtCore.Signal(str)
     sigToggleOptimize = QtCore.Signal(bool)
     sigSaveScan = QtCore.Signal(object, object)
     sigSaveFinished = QtCore.Signal()
@@ -153,6 +155,7 @@ class ScannerGui(GuiBase):
         self._init_static_dockwidgets()
 
         # Initialize dialog windows
+        self._init_temperature_regime()
         self._init_optimizer_settings()
         self._init_scanner_settings()
         self._save_dialog = SaveDialog(self._mw)
@@ -220,6 +223,10 @@ class ScannerGui(GuiBase):
         self.sigOptimizerSettingsChanged.connect(
             self._optimize_logic().set_optimize_settings, QtCore.Qt.QueuedConnection)
 
+        self.sigTemperatureRegimeChanged.connect(
+            self._scanning_logic().set_temperature_regime, QtCore.Qt.QueuedConnection
+        )
+
         self.sigShowSaveDialog.connect(lambda x: self._save_dialog.show() if x else self._save_dialog.hide(),
                                        QtCore.Qt.DirectConnection)
 
@@ -278,6 +285,25 @@ class ScannerGui(GuiBase):
         self._mw.show()
         self._mw.activateWindow()
         self._mw.raise_()
+
+    def _init_temperature_regime(self):
+        """ Configuration and initialisation of the optimizer settings dialog.
+        """
+        # Create the Settings window
+        self._trd = TemperatureRegimeDialog()
+
+        # Connect MainWindow actions
+        self._mw.action_temperature_regime.triggered.connect(lambda x: self._trd.exec_())
+
+        # Connect the action of the settings window with the code:
+        self._trd.accepted.connect(self.change_temperature_regime)
+        # self._trd.rejected.connect(self.update_optimizer_settings)
+        # self._trd.button_box.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
+        #     self.change_optimizer_settings)
+        # # pull in data
+        # self.update_optimizer_settings()
+        return
+
 
     def _init_optimizer_settings(self):
         """ Configuration and initialisation of the optimizer settings dialog.
@@ -898,6 +924,13 @@ class ScannerGui(GuiBase):
                 self.sigScanSettingsChanged.emit({'range': {axes[0]: x_range}})
                 self._mw.action_utility_zoom.setChecked(False)
         return set_range_func
+
+    @QtCore.Slot()
+    def change_temperature_regime(self):
+        self.sigTemperatureRegimeChanged.emit(self._trd.regime)
+        # self.optimizer_dockwidget.scan_sequence = self._trd.settings['scan_sequence']
+        print("Changed temperature regime")
+        # self.update_crosshair_sizes()
 
     @QtCore.Slot()
     def change_optimizer_settings(self):

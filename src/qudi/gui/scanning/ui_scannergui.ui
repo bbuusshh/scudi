@@ -33,7 +33,7 @@
      <x>0</x>
      <y>0</y>
      <width>1440</width>
-     <height>30</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -51,6 +51,7 @@
     <addaction name="action_scanner_settings"/>
     <addaction name="action_optimizer_settings"/>
     <addaction name="action_display_settings"/>
+    <addaction name="action_temperature_regime"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -94,11 +95,12 @@
    <addaction name="separator"/>
    <addaction name="action_history_back"/>
    <addaction name="action_history_forward"/>
+   <addaction name="separator"/>
   </widget>
   <action name="action_scanner_settings">
    <property name="icon">
     <iconset>
-     <normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/configure.svg</normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/configure.svg</iconset>
+     <normaloff>../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/configure.svg</normaloff>../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/configure.svg</iconset>
    </property>
    <property name="text">
     <string>Scan Settings</string>
@@ -107,7 +109,7 @@
   <action name="action_close_window">
    <property name="icon">
     <iconset>
-     <normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/application-exit.svg</normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/application-exit.svg</iconset>
+     <normaloff>../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/application-exit.svg</normaloff>../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/application-exit.svg</iconset>
    </property>
    <property name="text">
     <string>Close window</string>
@@ -119,7 +121,7 @@
   <action name="action_optimizer_settings">
    <property name="icon">
     <iconset>
-     <normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/configure.svg</normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/configure.svg</iconset>
+     <normaloff>../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/configure.svg</normaloff>../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/configure.svg</iconset>
    </property>
    <property name="text">
     <string>Optimizer Settings</string>
@@ -131,8 +133,8 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/zoom-select.svgz</normaloff>
-     <normalon>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/search_active.svg</normalon>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/zoom-select.svgz</iconset>
+     <normaloff>../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/zoom-select.svgz</normaloff>
+     <normalon>../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/search_active.svg</normalon>../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/zoom-select.svgz</iconset>
    </property>
    <property name="text">
     <string>Zoom</string>
@@ -217,7 +219,7 @@ Shortcut:Ctrl+Alt+X</string>
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/go-next.svgz</normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/go-next.svgz</iconset>
+     <normaloff>../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/go-next.svgz</normaloff>../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/go-next.svgz</iconset>
    </property>
    <property name="text">
     <string>Forward</string>
@@ -236,7 +238,7 @@ Shortcut:Ctrl+R</string>
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/go-previous.svgz</normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/go-previous.svgz</iconset>
+     <normaloff>../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/go-previous.svgz</normaloff>../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/go-previous.svgz</iconset>
    </property>
    <property name="text">
     <string>Backward</string>
@@ -266,7 +268,7 @@ Shortcut:Ctrl+Z</string>
   <action name="action_utility_full_range">
    <property name="icon">
     <iconset>
-     <normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/zoom-fit-best.svg</normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/zoom-fit-best.svg</iconset>
+     <normaloff>../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/zoom-fit-best.svg</normaloff>../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/zoom-fit-best.svg</iconset>
    </property>
    <property name="text">
     <string>Full range</string>
@@ -297,7 +299,7 @@ Shortcut: Shift+R</string>
   <action name="action_display_settings">
    <property name="icon">
     <iconset>
-     <normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/configure.svg</normaloff>../../../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/configure.svg</iconset>
+     <normaloff>../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/configure.svg</normaloff>../../../../../../Software/qudivenv/src/qudi/qudi/core/artwork/icons/configure.svg</iconset>
    </property>
    <property name="text">
     <string>Display Settings</string>
@@ -328,6 +330,18 @@ Shortcut:Alt+T</string>
    </property>
    <property name="text">
     <string>Save all</string>
+   </property>
+  </action>
+  <action name="action_temperature_regime">
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>../../../../../qudi-core/src/qudi/artwork/icons/configure.svg</normaloff>../../../../../qudi-core/src/qudi/artwork/icons/configure.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Temperature Regime</string>
    </property>
   </action>
  </widget>
