@@ -55,7 +55,6 @@ class TTGui(GuiBase):
 
     _hist_bin_width = StatusVar('hist_bin_width', default=50)
     _hist_record_length = StatusVar('hist_record_length', default=10)
-    _display_state = StatusVar('display_state', default=None)
    
 
     def __init__(self, *args, **kwargs):
@@ -70,12 +69,13 @@ class TTGui(GuiBase):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._display_state = self._mw.saveState().data() 
+        self._save_window_geometry(self._mw)
         self._mw.close()
 
     def on_activate(self):
         self._timetaggerlogic = self.timetaggerlogic()
         self._mw = TTWindow()
+        self._restore_window_geometry(self._mw)
         self._use_antialias = True
 
         self.threadlock_counter = Mutex()
@@ -222,9 +222,6 @@ class TTGui(GuiBase):
             self._timetaggerlogic.configure_hist, QtCore.Qt.QueuedConnection)
         self._timetaggerlogic.sigHistDataChanged.connect(
             self.update_hist_data, QtCore.Qt.QueuedConnection)
-
-        if  self._display_state:
-            self._mw.restoreState(self._display_state)
     
     def show(self):
         """Make window visible and put it above all other windows.
