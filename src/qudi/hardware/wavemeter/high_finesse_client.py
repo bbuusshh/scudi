@@ -15,6 +15,8 @@ def connect(func):
             self.tcp_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.tcp_client.connect((self.host_ip, self.server_port))
             res = func(self, *arg, **kw)
+        except:
+            return 
         finally:
             self.tcp_client.close()
         return res
@@ -85,10 +87,10 @@ class HighFinesseWavemeterClient(WavemeterInterface):
     def stop_trigger(self):
         return self.send_request("stop_trigger")
 
-    def __get_wavelength(self):
+    def get_wavelengths(self):
         """ This method returns the current wavelength in air.
         """
-        return self.send_request("get_wavelength")
+        return self.send_request("get_wavelengths") # gets 1000 entries recorded ~ approx whithin 1 s or return [] if the buffer is not filled
 
     def get_regulation_mode(self):
         return self.send_request("get_regulation_mode")

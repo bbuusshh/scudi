@@ -1,13 +1,15 @@
 from qtpy import QtCore
-import sys, os
 import numpy as np
+import datetime as dt
+import matplotlib.pyplot as plt
+
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.module import LogicBase
-from qudi.util.mutex import Mutex, RecursiveMutex
-import yaml
+from qudi.util.mutex import Mutex
 from qtpy import QtCore
-
+from qudi.util.datastorage import TextDataStorage, ImageFormat
+from qudi.util.units import ScaledFloat
 class TimeTaggerLogic(LogicBase):
     """ Logic module agreggating multiple hardware switches.
     """
@@ -61,6 +63,13 @@ class TimeTaggerLogic(LogicBase):
         self.counter_params = self._timetagger._counter
         self.hist_params = self._timetagger._hist
         self.corr_params  = self._timetagger._corr
+
+        self._recorded_data = None
+        self.trace_data = None
+        self.corr_data = None
+        self.hist_data = None
+
+        self.metadata = {'counter':None, 'hist':None, 'corr':None}
     
     def on_deactivate(self):
         pass
@@ -82,6 +91,8 @@ class TimeTaggerLogic(LogicBase):
             if self.toggled_channels and self.counter_toggle:
                 self.counter = self._timetagger.counter(channels = self.toggled_channels, bin_width = bin_width, n_values = n_values)
         
+                meta_dict = {'Channels': self.toggled_channels, 'Bin Width': bin_width/1e12, 'Number of Bins': n_values, 'Units': [(ch,'Cps') for ch in self.toggled_channels]}
+                self.metadata.update([['counter', meta_dict]])
                 self._counter_poll_timer.start()
     
     def configure_corr(self, data):
@@ -94,6 +105,9 @@ class TimeTaggerLogic(LogicBase):
                                                         bin_width = int(self.corr_bin_width), 
                                                         number_of_bins = int(self.corr_record_length/self.corr_bin_width))
         
+                meta_dict = {'Channel start': self._constraints['corr']['channel_start'], 'Channel stop': self._constraints['corr']['channel_stop'], 
+                        'Bin Width': int(self.corr_bin_width)/1e12, 'Number of Bins': int(self.corr_record_length/self.corr_bin_width), 'Units': [('g2','arb.u.')]}
+                self.metadata.update([['corr', meta_dict]])
                 self._corr_poll_timer.start()
     
     def configure_hist(self, data):
@@ -106,6 +120,9 @@ class TimeTaggerLogic(LogicBase):
                                                    bin_width = int(self.hist_bin_width), 
                                                    number_of_bins = int(self.hist_record_length/self.hist_bin_width))
 
+            meta_dict = {'Histogram Channel': self.hist_channel, 'Trigger Channel': self._constraints['hist']['trigger_channel'], 
+                	    'Bin Width': int(self.hist_bin_width)/1e12, 'Number of Bins': int(self.hist_record_length/self.hist_bin_width), 'Units': [(self.hist_channel,'Counts')]}
+            self.metadata.update([['hist', meta_dict]])
             self._hist_poll_timer.start()
 
 
@@ -166,3 +183,91 @@ class TimeTaggerLogic(LogicBase):
             self.hist_data = (index, np.nan_to_num(raw))
             self.sigHistDataChanged.emit({'hist_data':self.hist_data})
         return
+    
+    @QtCore.Slot()
+    def _save_recorded_data(self, to_file=True, name_tag='', save_figure=True, save_type='counter', save_path='Default'):
+        """ Save the data and writes it to a file.
+
+        @param bool to_file: indicate, whether data have to be saved to file
+        @param str name_tag: an additional tag, which will be added to the filename upon save
+        @param bool save_figure: select whether png and pdf should be saved
+
+        @return dict parameters: Dictionary which contains the saving parameters
+        """
+
+        self._recorded_data = {'counter': self.trace_data, 'corr': self.corr_data, 'hist': self.hist_data}[save_type]
+        if not self._recorded_data:
+            self.log.error('No data has been recorded. Save to file failed.')
+            return np.empty(0), dict()
+        
+        data_arr = np.array([self._recorded_data[1]])
+        if save_type == 'counter':
+            data_arr = []
+            for ch in self.toggled_channels:
+                data_arr.append(np.nan_to_num(self._recorded_data[ch][1]))
+            data_arr = np.array(data_arr)
+        if data_arr.size == 0:
+            self.log.error('No data has been recorded. Save to file failed.')
+            return np.empty(0), dict()
+        
+        # write the parameters:
+        parameters = self.metadata[save_type]
+        
+        if to_file:
+            # If there is a postfix then add separating underscore
+            filelabel = '{1}_data_trace_{0}'.format(name_tag, save_type) if name_tag else f'{save_type}_data_trace'
+        
+            # prepare the data in a dict:
+            header = ['{0} ({1})'.format(ch, unit) for ch, unit in self.metadata[save_type]['Units']]
+
+            data = data_arr.transpose()
+            filepath = self.module_default_data_dir 
+            y_unit = self.metadata[save_type]['Units'][0][1]
+
+            self.data_rate = 1/self.metadata[save_type]['Bin Width']
+
+            fig = self._draw_figure(data_arr, self.data_rate, y_unit) if save_figure else None
+            if not save_path == 'Default':
+                filepath = save_path
+
+            data_storage = TextDataStorage(root_dir=filepath,
+                               comments='# ', 
+                               delimiter='\t',
+                               file_extension='.dat',
+                               column_formats=['.8f' for i in self.metadata[save_type]['Units']],
+                               include_global_metadata=True,
+                               image_format=ImageFormat.PNG)
+
+            file_path, timestamp, (rows, columns) = data_storage.save_data(data, 
+                                                               timestamp=dt.datetime.now(), 
+                                                               metadata=parameters, 
+                                                               notes='',
+                                                               nametag=filelabel,
+                                                               column_headers=header,
+                                                               column_dtypes=[float for i in self.metadata[save_type]['Units']])
+            if fig:
+                data_storage.save_thumbnail(fig, file_path.rsplit('.')[0])
+            self.log.info('Time series saved to: {0}'.format(file_path))
+        return data_arr, parameters
+
+    def _draw_figure(self, data, timebase, y_unit):
+        """ Draw figure to save with data file.
+
+        @param: nparray data: a numpy array containing counts vs time for all detectors
+
+        @return: fig fig: a matplotlib figure object to be saved to file.
+        """
+        # Create figure and scale data
+        max_abs_value = ScaledFloat(max(data.max(), np.abs(data.min())))
+        time_data = np.arange(data.shape[1]) / timebase
+        fig, ax = plt.subplots()
+        if max_abs_value.scale:
+            ax.plot(time_data,
+                    data.transpose() / max_abs_value.scale_val,
+                    linestyle=':',
+                    linewidth=0.5)
+        else:
+            ax.plot(time_data, data.transpose(), linestyle=':', linewidth=0.5)
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel('Signal ({0}{1})'.format(max_abs_value.scale, y_unit))
+        return fig
