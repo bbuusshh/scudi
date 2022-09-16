@@ -21,7 +21,10 @@ If not, see <https://www.gnu.org/licenses/>.
 """
 
 import time
-import pyvisa as visa
+try:
+    import pyvisa as visa
+except ImportError:
+    import visa
 import numpy as np
 
 from qudi.util.helpers import natural_sort

@@ -33,7 +33,7 @@ from qudi.util.helpers import in_range
 import time
 
 
-class NiScanningProbeInterfuse(ScanningProbeInterface):
+class CwaveScanningProbeInterfuse(ScanningProbeInterface):
     """
     This interfuse combines modules of a National Instrument device to make up a scanning probe hardware.
     One module for software timed analog output (NIXSeriesAnalogOutput) to position e.g. a scanner to a specific

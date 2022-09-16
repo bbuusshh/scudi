@@ -50,7 +50,7 @@ class WavemeterLoggerLogic(LogicBase):
     sigFitUpdated = QtCore.Signal(object, str)
     # declare connectors
     wavemeter = Connector(interface='WavemeterInterface')
-    counter = Connector(interface='FastCounterInterface')
+    timetagger = Connector(interface='TT')
     _fit_config = StatusVar(name='fit_config', default=None)
     _fit_region = StatusVar(name='fit_region', default=[0, 1])
 
@@ -74,7 +74,6 @@ class WavemeterLoggerLogic(LogicBase):
     }
     _settings = StatusVar(name = 'wavelogger_settings', default=default_settings)
     current_wavelength = -1
-    wavelengths = np.array([], dtype = WAVELENGTH_DTYPE)
     count_data = np.array([], dtype = COUNT_DTYPE)
     plot_x = []
     plot_y = []
@@ -164,55 +163,25 @@ class WavemeterLoggerLogic(LogicBase):
     @QtCore.Slot()
     def query_wavemeter(self):
         with self._thread_lock:
-            self.current_wavelength = self._wavemeter.get_current_wavelength(kind='freq') #this give you a 1000 array of length ~ 1ms
+            self.current_wavelength = self._wavemeter.get_wavelength(kind='freq')
+            self.current_wavelengths = self._wavemeter.get_wavelengths(kind='freq') #this give you a 1000 array of length ~ 1ms
             self._time_elapsed = time.time() - self._acquisition_start_time
-            if self.current_wavelength > 0:
-                if self.wavelengths.shape[0] == 0:
-                    self.wavelengths = np.array([(self._time_elapsed, self.current_wavelength)], dtype=WAVELENGTH_DTYPE)
-                elif self._time_elapsed > self.wavelengths['time'][-1]:
-                    self.wavelengths = np.append(self.wavelengths, np.array([(time.time() - self._acquisition_start_time, self.current_wavelength)], dtype=WAVELENGTH_DTYPE))
-                    try:
-                        self.cts = self._counter_logic.get_data_trace()[0].mean()
-                        self.cts_ys[np.argmin(np.abs(self.current_wavelength - self.wlth_xs))] += self.cts
-                        self.samples_num[np.argmin(np.abs(self.current_wavelength - self.wlth_xs))] += 1
-                        
-                        self.plot_y = np.divide(self.cts_ys, self.samples_num, out = np.zeros_like(self.cts_ys), where=self.samples_num != 0)
-                        self.count_data = np.zeros(self.plot_x.shape[0], dtype = COUNT_DTYPE)
-                        self.count_data['wavelength'] = self.plot_x
-                        self.count_data['counts'] = self.plot_y
-                    except:
-                        pass
-            self.wavelengths = self.wavelengths[-self.wavelength_buffer:]
-            
+            if len(self.current_wavelengths) > 0: # if there is smth in buffer do your job
+                try:
+                    self.cts = self.counter.mean(axis=1) # should have a shape on (1000, )
+
+                    self.cts_ys[np.argmin(np.abs(self.current_wavelengths - self.wlth_xs))] += self.cts
+                    self.samples_num[np.argmin(np.abs(self.current_wavelengths - self.wlth_xs))] += 1
+                    
+                    self.plot_y = np.divide(self.cts_ys, self.samples_num, out = np.zeros_like(self.cts_ys), where=self.samples_num != 0)
+                    self.count_data = np.zeros(self.plot_x.shape[0], dtype = COUNT_DTYPE)
+                    self.count_data['wavelength'] = self.plot_x
+                    self.count_data['counts'] = self.plot_y
+                except:
+                    pass
+
             if self.module_state() != 'idle':
                 self.sig_query_wavemeter.emit()
-
-    @QtCore.Slot()
-    def query_wavemeter(self):
-        with self._thread_lock:
-            self.current_wavelength = self._wavemeter.get_current_wavelength(kind='freq')
-            self._time_elapsed = time.time() - self._acquisition_start_time
-            if self.current_wavelength > 0:
-                if self.wavelengths.shape[0] == 0:
-                    self.wavelengths = np.array([(self._time_elapsed, self.current_wavelength)], dtype=WAVELENGTH_DTYPE)
-                elif self._time_elapsed > self.wavelengths['time'][-1]:
-                    self.wavelengths = np.append(self.wavelengths, np.array([(time.time() - self._acquisition_start_time, self.current_wavelength)], dtype=WAVELENGTH_DTYPE))
-                    try:
-                        self.cts = self._counter_logic.get_data_trace()[0].mean()
-                        self.cts_ys[np.argmin(np.abs(self.current_wavelength - self.wlth_xs))] += self.cts
-                        self.samples_num[np.argmin(np.abs(self.current_wavelength - self.wlth_xs))] += 1
-                        
-                        self.plot_y = np.divide(self.cts_ys, self.samples_num, out = np.zeros_like(self.cts_ys), where=self.samples_num != 0)
-                        self.count_data = np.zeros(self.plot_x.shape[0], dtype = COUNT_DTYPE)
-                        self.count_data['wavelength'] = self.plot_x
-                        self.count_data['counts'] = self.plot_y
-                    except:
-                        pass
-            self.wavelengths = self.wavelengths[-self.wavelength_buffer:]
-            
-            if self.module_state() != 'idle':
-                self.sig_query_wavemeter.emit()
-
     
     def recalculate_histogram(self):
         if self.module_state() != 'locked':
