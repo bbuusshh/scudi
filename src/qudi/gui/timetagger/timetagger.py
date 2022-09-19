@@ -56,6 +56,8 @@ class TTGui(GuiBase):
     _hist_bin_width = StatusVar('hist_bin_width', default=50)
     _hist_record_length = StatusVar('hist_record_length', default=10)
    
+    save_folderpath = StatusVar('save_folderpath', default='')
+
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -228,8 +230,8 @@ class TTGui(GuiBase):
 
         self._mw.radioButton_3.setChecked(True)
 
-        if  self._display_state:
-            self._mw.restoreState(self._display_state)
+        # if self._display_state:
+        #     self._mw.restoreState(self._display_state)
     
     def show(self):
         """Make window visible and put it above all other windows.

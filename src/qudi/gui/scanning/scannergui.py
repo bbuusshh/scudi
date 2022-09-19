@@ -33,7 +33,7 @@ from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
 from qudi.interface.scanning_probe_interface import ScanData
 from qudi.core.module import GuiBase
-from qudi.logic.scanning_optimize_logic import OptimizerScanSequence
+from qudi.logic.scanning.optimize_logic import OptimizerScanSequence
 
 from qudi.gui.scanning.axes_control_dockwidget import AxesControlDockWidget
 from qudi.gui.scanning.optimizer_setting_dialog import OptimizerSettingDialog
