@@ -37,6 +37,7 @@ class TTWindow(QtWidgets.QMainWindow):
 
 class TTGui(GuiBase):
     """
+    Main GUI for the Timetagger module implementing Counting, Autocorrelation, and histogram functions.
 
     """
     
@@ -55,6 +56,7 @@ class TTGui(GuiBase):
 
     _hist_bin_width = StatusVar('hist_bin_width', default=50)
     _hist_record_length = StatusVar('hist_record_length', default=10)
+    _save_folderpath = StatusVar('save_folder_path', default='Default')
    
 
     def __init__(self, *args, **kwargs):
@@ -223,13 +225,10 @@ class TTGui(GuiBase):
         self._timetaggerlogic.sigHistDataChanged.connect(
             self.update_hist_data, QtCore.Qt.QueuedConnection)
         self._mw.saveAllPushButton.clicked.connect(self._save_data_clicked)
-        self._mw.currPathLabel.setText(self.save_folderpath)
+        self._mw.currPathLabel.setText(self._save_folderpath)
         self._mw.DailyPathCheckBox.clicked.connect(lambda: self._mw.newPathCheckBox.setEnabled(not self._mw.DailyPathCheckBox.isChecked()))
 
         self._mw.radioButton_3.setChecked(True)
-
-        if  self._display_state:
-            self._mw.restoreState(self._display_state)
     
     def show(self):
         """Make window visible and put it above all other windows.
@@ -305,13 +304,13 @@ class TTGui(GuiBase):
         if self._mw.newPathCheckBox.isChecked() and self._mw.newPathCheckBox.isEnabled():
             new_path = QtWidgets.QFileDialog.getExistingDirectory(self._mw, 'Select Folder')
             if new_path:
-                self.save_folderpath = new_path
-                self._mw.currPathLabel.setText(self.save_folderpath)
+                self._save_folderpath = new_path
+                self._mw.currPathLabel.setText(self._save_folderpath)
                 self._mw.newPathCheckBox.setChecked(False)
                 save = True
         if self._mw.DailyPathCheckBox.isChecked():
-            self.save_folderpath = 'Default'
-            self._mw.currPathLabel.setText(self.save_folderpath)
+            self._save_folderpath = 'Default'
+            self._mw.currPathLabel.setText(self._save_folderpath)
             save = True
         if save:
-            self._timetaggerlogic._save_recorded_data(to_file=True, name_tag=self._mw.saveTagLineEdit.text(), save_figure=True, save_type=save_type, save_path = self.save_folderpath)
+            self._timetaggerlogic._save_recorded_data(to_file=True, name_tag=self._mw.saveTagLineEdit.text(), save_figure=True, save_type=save_type, save_path = self._save_folderpath)
