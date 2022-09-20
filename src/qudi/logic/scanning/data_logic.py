@@ -280,7 +280,7 @@ class ScanningDataLogic(LogicBase):
                         arrowprops={'facecolor': '#17becf', 'shrink': 0.05})
         return fig
 
-    def save_scan(self, scan_data, color_range=None):
+    def save_scan(self, scan_data, color_range=None, tag='', root_dir=None):
         with self._thread_lock:
             if self.module_state() != 'idle':
                 self.log.error('Unable to save 2D scan. Saving still in progress...')
@@ -292,7 +292,7 @@ class ScanningDataLogic(LogicBase):
             self.sigSaveStateChanged.emit(True)
             self.module_state.lock()
             try:
-                ds = TextDataStorage(root_dir=self.module_default_data_dir)
+                ds = TextDataStorage(root_dir=self.module_default_data_dir if root_dir is None else root_dir)
                 timestamp = datetime.datetime.now()
 
                 # ToDo: Add meaningful metadata if missing:
@@ -327,10 +327,10 @@ class ScanningDataLogic(LogicBase):
                 for channel, data in scan_data.data.items():
                     # data
                     # nametag = '{0}_{1}{2}_image_scan'.format(channel, *scan_data.scan_axes)
-                    tag = self.create_tag_from_scan_data(scan_data, channel)
+                    nametag = self.create_tag_from_scan_data(scan_data, channel)
                     file_path, _, _ = ds.save_data(data,
                                                    metadata=parameters,
-                                                   nametag=tag,
+                                                   nametag=nametag if tag == '' else f'{nametag}_{tag}',
                                                    timestamp=timestamp,
                                                    column_headers='Image (columns is X, rows is Y)')
                     # thumbnail
@@ -348,10 +348,10 @@ class ScanningDataLogic(LogicBase):
                 self.sigSaveStateChanged.emit(False)
             return
 
-    def save_scan_by_axis(self, scan_axes=None, color_range=None):
+    def save_scan_by_axis(self, scan_axes=None, color_range=None, tag='', root_dir=None):
         # wrapper for self.save_scan. Avoids copying scan_data through QtSignals
         scan = self.get_current_scan_data(scan_axes=scan_axes)
-        self.save_scan(scan, color_range=color_range)
+        self.save_scan(scan, color_range, tag, root_dir)
 
     def create_tag_from_scan_data(self, scan_data, channel):
         axes = scan_data.scan_axes

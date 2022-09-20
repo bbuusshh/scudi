@@ -97,6 +97,7 @@ class ScannerGui(GuiBase):
     # status vars
     _window_state = StatusVar(name='window_state', default=None)
     _window_geometry = StatusVar(name='window_geometry', default=None)
+    _save_folderpath = StatusVar('save_folderpath', default=None)
 
     # signals
     sigScannerTargetChanged = QtCore.Signal(dict, object)
@@ -104,7 +105,7 @@ class ScannerGui(GuiBase):
     sigToggleScan = QtCore.Signal(bool, tuple, object)
     sigOptimizerSettingsChanged = QtCore.Signal(dict)
     sigToggleOptimize = QtCore.Signal(bool)
-    sigSaveScan = QtCore.Signal(object, object)
+    sigSaveScan = QtCore.Signal(object, object, object, object)
     sigSaveFinished = QtCore.Signal()
     sigShowSaveDialog = QtCore.Signal(bool)
 
@@ -222,6 +223,12 @@ class ScannerGui(GuiBase):
 
         self.sigShowSaveDialog.connect(lambda x: self._save_dialog.show() if x else self._save_dialog.hide(),
                                        QtCore.Qt.DirectConnection)
+
+        self.save_path_widget.currPathLabel.setText('Default' if self._save_folderpath is None else self._save_folderpath)
+        self.save_path_widget.DailyPathCheckBox.clicked.connect(lambda: self.save_path_widget.newPathCheckBox.setEnabled(not self.save_path_widget.DailyPathCheckBox.isChecked()))
+        if self._save_folderpath is None:
+            self.save_path_widget.DailyPathCheckBox.setChecked(True)
+            self.save_path_widget.DailyPathCheckBox.clicked.emit()
 
         # Initialize dockwidgets to default view
         self.restore_default_view()
@@ -366,6 +373,13 @@ class ScannerGui(GuiBase):
             self._mw.action_view_toolbar.setChecked)
         self._mw.action_view_toolbar.triggered[bool].connect(self._mw.util_toolBar.setVisible)
 
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'save_path_widget.ui')
+        self.save_path_widget = QtWidgets.QDockWidget()
+        uic.loadUi(ui_file, self.save_path_widget)
+        
+        self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self.save_path_widget)
+
     @QtCore.Slot()
     def restore_default_view(self):
         """ Restore the arrangement of DockWidgets to default """
@@ -464,7 +478,23 @@ class ScannerGui(GuiBase):
         Save data for a given (or all) scan axis.
         @param tuple: Axis to save. Save all currently displayed if None.
         """
+        
+        name_tag = self.save_path_widget.saveTagLineEdit.text()
+        if self.save_path_widget.newPathCheckBox.isChecked() and self.save_path_widget.newPathCheckBox.isEnabled():
+            new_path = QtWidgets.QFileDialog.getExistingDirectory(self._mw, 'Select Folder')
+            if new_path:
+                self._save_folderpath = new_path
+                self.save_path_widget.currPathLabel.setText(self._save_folderpath)
+                self.save_path_widget.newPathCheckBox.setChecked(False)
+            else:
+                return
+
         self.sigShowSaveDialog.emit(True)
+
+        if self.save_path_widget.DailyPathCheckBox.isChecked():
+            self._save_folderpath = None
+            self.save_path_widget.currPathLabel.setText('Default')
+
         try:
             data_logic = self._data_logic()
             if scan_axes is None:
@@ -476,7 +506,7 @@ class ScannerGui(GuiBase):
                     cbar_range = self.scan_2d_dockwidgets[ax].scan_widget.image_widget.levels
                 except KeyError:
                     cbar_range = None
-                self.sigSaveScan.emit(ax, cbar_range)
+                self.sigSaveScan.emit(ax, cbar_range, name_tag, self._save_folderpath)
         finally:
             pass
 

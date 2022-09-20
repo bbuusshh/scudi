@@ -348,13 +348,13 @@ class SpectrometerLogic(LogicBase):
                 self.log.error('No spectrum to save.')
                 return
             data.append(self.spectrum)
-            file_label = 'spectrum' + name_tag
+            file_label = 'spectrum' + f'_{name_tag}' if name_tag else 'spectrum'
         else:
             if self.background is None or self.spectrum is None:
                 self.log.error('No background to save.')
                 return
             data.append(self.background)
-            file_label = 'background' + name_tag
+            file_label = 'background' + f'_{name_tag}' if name_tag else 'background'
 
         header.append('Signal')
 
