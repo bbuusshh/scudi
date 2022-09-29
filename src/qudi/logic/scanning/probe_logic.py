@@ -175,6 +175,8 @@ class ScanningProbeLogic(LogicBase):
                 self.set_scan_resolution(settings['resolution'])
             if 'frequency' in settings:
                 self.set_scan_frequency(settings['frequency'])
+            if 'shift' in settings:
+                self.set_scan_shift(settings['shift'])
             if 'save_to_history' in settings:
                 self._scan_saved_to_hist = settings['save_to_history']
 
@@ -253,6 +255,18 @@ class ScanningProbeLogic(LogicBase):
             new_resolution = {ax: self._scan_resolution[ax] for ax in resolution}
             self.sigScanSettingsChanged.emit({'resolution': new_resolution})
             return new_resolution
+
+    def set_scan_shift(self, shift):
+        with self._thread_lock:
+            if self.module_state() != 'idle':
+                self.log.warning('Scan is running. Unable to change shift.')
+                return {ax.name : ax.axis_shift for ax in self.scanner_axes}
+            
+            for name, ax in self.scanner_axes.items():
+                ax.axis_shift = shift[name]
+            new_shift = {name : ax.axis_shift for name, ax in self.scanner_axes.items()}
+            
+            self.sigScanSettingsChanged.emit({'shift': new_shift})
 
     def set_scan_frequency(self, frequency):
         with self._thread_lock:
