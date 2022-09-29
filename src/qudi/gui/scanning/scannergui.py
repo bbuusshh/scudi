@@ -93,7 +93,7 @@ class ScannerGui(GuiBase):
     _default_position_unit_prefix = ConfigOption(name='default_position_unit_prefix', default=None)
     # for all optimizer sub widgets, (2= xy, 1=z)
     _default_sequence = ConfigOption(name='default_sequence', default=[["x", "y"], ["z"]])
-
+    
     # status vars
     _window_state = StatusVar(name='window_state', default=None)
     _window_geometry = StatusVar(name='window_geometry', default=None)
@@ -168,6 +168,8 @@ class ScannerGui(GuiBase):
                 scans.append((first_ax, second_ax))
         for scan in scans:
             self._add_scan_dockwidget(scan)
+
+        self._shifts = {ax : 0 for ax in axes}
 
         # Initialize widget data
         self.scanner_settings_updated()
@@ -608,11 +610,15 @@ class ScannerGui(GuiBase):
         forward_freq = {ax: freq[0] for ax, freq in self._ssd.settings_widget.frequency.items()}
         self.sigScanSettingsChanged.emit({'frequency': forward_freq})
 
+        shift = {ax: shift for ax, shift in self._ssd.settings_widget.shift.items()}
+        self.sigScanSettingsChanged.emit({'shift': shift})
+
     @QtCore.Slot()
     def restore_scanner_settings(self):
         """ ToDo: Document
         """
         self.scanner_settings_updated({'frequency': self._scanning_logic().scan_frequency})
+        self.scanner_settings_updated({'shift': self._shifts})
 
     @QtCore.Slot(bool)
     def scanner_settings_toggle_gui_lock(self, locked):
@@ -648,6 +654,13 @@ class ScannerGui(GuiBase):
                 ax: (forward, old_freq[ax][1]) for ax, forward in settings['frequency'].items()
             }
             self._ssd.settings_widget.set_frequency(new_freq)
+            
+        if 'shift' in settings:
+            old_shift = self._ssd.settings_widget.shift
+            new_shift = {
+                ax: shift for ax, shift in settings['shift'].items()
+            }
+            self._ssd.settings_widget.set_shift(new_shift)
         return
 
     @QtCore.Slot(dict)
