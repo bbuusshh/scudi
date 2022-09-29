@@ -56,6 +56,7 @@ class ScanningOptimizeLogic(LogicBase):
     # signals
     sigOptimizeStateChanged = QtCore.Signal(bool, dict, object)
     sigOptimizeSettingsChanged = QtCore.Signal(dict)
+    sigOptimizeDone = QtCore.Signal()
 
     _sigNextSequenceStep = QtCore.Signal()
 
@@ -412,6 +413,7 @@ class ScanningOptimizeLogic(LogicBase):
                 self._stashed_scan_settings = dict()
                 self.module_state.unlock()
                 self.sigOptimizeStateChanged.emit(False, dict(), None)
+                self.sigOptimizeDone.emit()
 
                 self.log.debug(f"Done. code {err}")
                 return err
