@@ -1,4 +1,16 @@
-# import numpy as np
+"""
+Example config:
+
+    automatization_logic:
+        module.Class: 'automatizationlogic.Automatedmeasurements'
+        connect:
+            spectrometergui: 'spectrometer'
+            optimizerlogic: 'scanning_optimize_logic'
+            spectrometerlogic: 'spectrometerlogic'
+            poimanagerlogic: 'poi_manager_logic'
+            switchlogic: 'switchlogic'
+
+"""
 from pydoc import doc
 from qtpy import QtCore
 import inspect
@@ -9,15 +21,11 @@ from qudi.core.connector import Connector
 
 class Automatedmeasurements(LogicBase):
     ## declare connectors
-    # _scanning_logic = Connector(name='scanning_logic', interface='ScanningProbeLogic')
-    # _data_logic = Connector(name='data_logic', interface='ScanningDataLogic')
-    # _optimize_logic = Connector(name='optimize_logic', interface='ScanningOptimizeLogic')
-    spectrometergui = Connector(name='spectrometergui')
+    spectrometergui = Connector(name='spectrometergui', interface='SpectrometerGui')
     optimizerlogic = Connector(name='optimizerlogic', interface='ScanningOptimizeLogic')
-    spectrometerlogic = Connector(name='spectrometerlogic')
-    poimanagerlogic = Connector(name='poimanagerlogic')
-    scannerlogic = Connector(name='scanning_logic', interface='ScanningProbeLogic')
-    switchlogic = Connector(name='switch_logic')
+    spectrometerlogic = Connector(name='spectrometerlogic',interface='SpectrometerLogic')
+    poimanagerlogic = Connector(name='poimanagerlogic',interface='PoiManagerLogic')
+    switchlogic = Connector(name='switchlogic',interface='SwitchLogic')
 
     # internal signals
     sigNextPoi = QtCore.Signal()
@@ -62,18 +70,18 @@ class Automatedmeasurements(LogicBase):
         self._optimizer_logic = self.optimizerlogic()
         self._spectrometer_logic = self.spectrometerlogic()
         self._poimanager_logic = self.poimanagerlogic()
-        self._scanner_logic = self.scannerlogic()
         self._switch_logic = self.switchlogic()
 
         # connect internal signals
         self.sigNextPoi.connect(self._next_poi, QtCore.Qt.QueuedConnection)
-        self.sigNextStep.connect(self._next_step,QtCore.Qt.QueuedConnection )
+        self.sigNextStep.connect(self._next_step, QtCore.Qt.QueuedConnection )
 
         # connect external signals
         self._optimizer_logic.sigOptimizeDone.connect(self._optimization_done, QtCore.Qt.QueuedConnection)
+        self._spectrometer_logic.sigSpectrumDone.connect(self._spectrum_done)
 
         self.sigSaveSpectrum.connect(self._spectrometer_gui.save_spectrum, QtCore.Qt.QueuedConnection)
-        self.sigSwitchStatus.connect(self._switch_logic.set_state)
+        self.sigSwitchStatus.connect(self._switch_logic.set_state, QtCore.Qt.QueuedConnection)
 
 
     def on_deactivate(self):
@@ -136,7 +144,7 @@ class Automatedmeasurements(LogicBase):
             print(f'{__name__}, {inspect.stack()[0][3]}')
         keys = self.func_dict.keys()
         if not set(steps).issubset(set(keys)):
-            raise Exception('The following steps are not listed in the func_dict: %s'% (list(set(steps) - set(keys))))
+            raise Exception(f'The following steps are not listed in the func_dict: {list(set(steps) - set(keys))}. \nKeeping old steps.')
         self.steps = steps
         return
 
@@ -151,7 +159,7 @@ class Automatedmeasurements(LogicBase):
         # Stop program if finished or user wants to stop
         if self.abort or (len(self._poi_names)==0):
             if self.debug:
-                print(f'Stopping pois. Abort was set to {self.abort} and {len(self.poi_names)} pois were left.')
+                print(f'Stopping pois. Abort was set to {self.abort} and {len(self._poi_names)} pois were left.')
             self.abort = True
             return
         # Choose the first poi in the list, set it as the current one and delete it.
@@ -253,7 +261,7 @@ class Automatedmeasurements(LogicBase):
             self._spectrometer_logic.differential_spectrum = False
             self._spectrometer_logic.do_flip = True
             # acquire the spectrum
-            self._spectrometer_logic._sig_get_spectrum(False,False,True) # constant_acquisition, differential_spectrum, reset
+            self._spectrometer_logic._sig_get_spectrum.emit(False,False,True) # constant_acquisition, differential_spectrum, reset
             return
         else:
             raise Exception('spectrum acquisition already running.')
@@ -263,7 +271,7 @@ class Automatedmeasurements(LogicBase):
         """Catches the signal from the spectrometerlogic that the spectrum is taken and saves the spectrum.
         """
         if self.debug:
-            print(f'{__name__}, {inspect.stack()[0][3]}')
+            print(f'{__name__}, {inspect.stack()[0][3]}, _spectrum_started = {self._spectrum_started}')
         if self._spectrum_started:
             name_tag = f'defect-name-{self._current_poi_name}_blue-on-{self._blue_is_on}'
             self.save_spectrum(name_tag)

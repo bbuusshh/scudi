@@ -72,6 +72,7 @@ class SpectrometerLogic(LogicBase):
     sig_data_updated = QtCore.Signal()
     sig_state_updated = QtCore.Signal()
     sig_fit_updated = QtCore.Signal(str, object)
+    sigSpectrumDone= QtCore.Signal()
 
     def __init__(self, **kwargs):
         """ Create SpectrometerLogic object with connectors.
@@ -184,7 +185,7 @@ class SpectrometerLogic(LogicBase):
             
             self.flip_mirror().set_state(self.flip_mirror().switch_names[0], 'Off')
 
-
+        self.sigSpectrumDone.emit()
         return self.spectrum
 
     def run_get_background(self, constant_acquisition=None, reset=True):
