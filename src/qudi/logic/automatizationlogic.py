@@ -90,18 +90,19 @@ class Automatedmeasurements(LogicBase):
         pass
 
 
-    def start(self, steps):
+    def start(self, steps, shift=None):
         """Starts the measurement series on all pois.
 
         @param list steps: list of the steps (as string) that wil be performed.
 
-        @param list poi_names: list of the names of the pois (as string) that will be measured.
+        @param array shift: Shift between the position of the defects on the scan and the actual position of the defects.
+            actual_position = scan_position + shift
         """
         if self.debug:
             print(f'{__name__}, {inspect.stack()[0][3]}')
 
         # initialize pois and steps
-        self.init_pois()
+        self.init_pois(shift)
         self.init_steps(steps)
         
         self.abort = False
@@ -119,10 +120,13 @@ class Automatedmeasurements(LogicBase):
         return
 
 
-    def init_pois(self):
+    def init_pois(self,shift=None):
         """initializes the pois.
         
         Get the name and position of the pois. Stores it in list.
+
+        @param array shift: Shift between the position of the defects on the scan and the actual position of the defects.
+            actual_position = scan_position + shift
         """
         if self.debug:
             print(f'{__name__}, {inspect.stack()[0][3]}')
@@ -131,7 +135,14 @@ class Automatedmeasurements(LogicBase):
         # copy poi names in array that we can modify (shallow copy)
         self._poi_names = self.poi_names.copy()
         # get positions of the pois (dict)
-        self.poi_positions = self._poimanager_logic.poi_positions
+        poi_positions = self._poimanager_logic.poi_positions
+        # shift them if a shift was given
+        if shift != None:
+            for key in poi_positions.keys():
+                # add shift to position
+                poi_positions[key] = poi_positions[key] + shift
+        # store poi positions as class object
+        self.poi_positions = poi_positions
         return
 
 
