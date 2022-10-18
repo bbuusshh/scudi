@@ -613,6 +613,9 @@ class PoiManagerLogic(LogicBase):
             # Get current scanner position from  if no position is provided.
             if position is None:
                 position = self.scanner_position
+            # Get current z position of scanner if none is provided
+            if position[2] == 99999999999:
+                position[2] = self.scanner_position[2]
 
             current_poi_set = set(self.poi_names)
 
