@@ -421,6 +421,14 @@ class PoiManagerLogic(LogicBase):
         self._last_refocus = 0
         self._periodic_refocus_poi = None
 
+        try:
+            # variable name has __ in front of its name --> crap with unique identifier
+            # Will not work out if a file with a different class name is chosen.
+            # No idea how to make it better but i also did not start with this crap.
+            self._max_move_velocity = self._scanninglogic()._scanner().get_max_move_velocity()
+        except:
+            self._max_move_velocity = None
+
         # Connect callback for a finished refocus
         self._optimizelogic().sigOptimizeStateChanged.connect(
             self._optimisation_callback, QtCore.Qt.QueuedConnection)
@@ -615,7 +623,10 @@ class PoiManagerLogic(LogicBase):
                 position = self.scanner_position
             # Get current z position of scanner if none is provided
             if position[2] == 99999999999:
-                position[2] = self.scanner_position[2]
+                # Would be better to set the position of the scanner at the end of the scan. 
+                # Otherwise you can run into an issue if you add POIs on an "old" confocal while a new one is running.
+                # You would be adding POIs on a scan that was scanned at z_old but the z coordinate that is savwen would actually be z_new.
+                position[2] = self._scanninglogic()._scanner_position_at_start_scan['z']
 
             current_poi_set = set(self.poi_names)
 

@@ -11,21 +11,25 @@ Example config:
             switchlogic: 'switchlogic'
 
 """
-from pydoc import doc
 from qtpy import QtCore
 import inspect
 import time
+#from pyrsistent import optional
 
 from qudi.core.module import LogicBase
 from qudi.core.connector import Connector
 
 class Automatedmeasurements(LogicBase):
+    # TODO: Fix error if device is missing.
+    #   If you don't have and don't need a spectrometer, the script still wants to connect to one because we define a connector here.
+    #   It would be nice if we could catch this and just print a notice that the device is not connected.
+    #   For now I am just commenting out the connectors in question.
     ## declare connectors
-    spectrometergui = Connector(name='spectrometergui', interface='SpectrometerGui')
+    spectrometergui = Connector(name='spectrometergui', interface='SpectrometerGui', optional=True) # TODO: talk to logic and not hardware
     optimizerlogic = Connector(name='optimizerlogic', interface='ScanningOptimizeLogic')
-    spectrometerlogic = Connector(name='spectrometerlogic',interface='SpectrometerLogic')
+    spectrometerlogic = Connector(name='spectrometerlogic',interface='SpectrometerLogic', optional=True)
     poimanagerlogic = Connector(name='poimanagerlogic',interface='PoiManagerLogic')
-    switchlogic = Connector(name='switchlogic',interface='SwitchLogic')
+    switchlogic = Connector(name='switchlogic',interface='SwitchLogic', optional=True)
 
     # internal signals
     sigNextPoi = QtCore.Signal()
@@ -50,7 +54,7 @@ class Automatedmeasurements(LogicBase):
         ## init variables
         self.abort = False
         self.steps = []
-        self.debug = True # prints for debugging
+        self.debug = False # prints for debugging
 
         # init variables that tell teh script if certain measurement was started here
         # (to make sure we don't catch signals when we don't want to)
@@ -66,22 +70,42 @@ class Automatedmeasurements(LogicBase):
         """
         if self.debug:
             print(f'{__name__}, {inspect.stack()[0][3]}')
-        self._spectrometer_gui = self.spectrometergui()
-        self._optimizer_logic = self.optimizerlogic()
-        self._spectrometer_logic = self.spectrometerlogic()
-        self._poimanager_logic = self.poimanagerlogic()
-        self._switch_logic = self.switchlogic()
 
+        # connectors
+        self._optimizer_logic = self.optimizerlogic()
+        self._poimanager_logic = self.poimanagerlogic()
+        # optional conecctors
+        if self.spectrometergui():
+            self._spectrometer_gui = self.spectrometergui()
+            self._spectrometergui_connected = True
+        else:
+            self._spectrometergui_connected = False
+            print('spectrometergui was not connected.')
+        if self.spectrometerlogic():
+            self._spectrometer_logic = self.spectrometerlogic()
+            self._spectrometerlogic_connected = True
+        else:
+            self._spectrometerlogic_connected = False
+            print('spectrometerlogic was not connected.')
+        if self.switchlogic():
+            self._switch_logic = self.switchlogic()
+            self._switchlogic_connected = True
+        else:
+            self._switchlogic_connected = False
+            print('switchlogic was not connected.')
+        
         # connect internal signals
         self.sigNextPoi.connect(self._next_poi, QtCore.Qt.QueuedConnection)
         self.sigNextStep.connect(self._next_step, QtCore.Qt.QueuedConnection )
 
         # connect external signals
         self._optimizer_logic.sigOptimizeDone.connect(self._optimization_done, QtCore.Qt.QueuedConnection)
-        self._spectrometer_logic.sigSpectrumDone.connect(self._spectrum_done)
-
-        self.sigSaveSpectrum.connect(self._spectrometer_gui.save_spectrum, QtCore.Qt.QueuedConnection)
-        self.sigSwitchStatus.connect(self._switch_logic.set_state, QtCore.Qt.QueuedConnection)
+        if self._spectrometerlogic_connected:
+            self._spectrometer_logic.sigSpectrumDone.connect(self._spectrum_done)
+        if self._spectrometergui_connected:
+            self.sigSaveSpectrum.connect(self._spectrometer_gui.save_spectrum, QtCore.Qt.QueuedConnection)
+        if self._switchlogic_connected:
+            self.sigSwitchStatus.connect(self._switch_logic.set_state, QtCore.Qt.QueuedConnection)
 
 
     def on_deactivate(self):
@@ -224,8 +248,18 @@ class Automatedmeasurements(LogicBase):
         # go to poi
         self._poimanager_logic.go_to_poi(name=poi_name)
         # poimanager does not send signal once point is reached. 
-        # We will wait for a bit and send a signal ourselves (we are assuming 0.1s is enough)
-        time.sleep(0.1)
+        # We will wait for a bit and send a signal ourselves.
+        # We calculate the time by assuming our start- and endposition are within the scanned area.
+        if self._poimanager_logic._max_move_velocity == None:
+            sleep_time = 0.1
+        else:
+            x_range = self._poimanager_logic.roi_scan_image_extent[0]
+            y_range = self._poimanager_logic.roi_scan_image_extent[1]
+            dx = x_range[1] - x_range[0]
+            dy = y_range[1] - y_range[0]
+            worst_case_distance = (dx**2 + dy**2)**0.5
+            sleep_time = 2 * worst_case_distance/self._poimanager_logic._max_move_velocity + 0.1
+        time.sleep(sleep_time)
         self.sigNextStep.emit()
         return
 
@@ -264,6 +298,8 @@ class Automatedmeasurements(LogicBase):
         """
         if self.debug:
             print(f'{__name__}, {inspect.stack()[0][3]}')
+        if not self._spectrometerlogic_connected:
+            raise Exception('spectrometerlogic not connected.')
         if not self._spectrometer_logic.acquisition_running:
             self._spectrum_started = True
             # set parameters
@@ -298,6 +334,8 @@ class Automatedmeasurements(LogicBase):
         """
         if self.debug:
             print(f'{__name__}, {inspect.stack()[0][3]}, name = {name_tag}')
+        if not self._spectrometergui_connected:
+            raise Exception('spectrometergui not connected.')
         # This is really ugly but also the fastest way to make it work
         # set parameters in gui
         self._spectrometer_gui.save_widget.saveTagLineEdit.setText(name_tag)
@@ -311,9 +349,13 @@ class Automatedmeasurements(LogicBase):
         """
         if self.debug:
             print(f'{__name__}, {inspect.stack()[0][3]}')
+        if not self._switchlogic_connected:
+            raise Exception('switchlogic not connected.')
         self._blue_is_on = True
         self.sigSwitchStatus.emit('Laser405nm', 'On')
-        time.sleep(0.1)
+        # the mirror needs time to move.
+        # Also if you send the electrical signals to the mirror to soon after the previous one, it gets confused.
+        time.sleep(0.5) 
         self.sigNextStep.emit()
         return
 
@@ -323,8 +365,10 @@ class Automatedmeasurements(LogicBase):
         """
         if self.debug:
             print(f'{__name__}, {inspect.stack()[0][3]}')
+        if not self._switchlogic_connected:
+            raise Exception('switchlogic not connected.')
         self._blue_is_on = False
         self.sigSwitchStatus.emit('Laser405nm', 'Off')
-        time.sleep(0.1)
+        time.sleep(0.5)
         self.sigNextStep.emit()
         return

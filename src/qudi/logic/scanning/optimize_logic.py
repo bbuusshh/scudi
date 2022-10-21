@@ -25,6 +25,7 @@ import numpy as np
 from PySide2 import QtCore
 import itertools
 import copy as cp
+import time
 
 from qudi.core.module import LogicBase
 from qudi.util.mutex import RecursiveMutex
@@ -75,6 +76,13 @@ class ScanningOptimizeLogic(LogicBase):
         """
         axes = self._scan_logic().scanner_axes
         channels = self._scan_logic().scanner_channels
+        try:
+            # variable name has __ in front of its name --> crap with unique identifier
+            # Will not work out if a file with a different class name is chosen.
+            # No idea how to make it better but i also did not start with this crap.
+            self._max_move_velocity = self._scan_logic()._scanner().get_max_move_velocity()
+        except:
+            self._max_move_velocity = None
 
         self.log.debug(f"Opt settings at startup, type {type(self._scan_range)} {self._scan_range, self._scan_resolution}")
 
@@ -316,6 +324,16 @@ class ScanningOptimizeLogic(LogicBase):
             return 0
 
     def _next_sequence_step(self):
+        # If the maximum move velocity is too small, the scanner will not be on the optimal opsition yet.
+        # This means that for the sequence xy, z the scanner will not be on the bright spot in xy when the scan in z is started.
+        # This will mess up the scan.
+        # Sleeping for some time should fix it.
+        if self._max_move_velocity == None:
+            sleep_time = 0.1
+        else:
+            worst_case_distance = (self.scan_range['x']**2 + self.scan_range['y']**2 + self.scan_range['z']**2)**0.5
+            sleep_time = 2 * worst_case_distance/self._max_move_velocity + 0.1
+        time.sleep(sleep_time)
         with self._thread_lock:
 
             if self.module_state() == 'idle':
