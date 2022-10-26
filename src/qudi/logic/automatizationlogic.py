@@ -14,7 +14,7 @@ Example config:
 from qtpy import QtCore
 import inspect
 import time
-#from pyrsistent import optional
+import numpy as np
 
 from qudi.core.module import LogicBase
 from qudi.core.connector import Connector
@@ -30,6 +30,7 @@ class Automatedmeasurements(LogicBase):
     spectrometerlogic = Connector(name='spectrometerlogic',interface='SpectrometerLogic', optional=True)
     poimanagerlogic = Connector(name='poimanagerlogic',interface='PoiManagerLogic')
     switchlogic = Connector(name='switchlogic',interface='SwitchLogic', optional=True)
+    scanningprobelogic = Connector(name='scanningprobelogic',interface='ScanningProbeLogic')
 
     # internal signals
     sigNextPoi = QtCore.Signal()
@@ -74,6 +75,7 @@ class Automatedmeasurements(LogicBase):
         # connectors
         self._optimizer_logic = self.optimizerlogic()
         self._poimanager_logic = self.poimanagerlogic()
+        self._scanning_probe_logic = self.scanningprobelogic()
         # optional conecctors
         if self.spectrometergui():
             self._spectrometer_gui = self.spectrometergui()
@@ -196,6 +198,8 @@ class Automatedmeasurements(LogicBase):
             if self.debug:
                 print(f'Stopping pois. Abort was set to {self.abort} and {len(self._poi_names)} pois were left.')
             self.abort = True
+            self._optimizer_started = False
+            self._spectrum_started = False
             return
         # Choose the first poi in the list, set it as the current one and delete it.
         self._current_poi_name = self._poi_names.pop(0)
@@ -270,6 +274,8 @@ class Automatedmeasurements(LogicBase):
         if self.debug:
             print(f'{__name__}, {inspect.stack()[0][3]}')
         self._optimizer_started = True
+        self._position_before_optimize = self._scanning_probe_logic.scanner_position
+        self._repeated_optimize = False
         self._optimizer_logic.start_optimize()
         return
 
@@ -284,10 +290,55 @@ class Automatedmeasurements(LogicBase):
         if self._optimizer_started == True:
             # make sure we only do sth with the signal if we initialized the measurement
             self._optimizer_started = False
-            self.sigNextStep.emit()
-            return
+            optimal_posi = np.array([self._optimizer_logic.optimal_position['x'], self._optimizer_logic.optimal_position['y'], self._optimizer_logic.optimal_position['z']])
+            position_before_optimize = np.array([self._position_before_optimize['x'],self._position_before_optimize['y'],self._position_before_optimize['z']])
+            deviation_from_old_posi = optimal_posi - position_before_optimize
+            if self._deviation_within_limits(deviation_from_old_posi,[None,None,200e-9]):
+                # if defect is closse enough to poi position continue wit this defect
+                if self.debug:
+                    print('Result of fit is within limits.')
+                self.sigNextStep.emit()
+                return
+            else:
+                # result of optimization is too far off from starting point
+                if self.debug:
+                    print('Result of fit is too far off.')
+                if not self._repeated_optimize:
+                    # if fit failed for the first time, move backt o old posi and optimize once again
+                    if self.debug:
+                        print('Trying optimize from previous position once again.') # TODO: somwhoe after this we stop
+                    self._repeated_optimize = True
+                    self._scanning_probe_logic.set_target_position(self._position_before_optimize)
+                    time.sleep(0.1)
+                    self._optimizer_started = True
+                    self._optimizer_logic.start_optimize()
+                    return
+                else:
+                    # if fit failed once before, go to next poi
+                    if self.debug:
+                        print('Skipping current poi and going to next one.')
+                    self.sigNextPoi.emit()
+                    return
         else:
             return
+
+
+    def _deviation_within_limits(self,deviations,limits=[None,None,None]):
+        """Checks if the deviaton is bigger than a set limit.
+        
+        If None is given as a limit, the dimension is ignored.
+
+        @return bool: True if within limits, falsse if not.
+        """
+        if self.debug:
+            print(f'{__name__}, {inspect.stack()[0][3]}')
+        for i in range(len(deviations)):
+            limit = limits[i]
+            deviation = deviations[i]
+            if limit != None:
+                if abs(deviation) > limit:
+                    return False
+        return True
 
 
     def take_spectrum(self):
@@ -322,6 +373,7 @@ class Automatedmeasurements(LogicBase):
         if self._spectrum_started:
             name_tag = f'defect-name-{self._current_poi_name}_blue-on-{self._blue_is_on}'
             self.save_spectrum(name_tag)
+            self._spectrum_started = False
             self.sigNextStep.emit()
         else:
             return
