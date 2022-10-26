@@ -30,7 +30,7 @@ If not, see <https://www.gnu.org/licenses/>.
 
 from PySide2 import QtCore
 import copy as cp
-from qudi.logic.scanning_probe_logic import ScanningProbeLogic
+from qudi.logic.scanning.probe_logic import ScanningProbeLogic
 
 from qudi.core.module import LogicBase
 from qudi.util.mutex import RecursiveMutex

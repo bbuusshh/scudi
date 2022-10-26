@@ -31,7 +31,7 @@ from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
 from qudi.interface.scanning_probe_interface import ScanData
 from qudi.core.module import GuiBase
-from qudi.logic.scanning_optimize_logic import OptimizerScanSequence
+from qudi.logic.scanning.optimize_logic import OptimizerScanSequence
 from qudi.util.widgets.fitting import FitConfigurationDialog
 from .fit_dockwidget import PleFitDockWidget
 from qudi.gui.ple.ple_ui_window import PLEScanMainWindow
@@ -298,7 +298,7 @@ class PLEScanGui(GuiBase):
             self._mw.matrix_widget.image_widget.autoRange()
             
             self._mw.ple_widget.selected_region.setRegion(x_range)
-            self._mw.ple_widget.target_point.setValue((x_range[0] + x_range[1])/2)
+            self._mw.ple_widget.target_point.setValue(x_range[0])
             self._mw.ple_widget.plot_widget.setRange(xRange = x_range)
 
         if 'frequency' in settings:
