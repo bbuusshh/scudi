@@ -78,7 +78,7 @@ class SpectrometerControlWidget(QtWidgets.QWidget):
         self.save_path_widget = QtWidgets.QDockWidget()
         uic.loadUi(ui_file, self.save_path_widget)
         
-        main_layout.addWidget(self.save_path_widget, 2, 0, 1, 3)
+        main_layout.addWidget(self.save_path_widget, 4, 0, 1, 3)
 
         self.progress_bar = QtWidgets.QProgressBar()
         self.progress_bar.setRange(0, 100)
