@@ -81,7 +81,6 @@ class PLEScannerLogic(ScanningProbeLogic):
          'model'            : 'Gaussian',
          'estimator'        : 'Peak',
          'custom_parameters': None}
-         
     )
 
     accumulated_data = None
@@ -265,7 +264,6 @@ class PLEScannerLogic(ScanningProbeLogic):
     @QtCore.Slot(bool, tuple)
     @QtCore.Slot(bool, tuple, object)
     def toggle_scan(self, start, scan_axes, caller_id=None):
-
         self._toggled_scan_axes = scan_axes
         with self._thread_lock:
             if start:

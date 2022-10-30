@@ -25,20 +25,26 @@ class PLE2DWidget(QtWidgets.QWidget):
                 parent: Optional[QtWidgets.QWidget] = None):
         super().__init__(parent=parent)
 
-        self.channel = channel
+        
         main_layout = QtWidgets.QGridLayout()
         self.setLayout(main_layout)
-        matrix_group_box = QtWidgets.QGroupBox('Matrix Region')
+
+        self.channel = channel
+        self.axis = axis
+        self._init_image_widget()
  
+    
+    def _init_image_widget(self):
+        matrix_group_box = QtWidgets.QGroupBox('Matrix Region')
         self.image_widget = ImageWidget(colorscale = ColorScale) #_Colorscale().lut
         self.image_item = self.image_widget.image_item
 
-        self.image_widget.set_axis_label('left', label=channel.name, unit=channel.unit)
-        self.image_widget.set_axis_label('bottom', label=axis.name.title(), unit=axis.unit)
-        self.image_widget.set_data_label(label=channel.name, unit=channel.unit)
+        self.image_widget.set_axis_label('left', label=self.channel.name, unit=self.channel.unit)
+        self.image_widget.set_axis_label('bottom', label=self.axis.name.title(), unit=self.axis.unit)
+        self.image_widget.set_data_label(label=self.channel.name, unit=self.channel.unit)
         
         self.layout().addWidget(self.image_widget)
-
+        
         # disable buggy pyqtgraph 'Export..' context menu
         self.image_widget.plot_widget.setAspectLocked(lock=False, ratio=1.0)
         self.image_widget.plot_widget.getPlotItem().vb.scene().contextMenu[0].setVisible(False)
@@ -46,6 +52,9 @@ class PLE2DWidget(QtWidgets.QWidget):
         self.number_of_repeats=None
         self._scan_data = None
 
+    @channel.setter
+    def channel(self):
+        self._init_image_widget()
 
     def set_plot_range(self,
                        x_range: Optional[Tuple[float, float]] = None,

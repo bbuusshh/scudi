@@ -46,7 +46,7 @@ class PLEDataWidget(QtWidgets.QWidget):
 
         main_layout = QtWidgets.QGridLayout()
         self.setLayout(main_layout)
-        self.channel = channel
+        self._channel = channel
         self.plot_widget = pg.PlotWidget(
             axisItems={'bottom': CustomAxis(orientation='bottom'),
                        'left'  : CustomAxis(orientation='left')}
@@ -89,6 +89,10 @@ class PLEDataWidget(QtWidgets.QWidget):
         # Set data
         self._update_scan_data(update_range=update_range)
     
+    @channel.setter
+    def channel(self, channel):
+        self._channel = channel
+
     def set_fit_data(self, frequency, data):
         if data is None:
             self._data_item.clear()
