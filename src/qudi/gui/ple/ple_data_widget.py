@@ -47,6 +47,7 @@ class PLEDataWidget(QtWidgets.QWidget):
         main_layout = QtWidgets.QGridLayout()
         self.setLayout(main_layout)
         self._channel = channel
+        self.axis = axis
         self.plot_widget = pg.PlotWidget(
             axisItems={'bottom': CustomAxis(orientation='bottom'),
                        'left'  : CustomAxis(orientation='left')}
@@ -89,9 +90,15 @@ class PLEDataWidget(QtWidgets.QWidget):
         # Set data
         self._update_scan_data(update_range=update_range)
     
+    @property
+    def channel(self):
+        return self._channel
+
     @channel.setter
     def channel(self, channel):
         self._channel = channel
+        self.plot_widget.setLabel('left', text=channel.name, units=channel.unit)
+        self.plot_widget.setLabel('bottom', text=self.axis.name.title(), units=self.axis.unit)
 
     def set_fit_data(self, frequency, data):
         if data is None:
@@ -101,7 +108,7 @@ class PLEDataWidget(QtWidgets.QWidget):
 
     #!! TODO choose CHANNEL
     def _update_scan_data(self, update_range: bool) -> None:
-        current_channel = self.channel.name #or APD events ?? or time tagger #!TODO!
+        current_channel = self._channel.name #or APD events ?? or time tagger #!TODO!
         if (self._scan_data is None) or (self._scan_data.data is None):
             self.data_curve.clear()
         else:

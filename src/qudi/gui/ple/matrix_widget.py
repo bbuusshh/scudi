@@ -29,19 +29,15 @@ class PLE2DWidget(QtWidgets.QWidget):
         main_layout = QtWidgets.QGridLayout()
         self.setLayout(main_layout)
 
-        self.channel = channel
+        self._channel = channel
         self.axis = axis
-        self._init_image_widget()
- 
-    
-    def _init_image_widget(self):
         matrix_group_box = QtWidgets.QGroupBox('Matrix Region')
         self.image_widget = ImageWidget(colorscale = ColorScale) #_Colorscale().lut
         self.image_item = self.image_widget.image_item
 
-        self.image_widget.set_axis_label('left', label=self.channel.name, unit=self.channel.unit)
+        self.image_widget.set_axis_label('left', label=self._channel.name, unit=self._channel.unit)
         self.image_widget.set_axis_label('bottom', label=self.axis.name.title(), unit=self.axis.unit)
-        self.image_widget.set_data_label(label=self.channel.name, unit=self.channel.unit)
+        self.image_widget.set_data_label(label=self._channel.name, unit=self._channel.unit)
         
         self.layout().addWidget(self.image_widget)
         
@@ -52,9 +48,17 @@ class PLE2DWidget(QtWidgets.QWidget):
         self.number_of_repeats=None
         self._scan_data = None
 
-    @channel.setter
+    @property
     def channel(self):
-        self._init_image_widget()
+        return self._channel
+
+    @channel.setter
+    def channel(self, channel):
+        self._channel = channel
+        self.image_widget.set_axis_label('left', label=self._channel.name, unit=self._channel.unit)
+        self.image_widget.set_axis_label('bottom', label=self.axis.name.title(), unit=self.axis.unit)
+        self.image_widget.set_data_label(label=self._channel.name, unit=self._channel.unit)
+        
 
     def set_plot_range(self,
                        x_range: Optional[Tuple[float, float]] = None,
