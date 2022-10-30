@@ -95,9 +95,9 @@ class PLEDataWidget(QtWidgets.QWidget):
         return self._channel
 
     @channel.setter
-    def channel(self, channel):
-        self._channel = channel
-        self.plot_widget.setLabel('left', text=channel.name, units=channel.unit)
+    def channel(self, ch):
+        self._channel = ch
+        self.plot_widget.setLabel('left', text=ch.name, units=ch.unit)
         self.plot_widget.setLabel('bottom', text=self.axis.name.title(), units=self.axis.unit)
 
     def set_fit_data(self, frequency, data):

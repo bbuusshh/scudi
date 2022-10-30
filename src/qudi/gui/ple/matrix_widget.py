@@ -53,8 +53,8 @@ class PLE2DWidget(QtWidgets.QWidget):
         return self._channel
 
     @channel.setter
-    def channel(self, channel):
-        self._channel = channel
+    def channel(self, ch):
+        self._channel = ch
         self.image_widget.set_axis_label('left', label=self._channel.name, unit=self._channel.unit)
         self.image_widget.set_axis_label('bottom', label=self.axis.name.title(), unit=self.axis.unit)
         self.image_widget.set_data_label(label=self._channel.name, unit=self._channel.unit)
