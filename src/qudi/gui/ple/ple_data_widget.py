@@ -99,6 +99,7 @@ class PLEDataWidget(QtWidgets.QWidget):
         self._channel = ch
         self.plot_widget.setLabel('left', text=ch.name, units=ch.unit)
         self.plot_widget.setLabel('bottom', text=self.axis.name.title(), units=self.axis.unit)
+        self._update_scan_data(False)
 
     def set_fit_data(self, frequency, data):
         if data is None:
