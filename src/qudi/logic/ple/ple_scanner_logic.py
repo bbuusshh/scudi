@@ -193,7 +193,7 @@ class PLEScannerLogic(ScanningProbeLogic):
 
         if self.scan_data is None:
             return
-        y_data = self.scan_data.data[channel]
+        y_data = self.scan_data.data[self._channel]
         x_range = self.scan_ranges[self._scan_axis]
         x_data = np.linspace(*x_range, self.scan_resolution[self._scan_axis])
         try:
@@ -203,11 +203,11 @@ class PLEScannerLogic(ScanningProbeLogic):
             return
         
         if fit_result is not None:
-            self._fit_results[channel] = (fit_config, fit_result)
+            self._fit_results[self._channel] = (fit_config, fit_result)
         else:
-            self._fit_results[channel] = None
-        print(self._fit_results[channel])
-        self.sigFitUpdated.emit(self._fit_results[channel], channel)
+            self._fit_results[self._channel] = None
+        print(self._fit_results[self._channel])
+        self.sigFitUpdated.emit(self._fit_results[self._channel], self._channel)
 
     @_fit_config.representer
     def __repr_fit_configs(self, value):

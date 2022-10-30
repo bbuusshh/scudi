@@ -36,6 +36,8 @@ from qudi.util.widgets.fitting import FitConfigurationDialog
 from .fit_dockwidget import PleFitDockWidget
 from qudi.gui.ple.ple_ui_window import PLEScanMainWindow
 from qudi.util.widgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
+from qudi.gui.scanning.optimizer_setting_dialog import OptimizerSettingDialog
+from qudi.gui.ple.optimizer_dockwidget import OptimizerDockWidget
 
 class PLEScanGui(GuiBase):
     """
@@ -43,6 +45,7 @@ class PLEScanGui(GuiBase):
     
     # declare connectors
     _scanning_logic = Connector(name='scannerlogic', interface='PLEScannerLogic')
+    _optimize_logic = Connector(name='optimizerlogic', interface='PLEOptimizeScannerLogic')
     _microwave_logic = Connector(name='microwave', interface= 'OdmrLogic', optional=True)
     _repump_logic = Connector(name='repump', interface= 'RepumpInterfuseLogic', optional=True)
 
@@ -51,6 +54,7 @@ class PLEScanGui(GuiBase):
     _window_geometry = StatusVar(name='window_geometry', default=None)
     _save_display_view = StatusVar(name='save_display_view', default=None)
 
+    _optimizer_plot_dims = ConfigOption(name='optimizer_plot_dimensions', default=[1])
     # signals
     sigScannerTargetChanged = QtCore.Signal(dict)#, object)
     sigScanSettingsChanged = QtCore.Signal(dict)
@@ -73,7 +77,7 @@ class PLEScanGui(GuiBase):
         self.sigScannerTargetChanged.disconnect()
         self.sigScanSettingsChanged.disconnect()
         self.sigToggleScan.disconnect()
-        # self.sigToggleOptimize.disconnect()
+        self.sigToggleOptimize.disconnect()
         return 0
 
     def on_activate(self):
@@ -108,10 +112,10 @@ class PLEScanGui(GuiBase):
         self._scanning_logic.sigScanSettingsChanged.connect(
             self.scanner_settings_updated, QtCore.Qt.QueuedConnection
         )
-        # self.sigToggleOptimize.connect(
-        #     self._optimize_logic().toggle_optimize, QtCore.Qt.QueuedConnection
-        # )
-
+        self.sigToggleOptimize.connect(
+            self._optimize_logic().toggle_optimize, QtCore.Qt.QueuedConnection
+        )
+        self._mw.action_optimize_position.triggered[bool].connect(self.toggle_optimize, QtCore.Qt.QueuedConnection)
         #self._mw.ple_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing)
         self._mw.ple_widget.selected_region.sigRegionChanged.connect(self.sliders_values_are_changing)
 
@@ -125,6 +129,8 @@ class PLEScanGui(GuiBase):
         self._mw.stopDoubleSpinBox.setSuffix(self.axis.unit)
         self._mw.constDoubleSpinBox.setSuffix(self.axis.unit)
 
+        self._mw.channel_comboBox.addItems(self._scanning_logic.scanner_channels.keys())
+        self._mw.channel_comboBox.currentTextChanged.connect(self._set_channel)
         #create microwave control window if microwave is set
         if self._microwave_logic() is not None:
             self._microwave_logic = self._microwave_logic()
@@ -147,11 +153,93 @@ class PLEScanGui(GuiBase):
 
         self.restore_scanner_settings()
         self._init_ui_connectors()
-
+        self._init_static_widgets()
+        self._init_optimizer_settings()
         self.setup_fit_widget()
         self.__connect_fit_control_signals()
         self.load_view()
-        
+
+    def _init_optimizer_settings(self):
+        """ Configuration and initialisation of the optimizer settings dialog.
+        """
+        # Create the Settings window
+        self._osd = OptimizerSettingDialog(tuple(self._scanning_logic.scanner_axes.values()),
+                                           tuple(self._scanning_logic.scanner_channels.values()),
+                                           self._optimizer_plot_dims)
+
+        # Connect MainWindow actions
+        self._mw.action_optimizer_settings.triggered.connect(lambda x: self._osd.exec_())
+
+        # Connect the action of the settings window with the code:
+        self._osd.accepted.connect(self.change_optimizer_settings)
+        self._osd.rejected.connect(self.update_optimizer_settings)
+        self._osd.button_box.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
+            self.change_optimizer_settings)
+        # pull in data
+        self.update_optimizer_settings()
+        return
+
+    @QtCore.Slot()
+    def change_optimizer_settings(self):
+        self.sigOptimizerSettingsChanged.emit(self._osd.settings)
+        self.optimizer_dockwidget.scan_sequence = self._osd.settings['scan_sequence']
+        # self.update_crosshair_sizes()
+
+    @QtCore.Slot(dict)
+    def update_optimizer_settings(self, settings=None):
+        if not isinstance(settings, dict):
+            settings = self._optimize_logic().optimize_settings
+
+        # Update optimizer settings QDialog
+        self._osd.change_settings(settings)
+
+        # Adjust optimizer settings
+        if 'scan_sequence' in settings:
+            new_settings = self._optimize_logic().check_sanity_optimizer_settings(settings, self._optimizer_plot_dims)
+            if settings['scan_sequence'] != new_settings['scan_sequence']:
+                new_seq = new_settings['scan_sequence']
+                self.log.warning(f"Tried to update gui with illegal optimizer sequence= {settings['scan_sequence']}."
+                                 f" Defaulted optimizer to= {new_seq}")
+                self._optimize_logic().scan_sequence = new_seq
+            settings = new_settings
+
+            axes_constr = self._scanning_logic.scanner_axes
+            self.optimizer_dockwidget.scan_sequence = settings['scan_sequence']
+
+            for seq_step in settings['scan_sequence']:
+                if len(seq_step) == 1:
+                    axis = seq_step[0]
+                    self.optimizer_dockwidget.set_plot_label(axis='bottom',
+                                                             axs=seq_step,
+                                                             text=axis,
+                                                             units=axes_constr[axis].unit)
+                    self.optimizer_dockwidget.set_plot_data(axs=seq_step)
+                    self.optimizer_dockwidget.set_fit_data(axs=seq_step)
+                elif len(seq_step) == 2:
+                    x_axis, y_axis = seq_step
+                    self.optimizer_dockwidget.set_image_label(axis='bottom',
+                                                              axs=seq_step,
+                                                              text=x_axis,
+                                                              units=axes_constr[x_axis].unit)
+                    self.optimizer_dockwidget.set_image_label(axis='left',
+                                                              axs=seq_step,
+                                                              text=y_axis,
+                                                              units=axes_constr[y_axis].unit)
+                    self.optimizer_dockwidget.set_image(None, axs=seq_step,
+                                                        extent=((-0.5, 0.5), (-0.5, 0.5)))
+
+                # Adjust 1D plot y-axis label
+                if 'data_channel' in settings and len(seq_step)==1:
+                    channel_constr = self._scanning_logic.scanner_channels
+                    channel = settings['data_channel']
+                    self.optimizer_dockwidget.set_plot_label(axs=seq_step, axis='left',
+                                                             text=channel,
+                                                             units=channel_constr[channel].unit)
+
+                # Adjust crosshair size according to optimizer range
+                # self.update_crosshair_sizes()
+
+
     def _init_microwave(self):
         
         mw_constraints = self._microwave_logic.microwave_constraints
@@ -169,7 +257,30 @@ class PLEScanGui(GuiBase):
             self._mw.Microwave_widget.enable_microwave
         )
         self._microwave_logic.sigCwParametersUpdated.emit(self._microwave_logic.cw_parameters)
+    
+    def _init_static_widgets(self):
+        self.optimizer_dockwidget = OptimizerDockWidget(axes=self._scanning_logic.scanner_axes,
+                                                        plot_dims=self._optimizer_plot_dims,
+                                                        sequence=self._optimize_logic().scan_sequence)
+        self.optimizer_dockwidget.setAllowedAreas(QtCore.Qt.TopDockWidgetArea)
+        self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self.optimizer_dockwidget)
+        # self.optimizer_dockwidget.visibilityChanged.connect(
+        #     self._mw.action_view_optimizer.setChecked)
+        # self._mw.action_view_optimizer.triggered[bool].connect(
+        #     self.optimizer_dockwidget.setVisible)
+
+        # self._mw.util_toolBar.visibilityChanged.connect(
+        #     self._mw.action_view_toolbar.setChecked)
+        # self._mw.action_view_toolbar.triggered[bool].connect(self._mw.util_toolBar.setVisible)
+
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'save_path_widget.ui')
+        self.save_path_widget = QtWidgets.QDockWidget()
+        uic.loadUi(ui_file, self.save_path_widget)
         
+        self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self.save_path_widget)
+
+
     def setup_fit_widget(self):
         self._fit_dockwidget = PleFitDockWidget(parent=self._mw, fit_container=self._scanning_logic._fit_container)
         self._fit_config_dialog = FitConfigurationDialog(parent=self._mw,
@@ -184,6 +295,8 @@ class PLEScanGui(GuiBase):
     def __disconnect_fit_control_signals(self):
         self._fit_dockwidget.fit_widget.sigDoFit.disconnect()
 
+    def _set_channel(self, value):
+        self._scanning_logic._channel = value
 
     def _fit_clicked(self, fit_config):
         channel = self._scanning_logic.scanner_channels[self._scanning_logic._channel]#self._scan_control_dockwidget.selected_channel
@@ -201,6 +314,17 @@ class PLEScanGui(GuiBase):
             else:
                 self._fit_dockwidget.fit_widget.update_fit_result(*fit_cfg_result)
                 self._mw.ple_widget.set_fit_data(*fit_cfg_result[1].high_res_best_fit)
+
+
+    @QtCore.Slot(bool)
+    def toggle_optimize(self, enabled):
+        """
+        """
+        #! TODO: uncomment by implemebnting
+        # self._toggle_enable_actions(not enabled, exclude_action=self._mw.action_optimize_position)
+        # self._toggle_enable_scan_buttons(not enabled)
+        # self._toggle_enable_scan_crosshairs(not enabled)
+        self.sigToggleOptimize.emit(enabled)
 
 
 
