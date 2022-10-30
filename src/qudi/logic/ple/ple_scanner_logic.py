@@ -56,7 +56,7 @@ class PLEScannerLogic(ScanningProbeLogic):
     
     #! We should refactor it to the hardware scanner interface
     _scan_axis = ConfigOption(name='scan_axis', default='a')
-    _channel = ConfigOption(name='channel', default='fluorescence')
+    _channel = StatusVar(name='channel', default=None)
 
 
     # status vars
@@ -113,7 +113,7 @@ class PLEScannerLogic(ScanningProbeLogic):
         self.__scan_poll_interval = 0
         self.__scan_stop_requested = True
         self.data_accumulated = None
-
+        
         self._fit_results = dict()
         self._fit_results['fluorescence'] = [None] * 1
 
@@ -127,9 +127,8 @@ class PLEScannerLogic(ScanningProbeLogic):
         self.fit_region = self._fit_region
        
         constr = self.scanner_constraints
-
+        self._channel = list(constr.channels.keys())[0] if self._channel is None else self._channel
         self._scan_saved_to_hist = True
-
         self.log.debug(f"Scanner settings at startup, type {type(self._scan_ranges)} {self._scan_ranges, self._scan_resolution}")
         # scanner settings loaded from StatusVar or defaulted
         new_settings = self.check_sanity_scan_settings(self.scan_settings)

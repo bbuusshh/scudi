@@ -297,7 +297,9 @@ class PLEScanGui(GuiBase):
 
     def _set_channel(self, value):
         self._scanning_logic._channel = value
-        self._mw.ple_widget.channel = self._scanning_logic.scanner_channels[value]
+        ch = self._scanning_logic.scanner_channels[value]
+        self._mw.ple_widget.channel = ch
+        self._mw.matrix_widget.channel = ch
 
     def _fit_clicked(self, fit_config):
         channel = self._scanning_logic.scanner_channels[self._scanning_logic._channel]#self._scan_control_dockwidget.selected_channel

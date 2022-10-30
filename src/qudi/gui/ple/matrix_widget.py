@@ -58,7 +58,7 @@ class PLE2DWidget(QtWidgets.QWidget):
         self.image_widget.set_axis_label('left', label=self._channel.name, unit=self._channel.unit)
         self.image_widget.set_axis_label('bottom', label=self.axis.name.title(), unit=self.axis.unit)
         self.image_widget.set_data_label(label=self._channel.name, unit=self._channel.unit)
-        
+        self._update_scan_data()
 
     def set_plot_range(self,
                        x_range: Optional[Tuple[float, float]] = None,
@@ -73,8 +73,7 @@ class PLE2DWidget(QtWidgets.QWidget):
 
     def _update_scan_data(self) -> None:
        
-        current_channel = self.channel.name 
-
+        current_channel = self._channel.name 
         self.image_widget.set_image(self._scan_data.accumulated_data[current_channel].T)    
         matrix_range = (self._scan_data.scan_range[0], (0, self._scan_data.accumulated_data[current_channel].shape[0]))
         self.image_widget.set_image_extent(matrix_range,
