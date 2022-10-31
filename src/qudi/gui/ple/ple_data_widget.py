@@ -118,7 +118,7 @@ class PLEDataWidget(QtWidgets.QWidget):
                                      self._scan_data.scan_resolution[0])
                 self.data_curve.setData(y=self._scan_data.data[current_channel], x=x_data)
                 self.selected_region.setRegion(self._scan_data.scan_range[0])
-                self.target_point.setValue(self._scan_data.scan_range[0][0])
+                # self.target_point.setValue(self._scan_data.scan_range[0][0])
             else:
                 self.data_curve.setData(y=self._scan_data.data[current_channel],
                                        x=self.data_curve.xData)

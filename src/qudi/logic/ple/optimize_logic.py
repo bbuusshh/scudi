@@ -25,7 +25,7 @@ import numpy as np
 from PySide2 import QtCore
 import itertools
 import copy as cp
-
+import time
 from qudi.core.module import LogicBase
 from qudi.util.mutex import RecursiveMutex
 from qudi.core.connector import Connector
@@ -324,13 +324,15 @@ class PLEOptimizeScannerLogic(LogicBase):
                 return
             try:
                 self.log.debug(f"Starting new scan for next seq step {self._sequence_index}")
-                if self._scan_logic().toggle_scan(True,
-                                                  self._scan_sequence[self._sequence_index],
-                                                  self.module_uuid) < 0:
-                    self.log.error('Unable to start {0} scan. Optimize aborted.'.format(
-                        self._scan_sequence[self._sequence_index])
-                    )
-                    self.stop_optimize()
+                # time.sleep(2)
+                # if self._scan_logic().toggle_scan(True,list(self._scan_sequence[self._sequence_index]),
+                #                                 self.module_uuid) < 0:
+                    
+                self._scan_logic().sigToggleScan.emit(True, list(self._scan_sequence[self._sequence_index]), self.module_uuid)
+                    # self.log.error('Unable to start {0} scan. Optimize aborted.'.format(
+                    # self._scan_sequence[self._sequence_index])
+                # )
+                    # self.stop_optimize()    
                 return
             except:
                 self.log.exception()
@@ -338,11 +340,14 @@ class PLEOptimizeScannerLogic(LogicBase):
     def _scan_state_changed(self, is_running, data, caller_id):
 
         with self._thread_lock:
+            
             if is_running or self.module_state() == 'idle' or caller_id != self.module_uuid:
                 self.log.debug(f"Don't handle changed scan state, running: {is_running},"
                                f" caller {self.module_uuid}. Optimize logic: {self.module_uuid} ")
                 return
             elif data is not None:
+                # self.stop_optimize()  
+                print("SHTIT STORM")
                 try:
                     if data.scan_dimension == 1:
                         x = np.linspace(*data.scan_range[0], data.scan_resolution[0])
@@ -361,9 +366,12 @@ class PLEOptimizeScannerLogic(LogicBase):
 
                     position_update = {ax: opt_pos[ii] for ii, ax in enumerate(data.scan_axes)}
                     if fit_data is not None:
-                        new_pos = self._scan_logic().set_target_position(position_update)
-                        for ax in tuple(position_update):
-                            position_update[ax] = new_pos[ax]
+                        
+                        # new_pos = self._scan_logic().set_target_position(position_update, self.module_uuid)
+                        # for ax in tuple(position_update):
+                        #     position_update[ax] = new_pos[ax]
+                        self._scan_logic().sigSetScannerTarget.emit(position_update)
+                        
 
                         fit_data = {'fit_data':fit_data, 'full_fit_res':fit_res}
 
@@ -377,7 +385,7 @@ class PLEOptimizeScannerLogic(LogicBase):
                         pass # TODO DEBUG ONLY
                         #self.stop_optimize()
                         #return
-
+                    
                 except:
                     self.log.exception()
 

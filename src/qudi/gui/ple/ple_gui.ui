@@ -598,6 +598,9 @@
    </property>
   </action>
   <action name="action_optimize_position">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>Refocus</string>
    </property>

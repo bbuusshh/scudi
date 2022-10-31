@@ -74,8 +74,9 @@ class PLE2DWidget(QtWidgets.QWidget):
     def _update_scan_data(self) -> None:
        
         current_channel = self._channel.name 
-        self.image_widget.set_image(self._scan_data.accumulated_data[current_channel].T)    
-        matrix_range = (self._scan_data.scan_range[0], (0, self._scan_data.accumulated_data[current_channel].shape[0]))
-        self.image_widget.set_image_extent(matrix_range,
-                        adjust_for_px_size=True)
-        self.image_widget.autoRange()
+        if self._scan_data is not None:
+            self.image_widget.set_image(self._scan_data.accumulated_data[current_channel].T)    
+            matrix_range = (self._scan_data.scan_range[0], (0, self._scan_data.accumulated_data[current_channel].shape[0]))
+            self.image_widget.set_image_extent(matrix_range,
+                            adjust_for_px_size=True)
+            self.image_widget.autoRange()

@@ -53,12 +53,14 @@ class PLEScanGui(GuiBase):
     _window_state = StatusVar(name='window_state', default=None)
     _window_geometry = StatusVar(name='window_geometry', default=None)
     _save_display_view = StatusVar(name='save_display_view', default=None)
-
+    
     _optimizer_plot_dims = ConfigOption(name='optimizer_plot_dimensions', default=[1])
+    _optimizer_state = {'is_running': False}
+    _optimizer_id = 0
     # signals
     sigScannerTargetChanged = QtCore.Signal(dict)#, object)
     sigScanSettingsChanged = QtCore.Signal(dict)
-    sigToggleScan = QtCore.Signal(bool, tuple, object)
+    # sigToggleScan = QtCore.Signal(bool, tuple, object)
     sigOptimizerSettingsChanged = QtCore.Signal(dict)
     sigToggleOptimize = QtCore.Signal(bool)
     sigSaveScan = QtCore.Signal(object, object)
@@ -75,8 +77,10 @@ class PLEScanGui(GuiBase):
         self.save_view()
         self._mw.close()
         self.sigScannerTargetChanged.disconnect()
+        self._optimize_logic().sigOptimizeStateChanged.disconnect(self.optimize_state_updated)
         self.sigScanSettingsChanged.disconnect()
-        self.sigToggleScan.disconnect()
+        self.sigOptimizerSettingsChanged.disconnect()
+        self._scanning_logic.sigToggleScan.disconnect()
         self.sigToggleOptimize.disconnect()
         return 0
 
@@ -84,6 +88,8 @@ class PLEScanGui(GuiBase):
         """ 
         """
         self._scanning_logic = self._scanning_logic()
+        self._optimizer_id = self._optimize_logic().module_uuid
+        self._scanning_logic._scan_id = self.module_uuid
         self.scan_axis = self._scanning_logic._scan_axis
         self.axis = self._scanning_logic.scanner_axes[self.scan_axis]
         channel = self._scanning_logic.scanner_channels[self._scanning_logic._channel]
@@ -96,10 +102,13 @@ class PLEScanGui(GuiBase):
         self.sigScannerTargetChanged.connect(
             self._scanning_logic.set_target_position, QtCore.Qt.QueuedConnection
         )
+        self._scanning_logic.sigScannerTargetChanged.connect(
+            self.scanner_target_updated, QtCore.Qt.QueuedConnection
+        )
         self.sigScanSettingsChanged.connect(
             self._scanning_logic.set_scan_settings, QtCore.Qt.QueuedConnection
         )
-        self.sigToggleScan.connect(self._scanning_logic.toggle_scan, QtCore.Qt.QueuedConnection)
+        self._scanning_logic.sigToggleScan.connect(self._scanning_logic.toggle_scan, QtCore.Qt.QueuedConnection)
         self._mw.actionToggle_scan.triggered.connect(self.toggle_scan, QtCore.Qt.QueuedConnection)
         self._scanning_logic.sigRepeatScan.connect(self.scan_repeated, QtCore.Qt.QueuedConnection)
         
@@ -115,10 +124,15 @@ class PLEScanGui(GuiBase):
         self.sigToggleOptimize.connect(
             self._optimize_logic().toggle_optimize, QtCore.Qt.QueuedConnection
         )
+        self.sigOptimizerSettingsChanged.connect(
+            self._optimize_logic().set_optimize_settings, QtCore.Qt.QueuedConnection)
+
         self._mw.action_optimize_position.triggered[bool].connect(self.toggle_optimize, QtCore.Qt.QueuedConnection)
         #self._mw.ple_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing)
         self._mw.ple_widget.selected_region.sigRegionChanged.connect(self.sliders_values_are_changing)
-
+        self._optimize_logic().sigOptimizeStateChanged.connect(
+            self.optimize_state_updated, QtCore.Qt.QueuedConnection
+        )
         self._mw.ple_widget.target_point.sigPositionChanged.connect(self.set_scanner_target_position)
         self._mw.ple_widget.selected_region.sigRegionChangeFinished.connect(self.region_value_changed) 
 
@@ -131,6 +145,8 @@ class PLEScanGui(GuiBase):
 
         self._mw.channel_comboBox.addItems(self._scanning_logic.scanner_channels.keys())
         self._mw.channel_comboBox.currentTextChanged.connect(self._set_channel)
+        self._mw.channel_comboBox.setCurrentText(self._scanning_logic._channel)
+ 
         #create microwave control window if microwave is set
         if self._microwave_logic() is not None:
             self._microwave_logic = self._microwave_logic()
@@ -150,6 +166,7 @@ class PLEScanGui(GuiBase):
             self._repump_logic.sigGuiParamsUpdated.emit(self._repump_logic.parameters)
         self.scanner_target_updated()
         self.scan_state_updated(self._scanning_logic.module_state() != 'idle')
+        self.scan_state_updated(self._scanning_logic.module_state() != 'idle', caller_id=self._optimizer_id)
 
         self.restore_scanner_settings()
         self._init_ui_connectors()
@@ -183,6 +200,7 @@ class PLEScanGui(GuiBase):
     def change_optimizer_settings(self):
         self.sigOptimizerSettingsChanged.emit(self._osd.settings)
         self.optimizer_dockwidget.scan_sequence = self._osd.settings['scan_sequence']
+        #TODO!!!
         # self.update_crosshair_sizes()
 
     @QtCore.Slot(dict)
@@ -297,9 +315,11 @@ class PLEScanGui(GuiBase):
 
     def _set_channel(self, value):
         self._scanning_logic._channel = value
+        
         ch = self._scanning_logic.scanner_channels[value]
         self._mw.ple_widget.channel = ch
         self._mw.matrix_widget.channel = ch
+        # self.optimizer_dockwidget.
 
     def _fit_clicked(self, fit_config):
         channel = self._scanning_logic.scanner_channels[self._scanning_logic._channel]#self._scan_control_dockwidget.selected_channel
@@ -323,8 +343,9 @@ class PLEScanGui(GuiBase):
     def toggle_optimize(self, enabled):
         """
         """
+        print("Checkecd", enabled)
         #! TODO: uncomment by implemebnting
-        # self._toggle_enable_actions(not enabled, exclude_action=self._mw.action_optimize_position)
+        self._toggle_enable_actions(not enabled, exclude_action=self._mw.action_optimize_position)
         # self._toggle_enable_scan_buttons(not enabled)
         # self._toggle_enable_scan_crosshairs(not enabled)
         self.sigToggleOptimize.emit(enabled)
@@ -350,12 +371,12 @@ class PLEScanGui(GuiBase):
         )
 
         self._mw.constDoubleSpinBox.editingFinished.connect(
-            lambda: self.set_scanner_target_position
+            self.set_scanner_target_position
         )
 
     def toggle_scan(self):
         self._mw.elapsed_lines_DisplayWidget.display(self._scanning_logic._repeated)
-        self.sigToggleScan.emit(self._mw.actionToggle_scan.isChecked(), [self.scan_axis], self.module_uuid)
+        self._scanning_logic.sigToggleScan.emit(self._mw.actionToggle_scan.isChecked(), [self.scan_axis], self.module_uuid)
 
     def show(self):
         """Make window visible and put it above all other windows. """
@@ -390,13 +411,16 @@ class PLEScanGui(GuiBase):
 
 
     @QtCore.Slot(dict)
-    def scanner_settings_updated(self, settings=None):
+    def scanner_settings_updated(self, settings=None, caller_id=None):
         """
         Update scanner settings from logic and set widgets accordingly.
 
         @param dict settings: Settings dict containing the scanner settings to update.
                               If None (default) read the scanner setting from logic and update.
         """
+        if caller_id == self._optimizer_id:#self.module_uuid:
+            return 
+
         if not isinstance(settings, dict):
             settings = self._scanning_logic.scan_settings
 
@@ -404,7 +428,7 @@ class PLEScanGui(GuiBase):
         #     return
         # ToDo: Handle all remaining settings
         # ToDo: Implement backwards scanning functionality
-
+        
         if 'resolution' in settings:
             self._mw.resolutionDoubleSpinBox.setValue(settings['resolution'][self.scan_axis])
         if 'range' in settings:
@@ -425,7 +449,7 @@ class PLEScanGui(GuiBase):
             self._mw.matrix_widget.image_widget.autoRange()
             
             self._mw.ple_widget.selected_region.setRegion(x_range)
-            self._mw.ple_widget.target_point.setValue(x_range[0])
+            self._mw.ple_widget.target_point.setValue(self._scanning_logic.scanner_target[self._scanning_logic._scan_axis])
             self._mw.ple_widget.plot_widget.setRange(xRange = x_range)
 
         if 'frequency' in settings:
@@ -439,18 +463,21 @@ class PLEScanGui(GuiBase):
     def scan_repeated(self, start, scan_axes):
         self._mw.elapsed_lines_DisplayWidget.display(self._scanning_logic.display_repeated)
 
-    @QtCore.Slot(dict)
-    def set_scanner_target_position(self, target_pos=None):
+    # @QtCore.Slot(dict)
+    def set_scanner_target_position(self):
         """
         Issues new target to logic and updates gui.
 
         @param dict target_pos:
         """
-        target = self._mw.ple_widget.target_point.value()
+        target = self.sender().value()
+        
+        # target = self._mw.ple_widget.target_point.value()
+        
         target_pos = {self._scanning_logic._scan_axis: target}
         self.sigScannerTargetChanged.emit(target_pos)
-        self._mw.constDoubleSpinBox.setValue(target)
-        self.scanner_target_updated(pos_dict=target_pos, caller_id=None)
+        
+        # self.scanner_target_updated(pos_dict=target_pos, caller_id=None)
 
     def scanner_target_updated(self, pos_dict=None, caller_id=None):
         """
@@ -469,6 +496,7 @@ class PLEScanGui(GuiBase):
             pos_dict = self._scanning_logic.scanner_target
             
         self._mw.ple_widget.target_point.setValue(pos_dict[self._scanning_logic._scan_axis])
+        self._mw.constDoubleSpinBox.setValue(pos_dict[self._scanning_logic._scan_axis])
         # self.scanner_control_dockwidget.set_target(pos_dict)
 
     @QtCore.Slot(bool, object, object)
@@ -476,9 +504,111 @@ class PLEScanGui(GuiBase):
         scan_axes = scan_data.scan_axes if scan_data is not None else None
         if scan_data is not None:
             self._mw.actionToggle_scan.setChecked(is_running)
-            self._update_scan_data(scan_data)
+
+            if caller_id is self._optimizer_id:
+                channel = self._osd.settings['data_channel']
+                if scan_data.scan_dimension == 2:
+                    x_ax, y_ax = scan_data.scan_axes
+                    self.optimizer_dockwidget.set_image(image=scan_data.data[channel],
+                                                        extent=scan_data.scan_range,
+                                                        axs=scan_data.scan_axes)
+                    self.optimizer_dockwidget.set_image_label(axis='bottom',
+                                                                text=x_ax,
+                                                                units=scan_data.axes_units[x_ax],
+                                                                axs=scan_data.scan_axes)
+                    self.optimizer_dockwidget.set_image_label(axis='left',
+                                                                text=y_ax,
+                                                                units=scan_data.axes_units[y_ax],
+                                                                axs=scan_data.scan_axes)
+                elif scan_data.scan_dimension == 1:
+                    x_ax = scan_data.scan_axes[0]
+                    self.optimizer_dockwidget.set_plot_data(
+                        x=np.linspace(*scan_data.scan_range[0], scan_data.scan_resolution[0]),
+                        y=scan_data.data[channel],
+                        axs=scan_data.scan_axes
+                    )
+                    self.optimizer_dockwidget.set_plot_label(axis='bottom',
+                                                                text=x_ax,
+                                                                units=scan_data.axes_units[x_ax],
+                                                                axs=scan_data.scan_axes)
+                    self.optimizer_dockwidget.set_plot_label(axis='left',
+                                                                text=channel,
+                                                                units=scan_data.channel_units[channel],
+                                                                axs=scan_data.scan_axes)
+            else:
+                self._update_scan_data(scan_data)
+        
+        if not self._optimizer_state['is_running']:
+            self._toggle_enable_actions(not is_running, exclude_action=self._mw.action_optimize_position)
+        else:
+            self._toggle_enable_actions(not is_running, exclude_action=self._mw.action_optimize_position)
+        # self._toggle_enable_scan_crosshairs(not is_running)
+        # self.scanner_settings_toggle_gui_lock(is_running)
+     
+
         return
+
+    def _toggle_enable_actions(self, enable, exclude_action=None):
+        # self._mw.action_optimize_position.setChecked(enable)
+        pass
+        # if exclude_action is not self._mw.action_optimize_position:
+        #     self._mw.action_optimize_position.setEnabled(enable)
+        # if exclude_action is not self._mw.actionToggle_scan:
+        #     self._mw.actionToggle_scan.setEnabled(enable)
     
+    @QtCore.Slot(bool, dict, object)
+    def optimize_state_updated(self, is_running, optimal_position=None, fit_data=None):
+        print("Opt running", is_running)
+        self._optimizer_state['is_running'] = is_running
+        _is_optimizer_valid_1d = not is_running
+        _is_optimizer_valid_2d = not is_running
+
+        # self._toggle_enable_scan_buttons(not is_running)
+        self._toggle_enable_actions(not is_running,
+                                    exclude_action=self._mw.actionToggle_scan)
+        # self._toggle_enable_scan_crosshairs(not is_running)
+        self._mw.action_optimize_position.setChecked(is_running)
+        # self.scanner_settings_toggle_gui_lock(is_running)
+
+        if fit_data is not None and optimal_position is None:
+            raise ValueError("Can't understand fit_data without optimal position")
+
+        # Update optimal position crosshair and marker
+        if isinstance(optimal_position, dict):
+            scan_axs = list(optimal_position.keys())
+            if len(optimal_position) == 2:
+                _is_optimizer_valid_2d = True
+                self.optimizer_dockwidget.set_2d_position(tuple(optimal_position.values()),
+                                                          scan_axs)
+
+            elif len(optimal_position) == 1:
+                _is_optimizer_valid_1d = True
+                self.optimizer_dockwidget.set_1d_position(next(iter(optimal_position.values())),
+                                                          scan_axs)
+        if fit_data is not None and isinstance(optimal_position, dict):
+            data = fit_data['fit_data']
+            fit_res = fit_data['full_fit_res']
+            if data.ndim == 1:
+                self.optimizer_dockwidget.set_fit_data(scan_axs, y=data)
+                sig_z = fit_res.params['sigma'].value
+                self.optimizer_dockwidget.set_1d_position(next(iter(optimal_position.values())),
+                                                          scan_axs, sigma=sig_z)
+            elif data.ndim == 2:
+                sig_x, sig_y = fit_res.params['sigma_x'].value, fit_res.params['sigma_y'].value
+                self.optimizer_dockwidget.set_2d_position(tuple(optimal_position.values()),
+                                                          scan_axs, sigma=[sig_x, sig_y])
+
+        # Hide crosshair and 1d marker when scanning
+        if len(scan_axs) == 2:
+            self.optimizer_dockwidget.toogle_crosshair(scan_axs, _is_optimizer_valid_2d)
+        else:
+            self.optimizer_dockwidget.toogle_crosshair(None, _is_optimizer_valid_2d)
+        if len(scan_axs) == 1:
+            self.optimizer_dockwidget.toogle_marker(scan_axs, _is_optimizer_valid_1d)
+        else:
+            self.optimizer_dockwidget.toogle_marker(None, _is_optimizer_valid_1d)
+       
+            
     @QtCore.Slot(object)
     def _update_scan_data(self, scan_data):
         """
