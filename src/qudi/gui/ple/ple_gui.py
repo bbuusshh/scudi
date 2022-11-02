@@ -227,10 +227,10 @@ class PLEScanGui(GuiBase):
             for seq_step in settings['scan_sequence']:
                 if len(seq_step) == 1:
                     axis = seq_step[0]
-                    self.optimizer_dockwidget.set_plot_label(axis='bottom',
-                                                             axs=seq_step,
-                                                             text=axis,
-                                                             units=axes_constr[axis].unit)
+                    # self.optimizer_dockwidget.set_plot_label(axis='bottom',
+                    #                                          axs=seq_step,
+                    #                                          text=axis,
+                    #                                          units=axes_constr[axis].unit)
                     self.optimizer_dockwidget.set_plot_data(axs=seq_step)
                     self.optimizer_dockwidget.set_fit_data(axs=seq_step)
                 elif len(seq_step) == 2:
@@ -250,9 +250,9 @@ class PLEScanGui(GuiBase):
                 if 'data_channel' in settings and len(seq_step)==1:
                     channel_constr = self._scanning_logic.scanner_channels
                     channel = settings['data_channel']
-                    self.optimizer_dockwidget.set_plot_label(axs=seq_step, axis='left',
-                                                             text=channel,
-                                                             units=channel_constr[channel].unit)
+                    # self.optimizer_dockwidget.set_plot_label(axs=seq_step, axis='left',
+                    #                                          text=channel,
+                    #                                          units=channel_constr[channel].unit)
 
                 # Adjust crosshair size according to optimizer range
                 # self.update_crosshair_sizes()
@@ -529,14 +529,14 @@ class PLEScanGui(GuiBase):
                         y=scan_data.data[channel],
                         axs=scan_data.scan_axes
                     )
-                    self.optimizer_dockwidget.set_plot_label(axis='bottom',
-                                                                text=x_ax,
-                                                                units=scan_data.axes_units[x_ax],
-                                                                axs=scan_data.scan_axes)
-                    self.optimizer_dockwidget.set_plot_label(axis='left',
-                                                                text=channel,
-                                                                units=scan_data.channel_units[channel],
-                                                                axs=scan_data.scan_axes)
+                    # self.optimizer_dockwidget.set_plot_label(axis='bottom',
+                    #                                             text=x_ax,
+                    #                                             units=scan_data.axes_units[x_ax],
+                    #                                             axs=scan_data.scan_axes)
+                    # self.optimizer_dockwidget.set_plot_label(axis='left',
+                    #                                             text=channel,
+                    #                                             units=scan_data.channel_units[channel],
+                    #                                             axs=scan_data.scan_axes)
             else:
                 self._update_scan_data(scan_data)
         
