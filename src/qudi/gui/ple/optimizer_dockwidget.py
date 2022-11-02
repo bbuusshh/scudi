@@ -63,7 +63,7 @@ class OptimizerDockWidget(QtWidgets.QDockWidget):
                                        symbol='o',
                                        symbolPen=QudiPalette.c1,
                                        symbolBrush=QudiPalette.c1,
-                                       symbolSize=7)
+                                       symbolSize=4)
                 fit_plot_item = XYPlotItem(pen=mkPen(QudiPalette.c2))
                 plot1d_widget = DataSelectionPlotWidget()
                 plot1d_widget.set_selection_mutable(False)

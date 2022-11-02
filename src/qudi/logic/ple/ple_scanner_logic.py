@@ -240,7 +240,10 @@ class PLEScannerLogic(ScanningProbeLogic):
             if self.accumulated_data is None:
                 self.accumulated_data = {channel: data_i[np.newaxis, :] for channel, data_i in self.scan_data.data.items()}
             else:
-                self.accumulated_data = {channel : np.vstack((self.accumulated_data[channel], data_i))[-self._number_of_repeats:] for channel, data_i in self.scan_data.data.items()}
+                if len(list(self.scan_data.data.values())[0]) > 0:
+                    self.accumulated_data = {channel : np.vstack((self.accumulated_data[channel], data_i))[-self._number_of_repeats:] for channel, data_i in self.scan_data.data.items()}
+                else:
+                    return 
             self.scan_data._accumulated_data = self.accumulated_data
             self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)
 

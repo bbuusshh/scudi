@@ -346,8 +346,7 @@ class PLEOptimizeScannerLogic(LogicBase):
                                f" caller {self.module_uuid}. Optimize logic: {self.module_uuid} ")
                 return
             elif data is not None:
-                # self.stop_optimize()  
-                print("SHTIT STORM")
+               
                 try:
                     if data.scan_dimension == 1:
                         x = np.linspace(*data.scan_range[0], data.scan_resolution[0])

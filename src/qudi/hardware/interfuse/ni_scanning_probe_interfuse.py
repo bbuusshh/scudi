@@ -688,9 +688,11 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         try:
             with self._thread_lock:
                 self.log.debug(f'Entering write_loop with queue: {self.__write_queue.items()}')
-
+                
                 new_voltage = {self._ni_channel_mapping[ax]: self._position_to_voltage(ax, values[0])
-                               for ax, values in self.__write_queue.items()}
+                               for ax, values in self.__write_queue.items() if len(values) > 0}
+                if new_voltage == dict():
+                    return 
                 self._ni_ao().setpoints = new_voltage
                 self.__write_queue = {ax: values[1:] for ax, values in self.__write_queue.items()}
 

@@ -343,7 +343,6 @@ class PLEScanGui(GuiBase):
     def toggle_optimize(self, enabled):
         """
         """
-        print("Checkecd", enabled)
         #! TODO: uncomment by implemebnting
         self._toggle_enable_actions(not enabled, exclude_action=self._mw.action_optimize_position)
         # self._toggle_enable_scan_buttons(not enabled)
@@ -418,7 +417,7 @@ class PLEScanGui(GuiBase):
         @param dict settings: Settings dict containing the scanner settings to update.
                               If None (default) read the scanner setting from logic and update.
         """
-        if caller_id == self._optimizer_id:#self.module_uuid:
+        if self._mw.action_optimize_position.isChecked():#self.module_uuid:
             return 
 
         if not isinstance(settings, dict):
@@ -475,9 +474,10 @@ class PLEScanGui(GuiBase):
         # target = self._mw.ple_widget.target_point.value()
         
         target_pos = {self._scanning_logic._scan_axis: target}
-        self.sigScannerTargetChanged.emit(target_pos)
         
         # self.scanner_target_updated(pos_dict=target_pos, caller_id=None)
+
+        self.sigScannerTargetChanged.emit(target_pos)
 
     def scanner_target_updated(self, pos_dict=None, caller_id=None):
         """
@@ -494,9 +494,15 @@ class PLEScanGui(GuiBase):
             return
         if not isinstance(pos_dict, dict):
             pos_dict = self._scanning_logic.scanner_target
-            
+        
+        self._mw.ple_widget.target_point.blockSignals(True)
+        self._mw.constDoubleSpinBox.blockSignals(True)
+
         self._mw.ple_widget.target_point.setValue(pos_dict[self._scanning_logic._scan_axis])
         self._mw.constDoubleSpinBox.setValue(pos_dict[self._scanning_logic._scan_axis])
+
+        self._mw.constDoubleSpinBox.blockSignals(False)
+        self._mw.ple_widget.target_point.blockSignals(False)
         # self.scanner_control_dockwidget.set_target(pos_dict)
 
     @QtCore.Slot(bool, object, object)
@@ -558,7 +564,7 @@ class PLEScanGui(GuiBase):
     
     @QtCore.Slot(bool, dict, object)
     def optimize_state_updated(self, is_running, optimal_position=None, fit_data=None):
-        print("Opt running", is_running)
+       
         self._optimizer_state['is_running'] = is_running
         _is_optimizer_valid_1d = not is_running
         _is_optimizer_valid_2d = not is_running
