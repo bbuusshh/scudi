@@ -441,11 +441,7 @@ class PLEScanGui(GuiBase):
 
 
             y_range =  (0, self._scanning_logic._number_of_repeats)
-            self._mw.matrix_widget.set_plot_range(x_range = x_range, y_range = y_range)
-            matrix_range = (x_range, y_range)
-            self._mw.matrix_widget.image_widget.set_image_extent(matrix_range,
-                            adjust_for_px_size=True)
-            self._mw.matrix_widget.image_widget.autoRange()
+            self._mw.matrix_widget.set_plot_range(x_range = x_range)#, y_range = y_range)
             
             self._mw.ple_widget.selected_region.setRegion(x_range)
             self._mw.ple_widget.target_point.setValue(self._scanning_logic.scanner_target[self._scanning_logic._scan_axis])
