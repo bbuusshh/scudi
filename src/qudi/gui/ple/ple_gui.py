@@ -529,14 +529,14 @@ class PLEScanGui(GuiBase):
                         y=scan_data.data[channel],
                         axs=scan_data.scan_axes
                     )
-                    # self.optimizer_dockwidget.set_plot_label(axis='bottom',
-                    #                                             text=x_ax,
-                    #                                             units=scan_data.axes_units[x_ax],
-                    #                                             axs=scan_data.scan_axes)
-                    # self.optimizer_dockwidget.set_plot_label(axis='left',
-                    #                                             text=channel,
-                    #                                             units=scan_data.channel_units[channel],
-                    #                                             axs=scan_data.scan_axes)
+                    self.optimizer_dockwidget.set_plot_label(axis='bottom',
+                                                                text=x_ax,
+                                                                units=scan_data.axes_units[x_ax],
+                                                                axs=scan_data.scan_axes)
+                    self.optimizer_dockwidget.set_plot_label(axis='left',
+                                                                text=channel,
+                                                                units=scan_data.channel_units[channel],
+                                                                axs=scan_data.scan_axes)
             else:
                 self._update_scan_data(scan_data)
         
