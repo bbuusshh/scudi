@@ -18,6 +18,7 @@ from qudi.util.colordefs import QudiPalette as palette
 from qudi.core.statusvariable import StatusVar
 from qudi.util.units import ScaledFloat
 from qudi.util.mutex import Mutex
+
 from qtpy import uic
 
 class TTWindow(QtWidgets.QMainWindow):
@@ -105,10 +106,10 @@ class TTGui(GuiBase):
         self._hist_pw.setLabel('left', 'Events', units='arb.')
 
         
-        self._corr_pw.setMouseEnabled(x=False, y=False)
-        self._corr_pw.setMouseTracking(False)
-        self._corr_pw.setMenuEnabled(False)
-        self._corr_pw.hideButtons()
+        # self._corr_pw.setMouseEnabled(x=False, y=False)
+        # self._corr_pw.setMouseTracking(False)
+        # self._corr_pw.setMenuEnabled(False)
+        # self._corr_pw.hideButtons()
 
         color = []
         color.append(pg.mkColor(17,95,154))
@@ -312,5 +313,5 @@ class TTGui(GuiBase):
             self._save_folderpath = 'Default'
             self._mw.currPathLabel.setText(self._save_folderpath)
             save = True
-        if save:
-            self._timetaggerlogic._save_recorded_data(to_file=True, name_tag=self._mw.saveTagLineEdit.text(), save_figure=True, save_type=save_type, save_path = self._save_folderpath)
+        # if save:
+        self._timetaggerlogic._save_recorded_data(to_file=True, name_tag=self._mw.saveTagLineEdit.text(), save_figure=True, save_type=save_type, save_path = self._save_folderpath)

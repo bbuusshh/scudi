@@ -72,7 +72,18 @@ class SpectrometerLogic(LogicBase):
     sig_data_updated = QtCore.Signal()
     sig_state_updated = QtCore.Signal()
     sig_fit_updated = QtCore.Signal(str, object)
+    _default_fit_configs = (
+        {'name'             : 'Lorentzian',
+        'model'            : 'Lorentzian',
+        'estimator'        : 'Peak',
+        'custom_parameters': None},
 
+        {'name'             : 'Gaussian',
+        'model'            : 'Gaussian',
+        'estimator'        : 'Peak',
+        'custom_parameters': None}
+        
+    )
     def __init__(self, **kwargs):
         """ Create SpectrometerLogic object with connectors.
 
@@ -96,12 +107,14 @@ class SpectrometerLogic(LogicBase):
         self._acquisition_running = False
         self._fit_results = None
         self._fit_method = ''
+        
+
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
         self._fit_config_model = FitConfigurationsModel(parent=self)
-        self._fit_config_model.load_configs(self._fit_config)
+        self._fit_config_model.load_configs(self._default_fit_configs)
         self._fit_container = FitContainer(parent=self, config_model=self._fit_config_model)
         self.fit_region = self._fit_region
 
