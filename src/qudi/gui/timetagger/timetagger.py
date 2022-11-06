@@ -18,7 +18,7 @@ from qudi.util.colordefs import QudiPalette as palette
 from qudi.core.statusvariable import StatusVar
 from qudi.util.units import ScaledFloat
 from qudi.util.mutex import Mutex
-
+from qudi.util.widgets.fitting import FitWidget, FitConfigurationDialog
 from qtpy import uic
 
 class TTWindow(QtWidgets.QMainWindow):
@@ -64,6 +64,8 @@ class TTGui(GuiBase):
         super().__init__(*args, **kwargs)
 
         self._timetaggerlogic = None
+        self.fit_widget = None
+        self._fit_config_dialog = None
         self._mw = None
         self._pw = None
 
@@ -73,6 +75,9 @@ class TTGui(GuiBase):
         @return int: error code (0:OK, -1:error)
         """
         self._save_window_geometry(self._mw)
+        self.__disconnect_fit_control_signals()
+        self._fsd.close()
+        self._fsd = None
         self._mw.close()
 
     def on_activate(self):
@@ -83,6 +88,13 @@ class TTGui(GuiBase):
 
         self.threadlock_counter = Mutex()
         self.threadlock_corr = Mutex()
+
+        # Fit settings dialog
+        self._fsd = FitConfigurationDialog(
+            parent=self._mw,
+            fit_config_model=self._timetaggerlogic.fit_config_model
+        )
+        self._mw.actionFit_settings.triggered.connect(self._fsd.show)
 
         # Setup dock widgets
         self._mw.centralwidget.hide()
@@ -197,7 +209,12 @@ class TTGui(GuiBase):
                                                     downsampleMethod='subsample',
                                                     autoDownsample=True,
                                                     antialias=self._use_antialias)
-        self._corr_pw.addItem(self.curves['corr'])       
+        self._corr_pw.addItem(self.curves['corr'])  
+
+        self.fit_curve = self._corr_pw.plot()
+        self.fit_curve.setPen(palette.c2, width=2)
+        # self._corr_pw.addItem(self.fit_curve)
+
         self._hist_pw.addItem(self.curves['hist']) 
         
         # Connecting user interactions
@@ -217,6 +234,13 @@ class TTGui(GuiBase):
             self._timetaggerlogic.configure_corr, QtCore.Qt.QueuedConnection)
         self._timetaggerlogic.sigCorrDataChanged.connect(
             self.update_corr_data, QtCore.Qt.QueuedConnection)
+        
+        #Correlation fitting
+        self.fit_widget = FitWidget(parent=self._mw, fit_container=self._timetaggerlogic.fit_container)
+        self._mw.fitLayout.addWidget(self.fit_widget)
+        self.__connect_fit_control_signals()
+        
+        self._timetaggerlogic.sig_fit_updated.connect(self.update_fit)
 
         self._mw.toggleHistPushButton.toggled.connect(self.update_hist)
         self._mw.histBinWidthDoubleSpinBox.setValue(self._hist_bin_width)
@@ -315,3 +339,23 @@ class TTGui(GuiBase):
             save = True
         # if save:
         self._timetaggerlogic._save_recorded_data(to_file=True, name_tag=self._mw.saveTagLineEdit.text(), save_figure=True, save_type=save_type, save_path = self._save_folderpath)
+
+    def update_fit(self, fit_method, fit_results):
+        """ Update the drawn fit curve.
+        """
+        print("HI!")
+        if fit_method != 'No Fit' and fit_results is not None:
+            # redraw the fit curve in the GUI plot.
+            self.fit_curve.setData(x=fit_results.high_res_best_fit[0],
+                                                   y=fit_results.high_res_best_fit[1])
+            print(fit_results)
+        else:
+            self.fit_curve.setData(x=[], y=[])
+
+
+    def __connect_fit_control_signals(self):
+        self.fit_widget.link_fit_container(self._timetaggerlogic.fit_container)
+        self.fit_widget.sigDoFit.connect(self._timetaggerlogic.do_fit)
+
+    def __disconnect_fit_control_signals(self):
+        self.fit_widget.sigDoFit.disconnect()
