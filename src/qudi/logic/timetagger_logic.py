@@ -30,15 +30,10 @@ class TimeTaggerLogic(LogicBase):
 
     sig_fit_updated = QtCore.Signal(str, object)
     _default_fit_configs = (
-        {'name'             : 'Lorentzian',
-        'model'            : 'Lorentzian',
-        'estimator'        : 'Peak',
+        {'name'             : 'g2',
+        'model'            : 'Autocorrelation',
+        'estimator'        : 'Dip',
         'custom_parameters': None},
-
-        {'name'             : 'Gaussian',
-        'model'            : 'Gaussian',
-        'estimator'        : 'Peak',
-        'custom_parameters': None}
     )
 
     def __init__(self, **kwargs):
@@ -308,28 +303,22 @@ class TimeTaggerLogic(LogicBase):
         return self._fit_container
 
     def do_fit(self, fit_method):
+        print("hey", fit_method)
         if fit_method == 'No Fit':
+            print("NOFIT")
             self.sig_fit_updated.emit('No Fit', None)
             return 'No Fit', None
 
-        self.fit_region = self._fit_region
+        # self.fit_region = self._fit_region
         if self.corr_data is None:
+            print("NO data")
             self.log.error('No data to fit.')
             self.sig_fit_updated.emit('No Fit', None)
             return 'No Fit', None
 
         
-        # start = len(self.corr_data[0]) - np.searchsorted(self.corr_data[0][::-1], self._fit_region[1], 'left')
-        # end = len(self.corr_data[0]) - np.searchsorted(self.corr_data[0][::-1], self._fit_region[0], 'right')
-    
-        # start = np.searchsorted(self.corr_data[0], self._fit_region[0], 'left')
-        # end = np.searchsorted(self.corr_data[0], self._fit_region[1], 'right')
 
-        # if end - start < 2:
-        #     self.log.error('Fit region limited the data to less than two points. Fit not possible.')
-        #     self.sig_fit_updated.emit('No Fit', None)
-        #     return 'No Fit', None
-
+        print("Yo")
         x_data = self.corr_data[0]#[start:end]
         y_data = self.corr_data[1]#[start:end]
         print("HELLO", x_data, y_data)

@@ -150,16 +150,16 @@ class TimeTaggerFastCounter(FastCounterInterface):
         self.statusvar = 1
         bin_width = int(bin_width_s*1e12)
         n_values = int(record_length_s*1e12/bin_width)
-        self.pulsed = self._tagger.counter(channels = [self._channel_apd], bin_width=bin_width, n_values=n_values)
-        #self.pulsed = self._tagger.time_differences(
-        #    click_channel=self._channel_apd,
-        #    start_channel=self._channel_detect,
-        #    next_channel=self._channel_detect,
-        #    #sync_channel=tt.CHANNEL_UNUSED,
-        #    binwidth=int(np.round(self._bin_width * 1000)),
-        #    n_bins=int(self._record_length),
-        #    n_histograms=number_of_gates
-        #)
+        # self.pulsed = self._tagger.counter(channels = [self._channel_apd], bin_width=bin_width, n_values=n_values)
+        self.pulsed = self._tagger.time_differences(
+           click_channel=self._channel_apd,
+           start_channel=self._channel_detect,
+           next_channel=self._channel_detect,
+           #sync_channel=tt.CHANNEL_UNUSED,
+           binwidth=int(np.round(self._bin_width * 1000)),
+           n_bins=int(self._record_length),
+           n_histograms=number_of_gates
+        )
         self.pulsed.stop()
 
         return bin_width_s, record_length_s, number_of_gates
