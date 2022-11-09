@@ -298,7 +298,7 @@ class PLEScanGui(GuiBase):
             self._mw.matrix_widget.image_widget.autoRange()
             
             self._mw.ple_widget.selected_region.setRegion(x_range)
-            self._mw.ple_widget.target_point.setValue((x_range[0] + x_range[1])/2)
+            self._mw.ple_widget.target_point.setValue(x_range[0])
             self._mw.ple_widget.plot_widget.setRange(xRange = x_range)
 
         if 'frequency' in settings:
