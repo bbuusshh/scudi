@@ -169,6 +169,10 @@ class WavemeterLoggerLogic(LogicBase):
         self.accumulated_data = 0 # data
         #emit scan next line
 
+    def empty_buffer(self):
+        self.wavelengths_log = None
+        self._wavemeter.empty_buffer()
+
     def determine_count_time(self):
         #get average time for the wavemeter server to send signal to the client
         for i in range(self.average_times):

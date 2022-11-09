@@ -157,3 +157,6 @@ class HighFinesseWavemeterClient(WavemeterInterface):
         aa = 299792458.0 * 1e9 * np.ones(wavelength.shape[0])
         freqs = np.divide(aa, wavelength, out=np.zeros_like(aa), where=wavelength!=0)
         return freqs
+
+    def empty_buffer(self):
+        return self.send_request("empty_buffer")

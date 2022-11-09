@@ -26,7 +26,7 @@ import numpy as np
 import os
 import pyqtgraph as pg
 import pyqtgraph.exporters
-
+import time
 from qudi.core.connector import Connector
 from qudi.util import units
 from qudi.core.module import GuiBase
@@ -68,6 +68,7 @@ class WavemeterLogGui(GuiBase):
         self.wavelog_logic = self.wavemeterloggerlogic()
         self._mw.actionStop_resume_scan.triggered.connect(self.stop_resume_clicked)
         # self._mw.actionSave_histogram.triggered.connect(self.save_clicked)
+        self._mw.actionReset.triggered.connect(self._reset_scan)
         self._mw.actionStart_scan.triggered.connect(self.start_clicked)
         # self._mw.actionAuto_range.triggered.connect(self.set_auto_range)
 
@@ -137,6 +138,12 @@ class WavemeterLogGui(GuiBase):
         self._mw.maxDoubleSpinBox.setValue(x_range[1])
         self._mw.sweepRangeDoubleSpinBox.setValue(abs(x_range[1] - x_range[0] ))
         self._mw.centreDoubleSpinBox.setValue((x_range[0] + x_range[1] )/ 2 )
+    
+    def _reset_scan(self):
+        self.wavelog_logic.empty_buffer()
+        self.wavelog_logic._acquisition_start_time = time.time()
+        self._mw.countlog_widget._update_scan_data(None)
+        self._mw.wavelength_widget._update_scan_data(None)
         
 
     @QtCore.Slot(object)
@@ -146,15 +153,21 @@ class WavemeterLogGui(GuiBase):
         
         """
         #We receive wavelengths in THz
-        freq = wavelengths['wavelength'][-1]/1e12 if len(wavelengths) > 0 else -1.0
-        wavelength = self.wavelog_logic.freq_to_wavelength(freq)/1e3
-        wavelength = np.round(wavelength, 6)
-        
+        # print(wavelengths['wavelength'][-1])
+        if len(wavelengths) > 1 and wavelengths['wavelength'][-1] > 0:
+            freq = wavelengths['wavelength'][-1]/1e12
+            wavelength = self.wavelog_logic.freq_to_wavelength(freq)/1e3
+            wavelength = np.round(wavelength, 6)
+            freq = np.round(freq, 6)
+            
+            self._mw.wavelength_widget.set_data(wavelengths)
+            if count_data is not None:
+                self._mw.countlog_widget.set_data(count_data)
+        else:
+            wavelength = freq = 0
         self._mw.wavelengthLabel.setText(f"{wavelength} nm")
         self._mw.frequencyLabel.setText(f"{freq} THz")
-        self._mw.wavelength_widget.set_data(wavelengths)
-        if count_data is not None:
-            self._mw.countlog_widget.set_data(count_data)
+        
 
     def stop_resume_clicked(self):
         """ Handling the Start button to stop and restart the counter.
