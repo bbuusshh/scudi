@@ -6,8 +6,6 @@ import pyqtgraph as pg
 from PySide2 import QtCore, QtWidgets, QtGui
 import time
 import datetime
-from tkinter import Tk
-import tkinter.filedialog as fd
 
 from qudi.core.connector import Connector
 from qudi.util.colordefs import QudiPalettePale as palette
