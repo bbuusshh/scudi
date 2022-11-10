@@ -3,8 +3,9 @@
 
     ello_devices:
         module.Class: 'ello.ello_devices.ThorlabsElloDevices'
-        _flipper_port: "1"
-        _rotor_port: "2"
+        options:
+            _serial_port: 'COM6'
+            _rotor_port: '0'
 """
 
 import os
