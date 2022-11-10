@@ -6,8 +6,9 @@ from serial import Serial, EIGHTBITS,STOPBITS_ONE,PARITY_NONE
 
 class ThorlabsElloFlipper():
 	
-	def __init__(self, port, ell=None):
+	def __init__(self, serial_port, port, ell=None):
 		self._port = port
+		self._serial_port = serial_port
 		if ell is None:
 			self.connect()
 		else:
@@ -19,7 +20,7 @@ class ThorlabsElloFlipper():
 	def connect(self):
 		""" Connects to the stage.
 		"""
-		self.ell = Serial('COM5', baudrate=9600, bytesize=EIGHTBITS, stopbits=STOPBITS_ONE,parity= PARITY_NONE, timeout=2)
+		self.ell = Serial(self._serial_port, baudrate=9600, bytesize=EIGHTBITS, stopbits=STOPBITS_ONE,parity= PARITY_NONE, timeout=2)
 
 	def move_forward(self):
 		self.ell.write(bytes(f"{self._port}fw", 'ascii'))

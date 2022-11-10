@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import os
-from core.module import Base
 
 from serial import Serial, EIGHTBITS,STOPBITS_ONE,PARITY_NONE
 
@@ -10,8 +9,9 @@ class ThorlabsElloRotation():
 	double_revelation = 286722 # bullshit specs number: 262144
 	revelation = int(double_revelation/2)
 
-	def __init__(self, port, ell=None):
+	def __init__(self, serial_port, port, ell=None):
 		self._port = port
+		self._serial_port = serial_port
 		if ell is None:
 			self.connect()
 		else:
@@ -20,7 +20,7 @@ class ThorlabsElloRotation():
 	def connect(self):
 		""" Connects to the stage.
 		"""
-		self.ell = Serial('COM5', baudrate=9600, bytesize=EIGHTBITS, stopbits=STOPBITS_ONE,parity= PARITY_NONE, timeout=2)
+		self.ell = Serial(self._serial_port, baudrate=9600, bytesize=EIGHTBITS, stopbits=STOPBITS_ONE,parity= PARITY_NONE, timeout=2)
 
 	def move_forward(self):
 		self.ell.write(bytes(f"{self._port}fw", 'ascii'))
