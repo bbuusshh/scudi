@@ -1,4 +1,11 @@
 # -*- coding: utf-8 -*-
+"""Example config:
+
+    ello_devices:
+        module.Class: 'ello.ello_devices.ThorlabsElloDevices'
+        _flipper_port: "1"
+        _rotor_port: "2"
+"""
 
 import os
 from serial import Serial, EIGHTBITS,STOPBITS_ONE,PARITY_NONE
