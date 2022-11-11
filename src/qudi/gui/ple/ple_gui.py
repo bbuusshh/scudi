@@ -39,6 +39,23 @@ from qudi.util.widgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
 from qudi.gui.scanning.optimizer_setting_dialog import OptimizerSettingDialog
 from qudi.gui.ple.optimizer_dockwidget import OptimizerDockWidget
 
+
+class SaveDialog(QtWidgets.QDialog):
+    """ Dialog to provide feedback and block GUI while saving """
+    def __init__(self, parent, title="Please wait", text="Saving..."):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setWindowModality(QtCore.Qt.WindowModal)
+        self.setAttribute(QtCore.Qt.WA_ShowWithoutActivating)
+
+        # Dialog layout
+        self.text = QtWidgets.QLabel("<font size='16'>" + text + "</font>")
+        self.hbox = QtWidgets.QHBoxLayout()
+        self.hbox.addSpacerItem(QtWidgets.QSpacerItem(50, 0))
+        self.hbox.addWidget(self.text)
+        self.hbox.addSpacerItem(QtWidgets.QSpacerItem(50, 0))
+        self.setLayout(self.hbox)
+
 class PLEScanGui(GuiBase):
     """
     """
@@ -46,6 +63,7 @@ class PLEScanGui(GuiBase):
     # declare connectors
     _scanning_logic = Connector(name='scannerlogic', interface='PLEScannerLogic')
     _optimize_logic = Connector(name='optimizerlogic', interface='PLEOptimizeScannerLogic')
+    _data_logic = Connector(name='data_logic', interface='PleDataLogic')
     _microwave_logic = Connector(name='microwave', interface= 'OdmrLogic', optional=True)
     _repump_logic = Connector(name='repump', interface= 'RepumpInterfuseLogic', optional=True)
 
@@ -53,7 +71,7 @@ class PLEScanGui(GuiBase):
     _window_state = StatusVar(name='window_state', default=None)
     _window_geometry = StatusVar(name='window_geometry', default=None)
     _save_display_view = StatusVar(name='save_display_view', default=None)
-    
+    _save_folderpath = StatusVar('save_folderpath', default=None)
     _optimizer_plot_dims = ConfigOption(name='optimizer_plot_dimensions', default=[1])
     _optimizer_state = {'is_running': False}
     _optimizer_id = 0
@@ -96,6 +114,7 @@ class PLEScanGui(GuiBase):
 
 
         self._mw = PLEScanMainWindow(self.axis, channel)
+        self._save_dialog = SaveDialog(self._mw)
         self._mw.show()
         
         # Connect signals
@@ -174,6 +193,26 @@ class PLEScanGui(GuiBase):
         self._init_optimizer_settings()
         self.setup_fit_widget()
         self.__connect_fit_control_signals()
+
+        self.sigSaveScan.connect(self._data_logic().save_scan_by_axis, QtCore.Qt.QueuedConnection)
+        self.sigSaveFinished.connect(self._save_dialog.hide, QtCore.Qt.QueuedConnection)
+        self._data_logic().sigSaveStateChanged.connect(self._track_save_status)
+        
+
+
+        self.sigShowSaveDialog.connect(lambda x: self._save_dialog.show() if x else self._save_dialog.hide(),
+                                       QtCore.Qt.DirectConnection)
+        self.save_path_widget.currPathLabel.setText('Default' if self._save_folderpath is None else self._save_folderpath)
+        self.save_path_widget.DailyPathCheckBox.clicked.connect(lambda: self.save_path_widget.newPathCheckBox.setEnabled(not self.save_path_widget.DailyPathCheckBox.isChecked()))
+        
+        if self._save_folderpath is None:
+            self.save_path_widget.DailyPathCheckBox.setChecked(True)
+            self.save_path_widget.DailyPathCheckBox.clicked.emit()
+
+
+        self._mw.action_Save.triggered.connect(lambda x: self.save_scan_data(scan_axes=None))
+
+
         self.load_view()
 
     def _init_optimizer_settings(self):
@@ -297,6 +336,15 @@ class PLEScanGui(GuiBase):
         uic.loadUi(ui_file, self.save_path_widget)
         
         self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self.save_path_widget)
+
+    def _track_save_status(self, in_progress):
+        if in_progress:
+            self._n_save_tasks += 1
+        else:
+            self._n_save_tasks -= 1
+
+        if self._n_save_tasks == 0:
+            self.sigSaveFinished.emit()
 
 
     def setup_fit_widget(self):
@@ -622,6 +670,43 @@ class PLEScanGui(GuiBase):
             self._mw.ple_widget.set_scan_data(scan_data)
             self._mw.matrix_widget.set_scan_data(scan_data)
 
+    @QtCore.Slot(tuple)
+    def save_scan_data(self, scan_axes=None):
+        """
+        Save data for a given (or all) scan axis.
+        @param tuple: Axis to save. Save all currently displayed if None.
+        """
+        
+        name_tag = self.save_path_widget.saveTagLineEdit.text()
+        if self.save_path_widget.newPathCheckBox.isChecked() and self.save_path_widget.newPathCheckBox.isEnabled():
+            new_path = QtWidgets.QFileDialog.getExistingDirectory(self._mw, 'Select Folder')
+            if new_path:
+                self._save_folderpath = new_path
+                self.save_path_widget.currPathLabel.setText(self._save_folderpath)
+                self.save_path_widget.newPathCheckBox.setChecked(False)
+            else:
+                return
+
+        self.sigShowSaveDialog.emit(True)
+
+        if self.save_path_widget.DailyPathCheckBox.isChecked():
+            self._save_folderpath = None
+            self.save_path_widget.currPathLabel.setText('Default')
+
+        try:
+            data_logic = self._data_logic()
+            if scan_axes is None:
+                scan_axes = [scan.scan_axes for scan in data_logic.get_all_current_scan_data()]
+            else:
+                scan_axes = [scan_axes]
+            for ax in scan_axes:
+                try:
+                    cbar_range = self.scan_2d_dockwidgets[ax].scan_widget.image_widget.levels
+                except KeyError:
+                    cbar_range = None
+                self.sigSaveScan.emit(ax, cbar_range, name_tag, self._save_folderpath)
+        finally:
+            pass
 
     def save_view(self):
         """Saves the current GUI state as a QbyteArray.

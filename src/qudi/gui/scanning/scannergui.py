@@ -149,14 +149,14 @@ class ScannerGui(GuiBase):
         # Initialize main window
         self._mw = ConfocalMainWindow()
         self._mw.setDockNestingEnabled(True)
-
+        self._save_dialog = SaveDialog(self._mw)
         # Initialize fixed dockwidgets
         self._init_static_dockwidgets()
 
         # Initialize dialog windows
         self._init_optimizer_settings()
         self._init_scanner_settings()
-        self._save_dialog = SaveDialog(self._mw)
+        
 
         # Automatically generate scanning widgets for desired scans
         scans = list()
