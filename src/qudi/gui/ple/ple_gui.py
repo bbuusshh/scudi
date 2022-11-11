@@ -81,9 +81,11 @@ class PLEScanGui(GuiBase):
     # sigToggleScan = QtCore.Signal(bool, tuple, object)
     sigOptimizerSettingsChanged = QtCore.Signal(dict)
     sigToggleOptimize = QtCore.Signal(bool)
-    sigSaveScan = QtCore.Signal(object, object)
+    sigSaveScan = QtCore.Signal(object, object, object, object)
     sigSaveFinished = QtCore.Signal()
     sigShowSaveDialog = QtCore.Signal(bool)
+
+    _n_save_tasks = 0
 
     sigDoFit = QtCore.Signal(str, str)
 
@@ -194,7 +196,7 @@ class PLEScanGui(GuiBase):
         self.setup_fit_widget()
         self.__connect_fit_control_signals()
 
-        self.sigSaveScan.connect(self._data_logic().save_scan_by_axis, QtCore.Qt.QueuedConnection)
+        self.sigSaveScan.connect(self._data_logic().save_scan, QtCore.Qt.QueuedConnection)
         self.sigSaveFinished.connect(self._save_dialog.hide, QtCore.Qt.QueuedConnection)
         self._data_logic().sigSaveStateChanged.connect(self._track_save_status)
         
@@ -695,16 +697,15 @@ class PLEScanGui(GuiBase):
 
         try:
             data_logic = self._data_logic()
-            if scan_axes is None:
-                scan_axes = [scan.scan_axes for scan in data_logic.get_all_current_scan_data()]
-            else:
-                scan_axes = [scan_axes]
-            for ax in scan_axes:
-                try:
-                    cbar_range = self.scan_2d_dockwidgets[ax].scan_widget.image_widget.levels
-                except KeyError:
-                    cbar_range = None
-                self.sigSaveScan.emit(ax, cbar_range, name_tag, self._save_folderpath)
+            scans = data_logic.get_all_current_scan_data()
+
+            # if scan_axes is None:
+            #     scan_axes = [scan.scan_axes for scan in data_logic.get_all_current_scan_data()]
+            # else:
+            #     scan_axes = [scan_axes]
+            cbar_range = self._mw.matrix_widget.image_widget.levels
+            self.sigSaveScan.emit(scans[0], cbar_range, name_tag, self._save_folderpath)
+
         finally:
             pass
 

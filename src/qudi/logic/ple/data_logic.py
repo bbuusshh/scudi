@@ -343,6 +343,20 @@ class PleDataLogic(LogicBase):
                     else:
                         self.log.warning('No figure saved for data with more than 2 dimensions.')
 
+                for channel, data in scan_data.accumulated_data.items():
+                    # data
+                    # nametag = '{0}_{1}_image_scan'.format(channel, scan_data.scan_axes[0])
+                    nametag = self.create_tag_from_scan_data(scan_data, channel)
+                    file_path, _, _ = ds.save_data(data,
+                                                   metadata=parameters,
+                                                   nametag=nametag + "_cummulative" if tag == '' else f'_cummulative_{nametag}_{tag}',
+                                                   timestamp=timestamp,
+                                                   column_headers='Image (columns is X, rows is Y)')
+
+                    figure = self.draw_2d_scan_figure(scan_data, channel, cbar_range=color_range)
+                    ds.save_thumbnail(figure, file_path=file_path.rsplit('.', 1)[0])
+                   
+
             finally:
                 self.module_state.unlock()
                 self.sigSaveStateChanged.emit(False)
@@ -365,7 +379,7 @@ class PleDataLogic(LogicBase):
 
         @return fig: a matplotlib figure object to be saved to file.
         """
-        image_arr = scan_data.data[channel]
+        image_arr = scan_data.accumulated_data[channel].T
         scan_axes = scan_data.scan_axes
         scanner_pos = self._scan_logic().scanner_target
 
@@ -379,7 +393,7 @@ class PleDataLogic(LogicBase):
 
         # Scale axes and data
         scan_range_x = (scan_data.scan_range[0][1], scan_data.scan_range[0][0])
-        scan_range_y =  (scan_data.scan_range[1][1], scan_data.scan_range[1][0])
+        scan_range_y =  (0, image_arr.shape[1])
         si_prefix_x = ScaledFloat(scan_range_x[1]-scan_range_x[0]).scale
         si_factor_x = ScaledFloat(scan_range_x[1]-scan_range_x[0]).scale_val
         si_prefix_y = ScaledFloat(scan_range_y[1]-scan_range_y[0]).scale
@@ -396,12 +410,12 @@ class PleDataLogic(LogicBase):
                             vmin=cbar_range[0]/si_factor_cb,
                             vmax=cbar_range[1]/si_factor_cb,
                             interpolation='none',
-                            extent=(*np.asarray(scan_data.scan_range[0])/si_factor_x,
-                                    *np.asarray(scan_data.scan_range[1])/si_factor_y))
+                            extent=(*np.asarray(scan_range_x)/si_factor_x,
+                                    *np.asarray(scan_range_y)/si_factor_y))
 
         ax.set_aspect(1)
         ax.set_xlabel(scan_axes[0] + f' position ({si_prefix_x}{scan_data.axes_units[scan_axes[0]]})')
-        ax.set_ylabel(scan_axes[1] + f' position ({si_prefix_y}{scan_data.axes_units[scan_axes[1]]})')
+        ax.set_ylabel("Line #")
         ax.spines['bottom'].set_position(('outward', 10))
         ax.spines['left'].set_position(('outward', 10))
         ax.spines['top'].set_visible(False)
@@ -410,23 +424,23 @@ class PleDataLogic(LogicBase):
         ax.get_yaxis().tick_left()
 
 
-        pos_x, pos_y = scanner_pos[scan_axes[0]], scanner_pos[scan_axes[1]]
+        # pos_x, pos_y = scanner_pos[scan_axes[0]], scanner_pos[scan_axes[1]]
 
         # draw the scanner position if defined and in range
-        if pos_x > np.min(scan_range_x) and pos_x < np.max(scan_range_x) \
-            and pos_y > np.min(scan_range_y) and pos_y < np.max(scan_range_y):
-            trans_xmark = mpl.transforms.blended_transform_factory(ax.transData, ax.transAxes)
-            trans_ymark = mpl.transforms.blended_transform_factory(ax.transAxes, ax.transData)
-            ax.annotate('',
-                        xy=np.asarray([pos_x, 0])/si_factor_x,
-                        xytext=(pos_x/si_factor_x, -0.01),
-                        xycoords=trans_xmark,
-                        arrowprops={'facecolor': '#17becf', 'shrink': 0.05})
-            ax.annotate('',
-                        xy=np.asarray([0, pos_y])/si_factor_y,
-                        xytext=(-0.01, pos_y/si_factor_y),
-                        xycoords=trans_ymark,
-                        arrowprops={'facecolor': '#17becf', 'shrink': 0.05})
+        # if pos_x > np.min(scan_range_x) and pos_x < np.max(scan_range_x) \
+        #     and pos_y > np.min(scan_range_y) and pos_y < np.max(scan_range_y):
+        #     trans_xmark = mpl.transforms.blended_transform_factory(ax.transData, ax.transAxes)
+        #     trans_ymark = mpl.transforms.blended_transform_factory(ax.transAxes, ax.transData)
+        #     ax.annotate('',
+        #                 xy=np.asarray([pos_x, 0])/si_factor_x,
+        #                 xytext=(pos_x/si_factor_x, -0.01),
+        #                 xycoords=trans_xmark,
+        #                 arrowprops={'facecolor': '#17becf', 'shrink': 0.05})
+        #     ax.annotate('',
+        #                 xy=np.asarray([0, pos_y])/si_factor_y,
+        #                 xytext=(-0.01, pos_y/si_factor_y),
+        #                 xycoords=trans_ymark,
+        #                 arrowprops={'facecolor': '#17becf', 'shrink': 0.05})
 
         metainfo_str = self._pretty_print_metainfo(scan_axes, scan_data, scanner_pos)
         if metainfo_str:
