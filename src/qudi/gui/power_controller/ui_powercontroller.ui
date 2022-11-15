@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>445</width>
-    <height>242</height>
+    <width>572</width>
+    <height>288</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -28,7 +28,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>445</width>
+     <width>572</width>
      <height>21</height>
     </rect>
    </property>
@@ -70,8 +70,8 @@
   <widget class="QDockWidget" name="powerDockWidget">
    <property name="minimumSize">
     <size>
-     <width>445</width>
-     <height>178</height>
+     <width>118</width>
+     <height>146</height>
     </size>
    </property>
    <property name="maximumSize">
@@ -84,7 +84,7 @@
     <string>Power parameters</string>
    </property>
    <attribute name="dockWidgetArea">
-    <number>4</number>
+    <number>1</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_2">
     <layout class="QGridLayout" name="gridLayout">
@@ -105,6 +105,9 @@
       <widget class="QPushButton" name="use_calibration_Button">
        <property name="text">
         <string>Use calibration</string>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
@@ -133,7 +136,7 @@
         <string>calibrate</string>
        </property>
        <property name="checkable">
-        <bool>true</bool>
+        <bool>false</bool>
        </property>
       </widget>
      </item>
@@ -143,7 +146,7 @@
   <action name="actionClose">
    <property name="icon">
     <iconset>
-     <normaloff>../../../../../../../../../../YY3/artwork/icons/oxygen/22x22/application-exit.png</normaloff>../../../../../../../../../../YY3/artwork/icons/oxygen/22x22/application-exit.png</iconset>
+     <normaloff>../../../../../../YY3/artwork/icons/oxygen/22x22/application-exit.png</normaloff>../../../../../../YY3/artwork/icons/oxygen/22x22/application-exit.png</iconset>
    </property>
    <property name="text">
     <string>&amp;Close</string>
