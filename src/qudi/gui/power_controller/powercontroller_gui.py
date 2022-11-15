@@ -79,52 +79,17 @@ class PowerControllerGui(GuiBase):
         self._mw.setDockNestingEnabled(True)
         
         #Vlad updates
+        self._mw.channel_comboBox.addItems(self._powercontrollerlogic.channels)
         self.sigRecordSaturation.connect(self._powercontrollerlogic.run_saturation)
         self._powercontrollerlogic.sig_data_updated.connect(self.update_data)
-        # giving the plots names allows us to link their axes together
-        self._pw = self._mw.plotWidget  # pg.PlotWidget(name='Counter1')
-        self._plot_item = self._pw.plotItem
-
-        # create a new ViewBox, link the right axis to its coordinate system
-        self._right_axis = pg.ViewBox()
-        self._plot_item.showAxis('right')
-        self._plot_item.scene().addItem(self._right_axis)
-        self._plot_item.getAxis('right').linkToView(self._right_axis)
-        self._right_axis.setXLink(self._plot_item)
-
-        # create a new ViewBox, link the right axis to its coordinate system
-        self._top_axis = pg.ViewBox()
-        self._plot_item.showAxis('top')
-        self._plot_item.scene().addItem(self._top_axis)
-        self._plot_item.getAxis('top').linkToView(self._top_axis)
-        self._top_axis.setYLink(self._plot_item)
-        self._top_axis.invertX(b=True)
-
-        # handle resizing of any of the elements
-
-        self._pw.setLabel('left', 'Fluorescence', units='counts/s')
-        self._pw.setLabel('right', 'Number of Points', units='#')
-        self._pw.setLabel('bottom', 'Wavelength', units='m')
-        self._pw.setLabel('top', 'Relative Frequency', units='Hz')
-
-        # Create an empty plot curve to be filled later, set its pen
-        self._curve1 = self._pw.plot()
-        self._curve1.setPen(palette.c1, width=2)
-
-        self._curve2 = self._pw.plot()
-        self._curve2.setPen(palette.c2, width=2)
-
-        self.update_data()
-
-        # Connect singals
-        self._mw.actionuse_calibration.triggered.connect(self.use_calibration)
-        self._mw.calibrate_power_1_Action.setChecked(len(self._powercontrollerlogic.power_calib) > 0)
-        self._mw.calibrate_power_1_Action.triggered.connect(self.calibrate_power_wheel_1)
-        self._mw.calibrate_power_2_Action.triggered.connect(self.calibrate_power_wheel_2)
         
-        # self._mw.label_Power_1
-        # self._mw.label_Power_2
-        self._mw.p1HorizontalSlider.sliderReleased.connect(self.set_power_slider_1)
+        self._mw.use_calibration_Button.triggered.connect(self.use_calibration)
+
+        self._mw.calibrate_Button.triggered.connect(self.calibrate_power)
+        # .setChecked(len(self._powercontrollerlogic.power_calib) > 0)
+        # self._mw.calibrate_power_1_Action.triggered.connect(self.calibrate_power)
+
+        self._mw.powerHorizontalSlider.sliderReleased.connect(self.set_power_slider)
         # self._mw.p2HorizontalSlider
         self._mw.show()
 
@@ -146,96 +111,49 @@ class PowerControllerGui(GuiBase):
         self._mw.activateWindow()
         self._mw.raise_()
 
-    def set_power_slider_1(self):
-        slider_val = float(self._mw.p1HorizontalSlider.value())
+    def set_power_slider(self):
+        slider_val = float(self._mw.powerHorizontalSlider.value())
         
-        if self._use_calibration:
+        if self._use_calibration and (len(self._powercontrollerlogic.power_calib) > 0):
             powers_cal = self._powercontrollerlogic.power_calib[:, 1]
             vals = np.linspace(0, 360, powers_cal.shape[0])
             power = powers_cal[np.argmin(np.abs(vals - slider_val))]
           
-            self._powercontrollerlogic.sig_set_power.emit(power, 3, True)
+            self._powercontrollerlogic.sig_set_power.emit(power, int(self._mw.channel_comboBox.currentText()), True)
 
             if (power < 1e-3):
                 display_power = np.round(power * 1e6, 2)
-                self._mw.power_1_doubleSpinBox.setText(str(display_power) + " muW")
+                self._mw.power_doubleSpinBox.setValue(display_power)
+                self._mw.power_doubleSpinBox.setSuffix(" muW")
+                
             else:
                 display_power = np.round(power * 1e3, 2)
-                self._mw.power_1_doubleSpinBox.setText(str(display_power) + " mW")
+                self._mw.power_doubleSpinBox.setValue(display_power)
+                self._mw.power_doubleSpinBox.setSuffix(" mW")
 
         else:
             # vals = np.linspace(0, 360, powers_cal.shape[0])
             # power = vals[np.argmin(np.abs(vals - slider_val))]
-            self._mw.power_1_doubleSpinBox.setText(slider_val)
-            self._powercontrollerlogic.sig_set_power.emit(slider_val, 3, False)
+            self._mw.power_doubleSpinBox.setValue(slider_val)
+            self._mw.power_doubleSpinBox.setSuffix(" deg")
+            self._powercontrollerlogic.sig_set_power.emit(slider_val, int(self._mw.channel_comboBox.currentText()), False)
 
-    def set_power_1(self):
-        print("power", self._mw.power_1_doubleSpinBox.value())
-        return 
-    def set_power_2(self):
-        print(self._mw.power_2_doubleSpinBox.value())
-        return 
-
-    def use_calibration(self, isChecked):
-        self._use_calibration = isChecked
-        print(isChecked)
-
-
-    def calibrate_power_wheel_1(self, is_checked):
+    def calibrate_power(self, is_checked):
         if is_checked:
             print("LEGO")
-            self._mw.calibrate_power_1_Action.setChecked(True)
+            self._mw.calibrate_Button.setChecked(True)
             self._powercontrollerlogic.stopRequested = False
-            motor = 3
-            self._powercontrollerlogic.sig_run_calibration.emit(motor)
+            self._powercontrollerlogic.sig_run_calibration.emit(int(self._mw.channel_comboBox.currentText()))
         else:
-            self._mw.calibrate_power_1_Action.setChecked(False)
+            self._mw.calibrate_Button.setChecked(False)
             print("Remove calibration?")
             # self._powercontrollerlogic.stopRequested = True
-    def calibrate_power_wheel_2(self, is_checked):
-        if is_checked:
-            self._mw.calibrate_power_2_Action.setChecked(True)
-            self._powercontrollerlogic.stopRequested = False
-            motor = 0
-            self._powercontrollerlogic.sig_run_calibration.emit(motor)
-        else:
-            self._mw.calibrate_power_2_Action.setChecked(False)
-            print("Remove calibration?")
-            # self._powercontrollerlogic.stopRequested = True
-    
-    def update_data(self):
-
-        """ The function that grabs the data and sends it to the plot.
-        """
-        cur_power_1 = self._powercontrollerlogic.current_power_1
-    
-        if (cur_power_1 < 1e-3):
-            cur_power_1 = cur_power_1 * 1e6
-            self._mw.power_1_doubleSpinBox.setSuffix(" muW")
-        else:
-            cur_power_1 = cur_power_1 * 1e3
-            self._mw.power_1_doubleSpinBox.setSuffix(" mW")
-        
-        self._mw.power_1_doubleSpinBox.setValue(cur_power_1)
-
-        
-
-        self._mw.power_2_doubleSpinBox.setValue(self._powercontrollerlogic.current_power_2 * 1e3)
-        
-        data = self._powercontrollerlogic._saturation_data
-
-        # erase previous fit line
-        self._curve2.setData(x=[], y=[])
-        
-        # draw new data
-        self._curve1.setData(x=data[0, :], y=data[1, :])
-
+   
     def record_saturation(self):
         """ Handle resume of the scanning without resetting the data.
         """
         #FIX TIMING
-        self.time_passed = 0
-        self._mw.progressBar.setMaximum(1)
+
         self.sigRecordSaturation.emit(False)
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.updateProgress)

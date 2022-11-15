@@ -6,9 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>538</width>
-    <height>260</height>
+    <width>445</width>
+    <height>242</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
   </property>
   <property name="windowTitle">
    <string>Power controller</string>
@@ -22,7 +28,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>538</width>
+     <width>445</width>
      <height>21</height>
     </rect>
    </property>
@@ -42,25 +48,10 @@
     <property name="title">
      <string>Optio&amp;ns</string>
     </property>
-    <addaction name="action_FitSettings"/>
    </widget>
    <addaction name="menuLaserscan"/>
    <addaction name="menuView"/>
    <addaction name="menuOptions"/>
-  </widget>
-  <widget class="QToolBar" name="background_ToolBar">
-   <property name="windowTitle">
-    <string>toolBar</string>
-   </property>
-   <attribute name="toolBarArea">
-    <enum>TopToolBarArea</enum>
-   </attribute>
-   <attribute name="toolBarBreak">
-    <bool>false</bool>
-   </attribute>
-   <addaction name="actionuse_calibration"/>
-   <addaction name="calibrate_power_1_Action"/>
-   <addaction name="calibrate_power_2_Action"/>
   </widget>
   <widget class="QToolBar" name="calibrationToolBar">
    <property name="windowTitle">
@@ -72,6 +63,9 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="actionRecord_saturation"/>
+   <addaction name="actionRecord_background"/>
+   <addaction name="actionBackground_correction"/>
   </widget>
   <widget class="QDockWidget" name="powerDockWidget">
    <property name="minimumSize">
@@ -95,149 +89,53 @@
    <widget class="QWidget" name="dockWidgetContents_2">
     <layout class="QGridLayout" name="gridLayout">
      <item row="0" column="0">
-      <layout class="QVBoxLayout" name="verticalLayout_4">
-       <property name="sizeConstraint">
-        <enum>QLayout::SetMaximumSize</enum>
-       </property>
-       <item>
-        <layout class="QVBoxLayout" name="verticalLayout">
-         <item>
-          <widget class="QSlider" name="p1HorizontalSlider">
-           <property name="maximum">
-            <number>360</number>
-           </property>
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_3">
-           <item>
-            <widget class="QLabel" name="p1Label">
-             <property name="maximumSize">
-              <size>
-               <width>20</width>
-               <height>16777215</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>p1: </string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QDoubleSpinBox" name="power_1_doubleSpinBox">
-             <property name="enabled">
-              <bool>true</bool>
-             </property>
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="suffix">
-              <string> nW</string>
-             </property>
-             <property name="maximum">
-              <double>1000000.000000000000000</double>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <spacer name="horizontalSpacer">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <layout class="QVBoxLayout" name="verticalLayout_3">
-         <item>
-          <widget class="QSlider" name="p2HorizontalSlider">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_5">
-           <item>
-            <widget class="QLabel" name="p2Label">
-             <property name="maximumSize">
-              <size>
-               <width>20</width>
-               <height>16777215</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>p2: </string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QDoubleSpinBox" name="power_2_doubleSpinBox">
-             <property name="enabled">
-              <bool>true</bool>
-             </property>
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="suffix">
-              <string> mW</string>
-             </property>
-             <property name="maximum">
-              <double>100.000000000000000</double>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <spacer name="horizontalSpacer_2">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </item>
-        </layout>
-       </item>
-      </layout>
+      <widget class="QComboBox" name="channel_comboBox"/>
      </item>
-    </layout>
-   </widget>
-  </widget>
-  <widget class="QDockWidget" name="dockWidget">
-   <property name="features">
-    <set>QDockWidget::AllDockWidgetFeatures</set>
-   </property>
-   <attribute name="dockWidgetArea">
-    <number>4</number>
-   </attribute>
-   <widget class="QWidget" name="dockWidgetContents">
-    <layout class="QGridLayout" name="gridLayout_2">
-     <item row="0" column="0">
-      <widget class="PlotWidget" name="plotWidget"/>
+     <item row="0" column="1">
+      <widget class="QSlider" name="powerHorizontalSlider">
+       <property name="maximum">
+        <number>360</number>
+       </property>
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QPushButton" name="use_calibration_Button">
+       <property name="text">
+        <string>Use calibration</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QDoubleSpinBox" name="power_doubleSpinBox">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="suffix">
+        <string> nW</string>
+       </property>
+       <property name="maximum">
+        <double>1000000.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QPushButton" name="calibrate_Button">
+       <property name="text">
+        <string>calibrate</string>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+      </widget>
      </item>
     </layout>
    </widget>
@@ -245,25 +143,10 @@
   <action name="actionClose">
    <property name="icon">
     <iconset>
-     <normaloff>C:/Users/YY3/artwork/icons/oxygen/22x22/application-exit.png</normaloff>C:/Users/YY3/artwork/icons/oxygen/22x22/application-exit.png</iconset>
+     <normaloff>../../../../../../../../../../YY3/artwork/icons/oxygen/22x22/application-exit.png</normaloff>../../../../../../../../../../YY3/artwork/icons/oxygen/22x22/application-exit.png</iconset>
    </property>
    <property name="text">
     <string>&amp;Close</string>
-   </property>
-  </action>
-  <action name="rec_saturation_1_Action">
-   <property name="icon">
-    <iconset>
-     <normaloff>C:/Users/YY3/artwork/icons/qudiTheme/22x22/record-counter.png</normaloff>C:/Users/YY3/artwork/icons/qudiTheme/22x22/record-counter.png</iconset>
-   </property>
-   <property name="text">
-    <string>Saturation 1</string>
-   </property>
-   <property name="toolTip">
-    <string>Record saturation (A)</string>
-   </property>
-   <property name="shortcut">
-    <string>A</string>
    </property>
   </action>
   <action name="restore_default_view_Action">
@@ -271,70 +154,25 @@
     <string>&amp;Restore default view</string>
    </property>
   </action>
-  <action name="calibrate_power_1_Action">
+  <action name="actionRecord_saturation">
+   <property name="text">
+    <string>Record saturation</string>
+   </property>
+  </action>
+  <action name="actionRecord_background">
+   <property name="text">
+    <string>Record background</string>
+   </property>
+  </action>
+  <action name="actionBackground_correction">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>calibrate_power_1</string>
-   </property>
-   <property name="toolTip">
-    <string>Calibrate power wheel 1</string>
-   </property>
-   <property name="shortcut">
-    <string>D</string>
-   </property>
-  </action>
-  <action name="action_FitSettings">
-   <property name="text">
-    <string>&amp;Fit settings</string>
-   </property>
-  </action>
-  <action name="calibrate_power_2_Action">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>calibrate_power_2</string>
-   </property>
-   <property name="toolTip">
-    <string>Calibrate power wheel 2</string>
-   </property>
-   <property name="shortcut">
-    <string>D</string>
-   </property>
-  </action>
-  <action name="rec_saturation_2_Action">
-   <property name="icon">
-    <iconset>
-     <normaloff>C:/Users/YY3/artwork/icons/qudiTheme/22x22/record-counter.png</normaloff>C:/Users/YY3/artwork/icons/qudiTheme/22x22/record-counter.png</iconset>
-   </property>
-   <property name="text">
-    <string>Saturation 2</string>
-   </property>
-   <property name="toolTip">
-    <string>Record saturation (A)</string>
-   </property>
-   <property name="shortcut">
-    <string>A</string>
-   </property>
-  </action>
-  <action name="actionuse_calibration">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>use_calibration</string>
+    <string>Background correction</string>
    </property>
   </action>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>PlotWidget</class>
-   <extends>QGraphicsView</extends>
-   <header>pyqtgraph</header>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections>
   <connection>

@@ -74,6 +74,7 @@ class PowerControllerLogic(LogicBase):
     sig_run_calibration = QtCore.Signal(int)
     sig_next_diff_loop = QtCore.Signal()
     sig_set_power = QtCore.Signal(float, int, bool)
+    channels = []
 
     def __init__(self, **kwargs):
         """ Create SpectrometerLogic object with connectors.
@@ -93,6 +94,7 @@ class PowerControllerLogic(LogicBase):
         if self.powermeter() is not None:
             self._powermeter = self.powermeter()
         self._motor_pi3 = self.motor_pi3()
+        self.channels = self._motor_pi3._active_motor_numbers
         self._counter = self.counter()
         self.power_calib = self._power_calib
         self.current_power_1 = 0
