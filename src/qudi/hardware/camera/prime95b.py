@@ -20,16 +20,20 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
+
+Example config:
+    mycamera:
+        module.Class: 'camera.prime95b.Prime95B'
 """
 
 import numpy as np
 
-from core.module import Base
-from core.configoption import ConfigOption
+from qudi.core.module import Base
+from qudi.core.configoption import ConfigOption
 
-from interface.camera_interface import CameraInterface
+from qudi.interface.camera_interface import CameraInterface
 # from interface.odmr_counter_interface import ODMRCounterInterface
-from interface.fast_counter_interface import FastCounterInterface
+from qudi.interface.fast_counter_interface import FastCounterInterface
 
 # Python wrapper for wrapping over the PVCAM SDK. Functions can be found
 # in PyVCAM/camera.py

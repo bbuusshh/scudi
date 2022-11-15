@@ -18,15 +18,21 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
+
+Example config:
+    mycamlogic:
+        module.Class: 'camera_logic_prime95b.CameraLogic'
+        connect:
+            hardware: 'mycamera'
 """
 
 import numpy as np
 
-from core.connector import Connector
-from core.configoption import ConfigOption
-from core.util.mutex import Mutex
-from logic.generic_logic import GenericLogic
-from core.statusvariable import StatusVar
+from qudi.core.connector import Connector
+from qudi.core.configoption import ConfigOption
+from qudi.core.util.mutex import Mutex
+from qudi.logic.generic_logic import GenericLogic
+from qudi.core.statusvariable import StatusVar
 from qtpy import QtCore
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -71,7 +77,7 @@ class CameraLogic(GenericLogic):
         """ Initialisation performed during activation of the module.
         """
         self._hardware = self.hardware()
-        self._save_logic = self.savelogic()
+        # self._save_logic = self.savelogic()
 
         self.enabled = False
 
@@ -241,45 +247,46 @@ class CameraLogic(GenericLogic):
 
         @param: list percentile_range (optional) The percentile range [min, max] of the color scale
         """
-        filepath = self._save_logic.get_path_for_module('Camera')
-        timestamp = datetime.datetime.now()
-        # Prepare the metadata parameters (common to both saved files):
-        parameters = OrderedDict()
+        print('Function save_xy_data not implemented yet.')
+        # filepath = self._save_logic.get_path_for_module('Camera')
+        # timestamp = datetime.datetime.now()
+        # # Prepare the metadata parameters (common to both saved files):
+        # parameters = OrderedDict()
 
-        parameters['Gain'] = self._gain
-        parameters['Exposure time (s)'] = self._exposure
-        # Prepare a figure to be saved
+        # parameters['Gain'] = self._gain
+        # parameters['Exposure time (s)'] = self._exposure
+        # # Prepare a figure to be saved
 
-        axes = ['X', 'Y']
-        xy_pixels = self._hardware.get_size()
-        image_extent = [0,
-                        xy_pixels[0],
-                        0,
-                        xy_pixels[1]]
+        # axes = ['X', 'Y']
+        # xy_pixels = self._hardware.get_size()
+        # image_extent = [0,
+        #                 xy_pixels[0],
+        #                 0,
+        #                 xy_pixels[1]]
 
-        fig = self.draw_figure(data=self._last_image,
-                               image_extent=image_extent,
-                               scan_axis=axes,
-                               cbar_range=colorscale_range,
-                               percentile_range=percentile_range)
+        # fig = self.draw_figure(data=self._last_image,
+        #                        image_extent=image_extent,
+        #                        scan_axis=axes,
+        #                        cbar_range=colorscale_range,
+        #                        percentile_range=percentile_range)
 
-        # data for the text-array "image":
-        image_data = OrderedDict()
-        image_data['XY image data.'] = self._last_image
-        filelabel = 'xy_image' + self.tag
-        self._save_logic.save_data(image_data,
-                                   filepath=filepath,
-                                   timestamp=timestamp,
-                                   parameters=parameters,
-                                   filelabel=filelabel,
-                                   fmt='%.6e',
-                                   delimiter='\t',
-                                   plotfig=fig)
-        out = Image.fromarray(self._last_image)
-        out.save(filepath+'/'+timestamp.strftime("%Y%m%d-%H%M-%S")+'_'+filelabel+'.tiff')
+        # # data for the text-array "image":
+        # image_data = OrderedDict()
+        # image_data['XY image data.'] = self._last_image
+        # filelabel = 'xy_image' + self.tag
+        # self._save_logic.save_data(image_data,
+        #                            filepath=filepath,
+        #                            timestamp=timestamp,
+        #                            parameters=parameters,
+        #                            filelabel=filelabel,
+        #                            fmt='%.6e',
+        #                            delimiter='\t',
+        #                            plotfig=fig)
+        # out = Image.fromarray(self._last_image)
+        # out.save(filepath+'/'+timestamp.strftime("%Y%m%d-%H%M-%S")+'_'+filelabel+'.tiff')
 
-        self.log.info('Image saved.')
-        return
+        # self.log.info('Image saved.')
+        # return
 
     def draw_figure(
             self,
@@ -306,135 +313,136 @@ class CameraLogic(GenericLogic):
 
         @return: fig fig: a matplotlib figure object to be saved to file.
         """
-        if scan_axis is None:
-            scan_axis = ['X', 'Y']
+        print('Function draw_figure not implemented yet.')
+        # if scan_axis is None:
+        #     scan_axis = ['X', 'Y']
 
-        # If no colorbar range was given, take full range of data
-        if cbar_range is None:
-            cbar_range = [np.min(data), np.max(data)]
+        # # If no colorbar range was given, take full range of data
+        # if cbar_range is None:
+        #     cbar_range = [np.min(data), np.max(data)]
 
-        # Scale color values using SI prefix
-        prefix = ['', 'k', 'M', 'G']
-        prefix_count = 0
-        image_data = data
-        draw_cb_range = np.array(cbar_range)
-        image_dimension = image_extent.copy()
+        # # Scale color values using SI prefix
+        # prefix = ['', 'k', 'M', 'G']
+        # prefix_count = 0
+        # image_data = data
+        # draw_cb_range = np.array(cbar_range)
+        # image_dimension = image_extent.copy()
 
-        while draw_cb_range[1] > 1000:
-            image_data = image_data / 1000
-            draw_cb_range = draw_cb_range / 1000
-            prefix_count = prefix_count + 1
+        # while draw_cb_range[1] > 1000:
+        #     image_data = image_data / 1000
+        #     draw_cb_range = draw_cb_range / 1000
+        #     prefix_count = prefix_count + 1
 
-        c_prefix = prefix[prefix_count]
+        # c_prefix = prefix[prefix_count]
 
-        # Scale axes values using SI prefix
-        axes_prefix = ['', 'm', r'$\mathrm{\mu}$', 'n']
-        x_prefix_count = 0
-        y_prefix_count = 0
+        # # Scale axes values using SI prefix
+        # axes_prefix = ['', 'm', r'$\mathrm{\mu}$', 'n']
+        # x_prefix_count = 0
+        # y_prefix_count = 0
 
-        while np.abs(image_dimension[1] - image_dimension[0]) < 1:
-            image_dimension[0] = image_dimension[0] * 1000.
-            image_dimension[1] = image_dimension[1] * 1000.
-            x_prefix_count = x_prefix_count + 1
+        # while np.abs(image_dimension[1] - image_dimension[0]) < 1:
+        #     image_dimension[0] = image_dimension[0] * 1000.
+        #     image_dimension[1] = image_dimension[1] * 1000.
+        #     x_prefix_count = x_prefix_count + 1
 
-        while np.abs(image_dimension[3] - image_dimension[2]) < 1:
-            image_dimension[2] = image_dimension[2] * 1000.
-            image_dimension[3] = image_dimension[3] * 1000.
-            y_prefix_count = y_prefix_count + 1
+        # while np.abs(image_dimension[3] - image_dimension[2]) < 1:
+        #     image_dimension[2] = image_dimension[2] * 1000.
+        #     image_dimension[3] = image_dimension[3] * 1000.
+        #     y_prefix_count = y_prefix_count + 1
 
-        x_prefix = axes_prefix[x_prefix_count]
-        y_prefix = axes_prefix[y_prefix_count]
+        # x_prefix = axes_prefix[x_prefix_count]
+        # y_prefix = axes_prefix[y_prefix_count]
 
-        # Use qudi style
-        plt.style.use(self._save_logic.mpl_qd_style)
+        # # Use qudi style
+        # plt.style.use(self._save_logic.mpl_qd_style)
 
-        # Create figure
-        fig, ax = plt.subplots()
+        # # Create figure
+        # fig, ax = plt.subplots()
 
-        # Create image plot
-        cfimage = ax.imshow(image_data,
-                            # reference the right place in qd
-                            cmap=plt.get_cmap('inferno'),
-                            origin="lower",
-                            vmin=draw_cb_range[0],
-                            vmax=draw_cb_range[1],
-                            interpolation='none',
-                            extent=image_dimension
-                            )
+        # # Create image plot
+        # cfimage = ax.imshow(image_data,
+        #                     # reference the right place in qd
+        #                     cmap=plt.get_cmap('inferno'),
+        #                     origin="lower",
+        #                     vmin=draw_cb_range[0],
+        #                     vmax=draw_cb_range[1],
+        #                     interpolation='none',
+        #                     extent=image_dimension
+        #                     )
 
-        ax.set_aspect(1)
-        ax.set_xlabel(scan_axis[0] + ' position (' + x_prefix + 'm)')
-        ax.set_ylabel(scan_axis[1] + ' position (' + y_prefix + 'm)')
-        ax.spines['bottom'].set_position(('outward', 10))
-        ax.spines['left'].set_position(('outward', 10))
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        ax.get_xaxis().tick_bottom()
-        ax.get_yaxis().tick_left()
+        # ax.set_aspect(1)
+        # ax.set_xlabel(scan_axis[0] + ' position (' + x_prefix + 'm)')
+        # ax.set_ylabel(scan_axis[1] + ' position (' + y_prefix + 'm)')
+        # ax.spines['bottom'].set_position(('outward', 10))
+        # ax.spines['left'].set_position(('outward', 10))
+        # ax.spines['top'].set_visible(False)
+        # ax.spines['right'].set_visible(False)
+        # ax.get_xaxis().tick_bottom()
+        # ax.get_yaxis().tick_left()
 
-        # draw the crosshair position if defined
-        if crosshair_pos is not None:
-            trans_xmark = mpl.transforms.blended_transform_factory(
-                ax.transData,
-                ax.transAxes)
+        # # draw the crosshair position if defined
+        # if crosshair_pos is not None:
+        #     trans_xmark = mpl.transforms.blended_transform_factory(
+        #         ax.transData,
+        #         ax.transAxes)
 
-            trans_ymark = mpl.transforms.blended_transform_factory(
-                ax.transAxes,
-                ax.transData)
+        #     trans_ymark = mpl.transforms.blended_transform_factory(
+        #         ax.transAxes,
+        #         ax.transData)
 
-            ax.annotate('',
-                        xy=(crosshair_pos[0] * np.power(1000,
-                                                        x_prefix_count),
-                            0),
-                        xytext=(crosshair_pos[0] * np.power(1000,
-                                                            x_prefix_count),
-                                -0.01),
-                        xycoords=trans_xmark,
-                        arrowprops=dict(facecolor='#17becf',
-                                        shrink=0.05),
-                        )
+        #     ax.annotate('',
+        #                 xy=(crosshair_pos[0] * np.power(1000,
+        #                                                 x_prefix_count),
+        #                     0),
+        #                 xytext=(crosshair_pos[0] * np.power(1000,
+        #                                                     x_prefix_count),
+        #                         -0.01),
+        #                 xycoords=trans_xmark,
+        #                 arrowprops=dict(facecolor='#17becf',
+        #                                 shrink=0.05),
+        #                 )
 
-            ax.annotate('',
-                        xy=(0,
-                            crosshair_pos[1] * np.power(1000,
-                                                        y_prefix_count)),
-                        xytext=(-0.01,
-                                crosshair_pos[1] * np.power(1000,
-                                                            y_prefix_count)),
-                        xycoords=trans_ymark,
-                        arrowprops=dict(facecolor='#17becf',
-                                        shrink=0.05),
-                        )
+        #     ax.annotate('',
+        #                 xy=(0,
+        #                     crosshair_pos[1] * np.power(1000,
+        #                                                 y_prefix_count)),
+        #                 xytext=(-0.01,
+        #                         crosshair_pos[1] * np.power(1000,
+        #                                                     y_prefix_count)),
+        #                 xycoords=trans_ymark,
+        #                 arrowprops=dict(facecolor='#17becf',
+        #                                 shrink=0.05),
+        #                 )
 
-        # Draw the colorbar
-        # , fraction=0.046, pad=0.08, shrink=0.75)
-        cbar = plt.colorbar(cfimage, shrink=0.8)
-        cbar.set_label('Fluorescence (' + c_prefix + 'c/s)')
+        # # Draw the colorbar
+        # # , fraction=0.046, pad=0.08, shrink=0.75)
+        # cbar = plt.colorbar(cfimage, shrink=0.8)
+        # cbar.set_label('Fluorescence (' + c_prefix + 'c/s)')
 
-        # remove ticks from colorbar for cleaner image
-        cbar.ax.tick_params(which=u'both', length=0)
+        # # remove ticks from colorbar for cleaner image
+        # cbar.ax.tick_params(which=u'both', length=0)
 
-        # If we have percentile information, draw that to the figure
-        if percentile_range is not None:
-            cbar.ax.annotate(str(percentile_range[0]),
-                             xy=(-0.3, 0.0),
-                             xycoords='axes fraction',
-                             horizontalalignment='right',
-                             verticalalignment='center',
-                             rotation=90
-                             )
-            cbar.ax.annotate(str(percentile_range[1]),
-                             xy=(-0.3, 1.0),
-                             xycoords='axes fraction',
-                             horizontalalignment='right',
-                             verticalalignment='center',
-                             rotation=90
-                             )
-            cbar.ax.annotate('(percentile)',
-                             xy=(-0.3, 0.5),
-                             xycoords='axes fraction',
-                             horizontalalignment='right',
-                             verticalalignment='center',
-                             rotation=90
-                             )
-        return fig
+        # # If we have percentile information, draw that to the figure
+        # if percentile_range is not None:
+        #     cbar.ax.annotate(str(percentile_range[0]),
+        #                      xy=(-0.3, 0.0),
+        #                      xycoords='axes fraction',
+        #                      horizontalalignment='right',
+        #                      verticalalignment='center',
+        #                      rotation=90
+        #                      )
+        #     cbar.ax.annotate(str(percentile_range[1]),
+        #                      xy=(-0.3, 1.0),
+        #                      xycoords='axes fraction',
+        #                      horizontalalignment='right',
+        #                      verticalalignment='center',
+        #                      rotation=90
+        #                      )
+        #     cbar.ax.annotate('(percentile)',
+        #                      xy=(-0.3, 0.5),
+        #                      xycoords='axes fraction',
+        #                      horizontalalignment='right',
+        #                      verticalalignment='center',
+        #                      rotation=90
+        #                      )
+        # return fig

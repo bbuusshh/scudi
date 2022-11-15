@@ -22,16 +22,16 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import os
 import pyqtgraph as pg
 
-from core.connector import Connector
-from gui.colordefs import QudiPalettePale as Palette
-from gui.guibase import GUIBase
-from gui.colordefs import ColorScaleInferno
-from core.statusvariable import StatusVar
+from qudi.core.connector import Connector
+from qudi.gui.colordefs import QudiPalettePale as Palette
+from qudi.gui.guibase import GUIBase
+from qudi.gui.colordefs import ColorScaleInferno
+from qudi.core.statusvariable import StatusVar
 from qtpy import QtCore
 from qtpy import QtGui
 from qtpy import QtWidgets
 from qtpy import uic
-from gui.guiutils import ColorBar
+from qudi.gui.guiutils import ColorBar
 
 import numpy as np
 
