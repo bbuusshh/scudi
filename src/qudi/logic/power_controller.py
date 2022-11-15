@@ -103,20 +103,20 @@ class PowerControllerLogic(LogicBase):
         self.sig_run_calibration.connect(self.calibrate_power_wheel)
         self.sig_set_power.connect(self.set_power, QtCore.Qt.QueuedConnection)
 
-        self.queryTimer = QtCore.QTimer()
-        self.queryTimer.setInterval(self.queryInterval)
-        self.queryTimer.setSingleShot(True)
-        self.queryTimer.timeout.connect(self.loop_body)#, QtCore.Qt.QueuedConnection)     
-        self.queryTimer.start(self.queryInterval)
+    #     self.queryTimer = QtCore.QTimer()
+    #     self.queryTimer.setInterval(self.queryInterval)
+    #     self.queryTimer.setSingleShot(True)
+    #     self.queryTimer.timeout.connect(self.loop_body)#, QtCore.Qt.QueuedConnection)     
+    #     self.queryTimer.start(self.queryInterval)
 
-    def loop_body(self):
-        qi = self.queryInterval
-        self.queryTimer.start(qi)
-        if self.powermeter() is not None:
-            self.current_power_1 = self._powermeter.get_power() * self.calibration_factor_1
-            self.current_power_2 = self._powermeter.get_power() * self.calibration_factor_2
+    # def loop_body(self):
+    #     qi = self.queryInterval
+    #     self.queryTimer.start(qi)
+    #     if self.powermeter() is not None:
+    #         self.current_power_1 = self._powermeter.get_power() * self.calibration_factor_1
+    #         self.current_power_2 = self._powermeter.get_power() * self.calibration_factor_2
         
-            self.sig_data_updated.emit()
+    #         self.sig_data_updated.emit()
         
 
     def on_deactivate(self):

@@ -79,13 +79,13 @@ class PowerControllerGui(GuiBase):
         self._mw.setDockNestingEnabled(True)
         
         #Vlad updates
-        self._mw.channel_comboBox.addItems(self._powercontrollerlogic.channels)
+        self._mw.channel_comboBox.addItems(np.array(self._powercontrollerlogic.channels).astype(str))
         self.sigRecordSaturation.connect(self._powercontrollerlogic.run_saturation)
-        self._powercontrollerlogic.sig_data_updated.connect(self.update_data)
+        # self._powercontrollerlogic.sig_data_updated.connect(self.update_data)
         
-        self._mw.use_calibration_Button.triggered.connect(self.use_calibration)
+        self._mw.use_calibration_Button.toggled.connect(self.use_calibration)
 
-        self._mw.calibrate_Button.triggered.connect(self.calibrate_power)
+        self._mw.calibrate_Button.clicked.connect(self.calibrate_power)
         # .setChecked(len(self._powercontrollerlogic.power_calib) > 0)
         # self._mw.calibrate_power_1_Action.triggered.connect(self.calibrate_power)
 
@@ -103,6 +103,9 @@ class PowerControllerGui(GuiBase):
         # disconnect signals
         self._save_window_geometry(self._mw)
         self._mw.close()
+
+    def use_calibration(self, is_toggled):
+        self._use_calibration = is_toggled
 
     def show(self):
         """Make window visible and put it above all other windows.
