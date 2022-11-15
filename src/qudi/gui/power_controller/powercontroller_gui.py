@@ -60,6 +60,7 @@ class PowerControllerGui(GuiBase):
     # declare connectors
     powercontrollerlogic = Connector(interface='PowerControllerLogic')
     sigRecordSaturation = QtCore.Signal(bool)
+    _use_calibration = False
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -72,7 +73,11 @@ class PowerControllerGui(GuiBase):
 
         # setting up the window
         self._mw = PowerControllerWindow()
-
+        self._restore_window_geometry(self._mw)
+        
+        self._mw.centralwidget.hide()
+        self._mw.setDockNestingEnabled(True)
+        
         #Vlad updates
         self.sigRecordSaturation.connect(self._powercontrollerlogic.run_saturation)
         self._powercontrollerlogic.sig_data_updated.connect(self.update_data)
@@ -112,16 +117,15 @@ class PowerControllerGui(GuiBase):
         self.update_data()
 
         # Connect singals
+        self._mw.actionuse_calibration.triggered.connect(self.use_calibration)
+        self._mw.calibrate_power_1_Action.setChecked(len(self._powercontrollerlogic.power_calib) > 0)
         self._mw.calibrate_power_1_Action.triggered.connect(self.calibrate_power_wheel_1)
-
         self._mw.calibrate_power_2_Action.triggered.connect(self.calibrate_power_wheel_2)
         
         # self._mw.label_Power_1
         # self._mw.label_Power_2
         self._mw.p1HorizontalSlider.sliderReleased.connect(self.set_power_slider_1)
         # self._mw.p2HorizontalSlider
-
-
         self._mw.show()
 
         self._save_PNG = True
@@ -132,7 +136,7 @@ class PowerControllerGui(GuiBase):
         """ Deinitialisation performed during deactivation of the module.
         """
         # disconnect signals
-
+        self._save_window_geometry(self._mw)
         self._mw.close()
 
     def show(self):
@@ -144,12 +148,26 @@ class PowerControllerGui(GuiBase):
 
     def set_power_slider_1(self):
         slider_val = float(self._mw.p1HorizontalSlider.value())
-        powers_cal = self._powercontrollerlogic.power_calib[:, 1]
-        vals = np.linspace(0, 360, powers_cal.shape[0])
-        power = powers_cal[np.argmin(np.abs(vals - slider_val))]
-        print("Set power", power)
-        self._powercontrollerlogic.sig_set_power.emit(power, 3)
+        
+        if self._use_calibration:
+            powers_cal = self._powercontrollerlogic.power_calib[:, 1]
+            vals = np.linspace(0, 360, powers_cal.shape[0])
+            power = powers_cal[np.argmin(np.abs(vals - slider_val))]
+          
+            self._powercontrollerlogic.sig_set_power.emit(power, 3, True)
 
+            if (power < 1e-3):
+                display_power = np.round(power * 1e6, 2)
+                self._mw.power_1_doubleSpinBox.setText(str(display_power) + " muW")
+            else:
+                display_power = np.round(power * 1e3, 2)
+                self._mw.power_1_doubleSpinBox.setText(str(display_power) + " mW")
+
+        else:
+            # vals = np.linspace(0, 360, powers_cal.shape[0])
+            # power = vals[np.argmin(np.abs(vals - slider_val))]
+            self._mw.power_1_doubleSpinBox.setText(slider_val)
+            self._powercontrollerlogic.sig_set_power.emit(slider_val, 3, False)
 
     def set_power_1(self):
         print("power", self._mw.power_1_doubleSpinBox.value())
@@ -157,6 +175,11 @@ class PowerControllerGui(GuiBase):
     def set_power_2(self):
         print(self._mw.power_2_doubleSpinBox.value())
         return 
+
+    def use_calibration(self, isChecked):
+        self._use_calibration = isChecked
+        print(isChecked)
+
 
     def calibrate_power_wheel_1(self, is_checked):
         if is_checked:
@@ -184,7 +207,19 @@ class PowerControllerGui(GuiBase):
 
         """ The function that grabs the data and sends it to the plot.
         """
-        self._mw.power_1_doubleSpinBox.setValue(self._powercontrollerlogic.current_power_1 * 1e9)
+        cur_power_1 = self._powercontrollerlogic.current_power_1
+    
+        if (cur_power_1 < 1e-3):
+            cur_power_1 = cur_power_1 * 1e6
+            self._mw.power_1_doubleSpinBox.setSuffix(" muW")
+        else:
+            cur_power_1 = cur_power_1 * 1e3
+            self._mw.power_1_doubleSpinBox.setSuffix(" mW")
+        
+        self._mw.power_1_doubleSpinBox.setValue(cur_power_1)
+
+        
+
         self._mw.power_2_doubleSpinBox.setValue(self._powercontrollerlogic.current_power_2 * 1e3)
         
         data = self._powercontrollerlogic._saturation_data

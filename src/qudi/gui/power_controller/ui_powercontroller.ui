@@ -1,31 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>ScanWindow</class>
- <widget class="QMainWindow" name="ScanWindow">
+ <class>PowerWindow</class>
+ <widget class="QMainWindow" name="PowerWindow">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>511</height>
+    <width>538</width>
+    <height>260</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>qudi: Spectrometer</string>
+   <string>Power controller</string>
   </property>
-  <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout_2">
-    <item>
-     <widget class="PlotWidget" name="plotWidget"/>
-    </item>
-   </layout>
-  </widget>
+  <property name="dockNestingEnabled">
+   <bool>true</bool>
+  </property>
+  <widget class="QWidget" name="centralwidget"/>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
+     <width>538</width>
      <height>21</height>
     </rect>
    </property>
@@ -33,7 +30,6 @@
     <property name="title">
      <string>Fi&amp;le</string>
     </property>
-    <addaction name="save_spectrum_Action"/>
     <addaction name="actionClose"/>
    </widget>
    <widget class="QMenu" name="menuView">
@@ -52,23 +48,6 @@
    <addaction name="menuView"/>
    <addaction name="menuOptions"/>
   </widget>
-  <widget class="QToolBar" name="measure_ToolBar">
-   <property name="enabled">
-    <bool>true</bool>
-   </property>
-   <property name="windowTitle">
-    <string>toolBar</string>
-   </property>
-   <attribute name="toolBarArea">
-    <enum>TopToolBarArea</enum>
-   </attribute>
-   <attribute name="toolBarBreak">
-    <bool>false</bool>
-   </attribute>
-   <addaction name="rec_saturation_1_Action"/>
-   <addaction name="rec_saturation_2_Action"/>
-   <addaction name="save_spectrum_Action"/>
-  </widget>
   <widget class="QToolBar" name="background_ToolBar">
    <property name="windowTitle">
     <string>toolBar</string>
@@ -79,7 +58,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="correct_background_Action"/>
+   <addaction name="actionuse_calibration"/>
    <addaction name="calibrate_power_1_Action"/>
    <addaction name="calibrate_power_2_Action"/>
   </widget>
@@ -93,120 +72,12 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="save_background_Action"/>
-   <addaction name="acquire_background_Action"/>
-  </widget>
-  <widget class="QDockWidget" name="power_dockWidget">
-   <property name="sizePolicy">
-    <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-     <horstretch>0</horstretch>
-     <verstretch>0</verstretch>
-    </sizepolicy>
-   </property>
-   <property name="minimumSize">
-    <size>
-     <width>300</width>
-     <height>38</height>
-    </size>
-   </property>
-   <property name="windowTitle">
-    <string>Saturation Fit</string>
-   </property>
-   <attribute name="dockWidgetArea">
-    <number>4</number>
-   </attribute>
-   <widget class="QWidget" name="dockWidgetContents_4">
-    <widget class="QWidget" name="layoutWidget">
-     <property name="geometry">
-      <rect>
-       <x>20</x>
-       <y>20</y>
-       <width>233</width>
-       <height>82</height>
-      </rect>
-     </property>
-     <layout class="QVBoxLayout" name="verticalLayout_5">
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout">
-        <item>
-         <widget class="QLabel" name="label">
-          <property name="minimumSize">
-           <size>
-            <width>100</width>
-            <height>0</height>
-           </size>
-          </property>
-          <property name="maximumSize">
-           <size>
-            <width>120</width>
-            <height>16777215</height>
-           </size>
-          </property>
-          <property name="text">
-           <string>Power 1 @ sample:</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QDoubleSpinBox" name="power_1_doubleSpinBox">
-          <property name="enabled">
-           <bool>true</bool>
-          </property>
-          <property name="suffix">
-           <string> nW</string>
-          </property>
-          <property name="maximum">
-           <double>1000000.000000000000000</double>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_2">
-        <item>
-         <widget class="QLabel" name="label_5">
-          <property name="minimumSize">
-           <size>
-            <width>100</width>
-            <height>0</height>
-           </size>
-          </property>
-          <property name="maximumSize">
-           <size>
-            <width>100</width>
-            <height>16777215</height>
-           </size>
-          </property>
-          <property name="text">
-           <string>Power 2 @ sample:</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QDoubleSpinBox" name="power_2_doubleSpinBox">
-          <property name="enabled">
-           <bool>true</bool>
-          </property>
-          <property name="suffix">
-           <string> mW</string>
-          </property>
-          <property name="maximum">
-           <double>100.000000000000000</double>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-     </layout>
-    </widget>
-   </widget>
   </widget>
   <widget class="QDockWidget" name="powerDockWidget">
    <property name="minimumSize">
     <size>
      <width>445</width>
-     <height>167</height>
+     <height>178</height>
     </size>
    </property>
    <property name="maximumSize">
@@ -256,11 +127,36 @@
             </widget>
            </item>
            <item>
-            <widget class="QLabel" name="label_Power_1">
-             <property name="text">
-              <string>0 nW</string>
+            <widget class="QDoubleSpinBox" name="power_1_doubleSpinBox">
+             <property name="enabled">
+              <bool>true</bool>
+             </property>
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="suffix">
+              <string> nW</string>
+             </property>
+             <property name="maximum">
+              <double>1000000.000000000000000</double>
              </property>
             </widget>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
            </item>
           </layout>
          </item>
@@ -291,11 +187,36 @@
             </widget>
            </item>
            <item>
-            <widget class="QLabel" name="label_Power_2">
-             <property name="text">
-              <string>0 nW</string>
+            <widget class="QDoubleSpinBox" name="power_2_doubleSpinBox">
+             <property name="enabled">
+              <bool>true</bool>
+             </property>
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="suffix">
+              <string> mW</string>
+             </property>
+             <property name="maximum">
+              <double>100.000000000000000</double>
              </property>
             </widget>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer_2">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
            </item>
           </layout>
          </item>
@@ -303,51 +224,20 @@
        </item>
       </layout>
      </item>
-     <item row="0" column="1">
-      <spacer name="horizontalSpacer">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeType">
-        <enum>QSizePolicy::Minimum</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>20</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-     <item row="1" column="0">
-      <layout class="QHBoxLayout" name="horizontalLayout_8">
-       <item>
-        <widget class="QLabel" name="label_7">
-         <property name="text">
-          <string>Acquisition progress</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QProgressBar" name="progressBar">
-         <property name="maximumSize">
-          <size>
-           <width>170</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="maximum">
-          <number>100</number>
-         </property>
-         <property name="value">
-          <number>0</number>
-         </property>
-         <property name="format">
-          <string>%p%</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="dockWidget">
+   <property name="features">
+    <set>QDockWidget::AllDockWidgetFeatures</set>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>4</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents">
+    <layout class="QGridLayout" name="gridLayout_2">
+     <item row="0" column="0">
+      <widget class="PlotWidget" name="plotWidget"/>
      </item>
     </layout>
    </widget>
@@ -395,65 +285,6 @@
     <string>D</string>
    </property>
   </action>
-  <action name="save_spectrum_Action">
-   <property name="icon">
-    <iconset>
-     <normaloff>C:/Users/YY3/artwork/icons/oxygen/22x22/document-save.png</normaloff>C:/Users/YY3/artwork/icons/oxygen/22x22/document-save.png</iconset>
-   </property>
-   <property name="text">
-    <string>&amp;Save spectrum</string>
-   </property>
-   <property name="toolTip">
-    <string>Save spectrum (Strg+S)</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+S</string>
-   </property>
-  </action>
-  <action name="acquire_background_Action">
-   <property name="text">
-    <string>Acquire Background</string>
-   </property>
-   <property name="iconText">
-    <string>Acquire &amp;Background</string>
-   </property>
-   <property name="toolTip">
-    <string>Acquire Background Spectrum (B)</string>
-   </property>
-   <property name="shortcut">
-    <string>B</string>
-   </property>
-  </action>
-  <action name="correct_background_Action">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset>
-     <normaloff>C:/Users/YY3/artwork/styles/application/qdark/checkbox_unchecked.png</normaloff>
-     <normalon>C:/Users/YY3/artwork/styles/application/qdark/checkbox_checked.png</normalon>C:/Users/YY3/artwork/styles/application/qdark/checkbox_unchecked.png</iconset>
-   </property>
-   <property name="text">
-    <string>&amp;Correct Background</string>
-   </property>
-   <property name="toolTip">
-    <string>Select if the background correction should be appied (C)</string>
-   </property>
-   <property name="shortcut">
-    <string>C</string>
-   </property>
-  </action>
-  <action name="save_background_Action">
-   <property name="text">
-    <string>Save Background</string>
-   </property>
-   <property name="toolTip">
-    <string>Save the background spectrum (Shift+B)</string>
-   </property>
-   <property name="shortcut">
-    <string>Shift+B</string>
-   </property>
-  </action>
   <action name="action_FitSettings">
    <property name="text">
     <string>&amp;Fit settings</string>
@@ -488,6 +319,14 @@
     <string>A</string>
    </property>
   </action>
+  <action name="actionuse_calibration">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>use_calibration</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -501,7 +340,7 @@
   <connection>
    <sender>actionClose</sender>
    <signal>triggered()</signal>
-   <receiver>ScanWindow</receiver>
+   <receiver>PowerWindow</receiver>
    <slot>close()</slot>
    <hints>
     <hint type="sourcelabel">
