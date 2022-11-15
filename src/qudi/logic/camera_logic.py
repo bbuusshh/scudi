@@ -18,6 +18,13 @@ See the GNU Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public License along with qudi.
 If not, see <https://www.gnu.org/licenses/>.
+
+Example config:
+
+    camlogic:
+        module.Class: 'camera_logic.CameraLogic'
+        connect:
+            camera: 'camera'
 """
 
 import datetime
