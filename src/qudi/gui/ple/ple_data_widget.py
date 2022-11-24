@@ -46,7 +46,8 @@ class PLEDataWidget(QtWidgets.QWidget):
 
         main_layout = QtWidgets.QGridLayout()
         self.setLayout(main_layout)
-        self.channel = channel
+        self._channel = channel
+        self.axis = axis
         self.plot_widget = pg.PlotWidget(
             axisItems={'bottom': CustomAxis(orientation='bottom'),
                        'left'  : CustomAxis(orientation='left')}
@@ -89,6 +90,17 @@ class PLEDataWidget(QtWidgets.QWidget):
         # Set data
         self._update_scan_data(update_range=update_range)
     
+    @property
+    def channel(self):
+        return self._channel
+
+    @channel.setter
+    def channel(self, ch):
+        self._channel = ch
+        self.plot_widget.setLabel('left', text=ch.name, units=ch.unit)
+        self.plot_widget.setLabel('bottom', text=self.axis.name.title(), units=self.axis.unit)
+        self._update_scan_data(False)
+
     def set_fit_data(self, frequency, data):
         if data is None:
             self._data_item.clear()
@@ -97,7 +109,7 @@ class PLEDataWidget(QtWidgets.QWidget):
 
     #!! TODO choose CHANNEL
     def _update_scan_data(self, update_range: bool) -> None:
-        current_channel = self.channel.name #or APD events ?? or time tagger #!TODO!
+        current_channel = self._channel.name #or APD events ?? or time tagger #!TODO!
         if (self._scan_data is None) or (self._scan_data.data is None):
             self.data_curve.clear()
         else:
@@ -106,7 +118,7 @@ class PLEDataWidget(QtWidgets.QWidget):
                                      self._scan_data.scan_resolution[0])
                 self.data_curve.setData(y=self._scan_data.data[current_channel], x=x_data)
                 self.selected_region.setRegion(self._scan_data.scan_range[0])
-                self.target_point.setValue(self._scan_data.scan_range[0][0])
+                # self.target_point.setValue(self._scan_data.scan_range[0][0])
             else:
                 self.data_curve.setData(y=self._scan_data.data[current_channel],
                                        x=self.data_curve.xData)
