@@ -48,6 +48,7 @@
     <property name="title">
      <string>Optio&amp;ns</string>
     </property>
+    <addaction name="actionSet_current_as_zero"/>
    </widget>
    <addaction name="menuLaserscan"/>
    <addaction name="menuView"/>
@@ -71,7 +72,7 @@
    <property name="minimumSize">
     <size>
      <width>118</width>
-     <height>146</height>
+     <height>151</height>
     </size>
    </property>
    <property name="maximumSize">
@@ -93,11 +94,23 @@
      </item>
      <item row="0" column="1">
       <widget class="QSlider" name="powerHorizontalSlider">
+       <property name="minimum">
+        <number>0</number>
+       </property>
        <property name="maximum">
         <number>360</number>
        </property>
+       <property name="pageStep">
+        <number>30</number>
+       </property>
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="invertedAppearance">
+        <bool>false</bool>
+       </property>
+       <property name="tickPosition">
+        <enum>QSlider::TicksBelow</enum>
        </property>
       </widget>
      </item>
@@ -173,6 +186,11 @@
    </property>
    <property name="text">
     <string>Background correction</string>
+   </property>
+  </action>
+  <action name="actionSet_current_as_zero">
+   <property name="text">
+    <string>Set current as zero</string>
    </property>
   </action>
  </widget>

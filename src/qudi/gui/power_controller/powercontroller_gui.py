@@ -61,7 +61,7 @@ class PowerControllerGui(GuiBase):
     powercontrollerlogic = Connector(interface='PowerControllerLogic')
     sigRecordSaturation = QtCore.Signal(bool)
     _use_calibration = False
-
+    _slider_max = StatusVar('slider_max', 360)
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -79,14 +79,17 @@ class PowerControllerGui(GuiBase):
         self._mw.setDockNestingEnabled(True)
         
         #Vlad updates
+
+
+        
         self._mw.channel_comboBox.addItems(np.array(self._powercontrollerlogic.channels).astype(str))
         self.sigRecordSaturation.connect(self._powercontrollerlogic.run_saturation)
         # self._powercontrollerlogic.sig_data_updated.connect(self.update_data)
-        
+        self._mw.actionSet_current_as_zero.triggered.connect(self.set_new_zero)
         self._mw.use_calibration_Button.toggled.connect(self.use_calibration)
 
         self._mw.calibrate_Button.clicked.connect(self.calibrate_power)
-        # .setChecked(len(self._powercontrollerlogic.power_calib) > 0)
+        # .setChecked(len(self._powercontrollerlogic.power_calibrationrationration) > 0)
         # self._mw.calibrate_power_1_Action.triggered.connect(self.calibrate_power)
 
         self._mw.powerHorizontalSlider.sliderReleased.connect(self.set_power_slider)
@@ -95,6 +98,9 @@ class PowerControllerGui(GuiBase):
 
         self._save_PNG = True
 
+    def set_slider_max(self, slider_maximum):
+        self._slider_max = slider_maximum
+        self._mw.powerHorizontalSlider.setMaximum(slider_maximum)
 
 
     def on_deactivate(self):
@@ -116,19 +122,21 @@ class PowerControllerGui(GuiBase):
 
     def set_power_slider(self):
         slider_val = float(self._mw.powerHorizontalSlider.value())
-        
-        if self._use_calibration and (len(self._powercontrollerlogic.power_calib) > 0):
-            powers_cal = self._powercontrollerlogic.power_calib[:, 1]
+        motor = int(self._mw.channel_comboBox.currentText())
+        if self._use_calibration and (len(self._powercontrollerlogic.power_calibration[motor]) > 0):
+            powers_cal = self._powercontrollerlogic.power_calibration[motor][:, 1]
             vals = np.linspace(0, 360, powers_cal.shape[0])
             power = powers_cal[np.argmin(np.abs(vals - slider_val))]
           
-            self._powercontrollerlogic.sig_set_power.emit(power, int(self._mw.channel_comboBox.currentText()), True)
-
-            if (power < 1e-3):
+            self._powercontrollerlogic.sig_set_power.emit(power, motor, True)
+            if (power < 1e-6):
+                display_power = np.round(power * 1e9, 2)
+                self._mw.power_doubleSpinBox.setValue(display_power)
+                self._mw.power_doubleSpinBox.setSuffix(" nW")
+            elif (power < 1e-3):
                 display_power = np.round(power * 1e6, 2)
                 self._mw.power_doubleSpinBox.setValue(display_power)
                 self._mw.power_doubleSpinBox.setSuffix(" muW")
-                
             else:
                 display_power = np.round(power * 1e3, 2)
                 self._mw.power_doubleSpinBox.setValue(display_power)
@@ -139,19 +147,24 @@ class PowerControllerGui(GuiBase):
             # power = vals[np.argmin(np.abs(vals - slider_val))]
             self._mw.power_doubleSpinBox.setValue(slider_val)
             self._mw.power_doubleSpinBox.setSuffix(" deg")
-            self._powercontrollerlogic.sig_set_power.emit(slider_val, int(self._mw.channel_comboBox.currentText()), False)
+            self._powercontrollerlogic.sig_set_power.emit(slider_val, motor, False)
 
     def calibrate_power(self, is_checked):
-        if is_checked:
-            print("LEGO")
-            self._mw.calibrate_Button.setChecked(True)
-            self._powercontrollerlogic.stopRequested = False
-            self._powercontrollerlogic.sig_run_calibration.emit(int(self._mw.channel_comboBox.currentText()))
-        else:
-            self._mw.calibrate_Button.setChecked(False)
-            print("Remove calibration?")
-            # self._powercontrollerlogic.stopRequested = True
-   
+
+        # self._mw.calibrate_Button.setChecked(True)
+        self._powercontrollerlogic.stopRequested = False
+        self._powercontrollerlogic.sig_run_calibration.emit(int(self._mw.channel_comboBox.currentText()))
+
+        # self._powercontrollerlogic.stopRequested = True
+    
+    def set_new_zero(self):
+        slider_val = float(self._mw.powerHorizontalSlider.value())
+        motor = int(self._mw.channel_comboBox.currentText())
+        self._powercontrollerlogic._zero_index.update({motor
+            : slider_val
+        })
+        self._mw.powerHorizontalSlider.setValue(0)
+
     def record_saturation(self):
         """ Handle resume of the scanning without resetting the data.
         """

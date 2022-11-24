@@ -48,8 +48,6 @@ class PowerControllerLogic(LogicBase):
             fitlogic: 'fitlogic'
     """
     queryInterval = 1000
-    calibration_factor_1= 1
-    calibration_factor_2= 2
     # declare connectors
     powermeter = Connector(interface='PM100D', optional = True)
     motor_pi3 = Connector(interface='Motordriver')
@@ -65,8 +63,10 @@ class PowerControllerLogic(LogicBase):
     # declare status variables
     _saturation_data = StatusVar('saturation_data', np.empty((2, 0)))
     _saturation_background = StatusVar('saturation_background', np.empty((2, 0)))
-    _background_correction = StatusVar('background_correction', False)
-    _power_calib = StatusVar('_power_calibration', np.array([]))
+    _background_correction = StatusVar('background_correction', default = False)
+    _power_calibration = StatusVar('power_calibration', default = dict())
+    _power_range = StatusVar('power_range', default = dict())
+    _rotation_direction = StatusVar('rotation_direction', default = dict())
     fc = StatusVar('fits', None)
     plot_domain = (0, 10000)
     # Internal signals
@@ -74,14 +74,14 @@ class PowerControllerLogic(LogicBase):
     sig_run_calibration = QtCore.Signal(int)
     sig_next_diff_loop = QtCore.Signal()
     sig_set_power = QtCore.Signal(float, int, bool)
-    channels = []
+    
 
     def __init__(self, **kwargs):
         """ Create SpectrometerLogic object with connectors.
           @param dict kwargs: optional parameters
         """
         super().__init__(**kwargs)
-        # self._power_calib = np.array([])
+        
         self.stopRequested = False
         # locking for thread safety
         self.threadlock = Mutex()
@@ -95,10 +95,13 @@ class PowerControllerLogic(LogicBase):
             self._powermeter = self.powermeter()
         self._motor_pi3 = self.motor_pi3()
         self.channels = self._motor_pi3._active_motor_numbers
-        self._counter = self.counter()
-        self.power_calib = self._power_calib
-        self.current_power_1 = 0
-        self.current_power_2 = 0
+        self._rotation_direction.update({ch : 1 for ch in self.channels if ch not in self._rotation_direction.keys()})
+        # self._counter = self.counter()
+
+        self._power_calibration.update({ch : np.array([]) for ch in self.channels if ch not in self._power_calibration.keys()})
+        self.power_calibration = self._power_calibration
+        
+        
         self.sig_data_updated.emit()
         self.sig_run_calibration.connect(self.calibrate_power_wheel)
         self.sig_set_power.connect(self.set_power, QtCore.Qt.QueuedConnection)
@@ -117,7 +120,7 @@ class PowerControllerLogic(LogicBase):
     #         self.current_power_2 = self._powermeter.get_power() * self.calibration_factor_2
         
     #         self.sig_data_updated.emit()
-        
+    
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -139,14 +142,13 @@ class PowerControllerLogic(LogicBase):
         self._motor_pi3.stopAllMovements()
         self._motor_pi3.zeroMotor(motor=motor)
         # delay(10000)
-        self._motor_pi3.moveToAbsolutePosition(motor = motor, pos = 0)
         delay(5000)
         print("Zeroed")
        
         powers = []
         angles = np.linspace(0, 360, self.calibration_resolution).astype(int)
         for angle in angles:
-            self._motor_pi3.moveToAbsolutePosition(motor = motor, pos = angle)
+            self._motor_pi3.moveRelative(motor = motor, pos = angle  )
             delay(1000)
             pw = self._powermeter.get_power()
             pw = (self._powermeter.get_power() + pw)/2
@@ -157,40 +159,40 @@ class PowerControllerLogic(LogicBase):
                 self._motor_pi3.stopAllMovements()
                 self.stopRequested = False
                 return
-        delay(1000)
-        self._motor_pi3.moveToAbsolutePosition(motor=motor, pos = 0)
-        power_calib = np.vstack((angles, np.array(powers))).T
-        self.power_calib = power_calib[np.argsort(power_calib[:,1])]
-        # self._power_range = (min(self._power_calib[:,1]), max(self._power_calib[:,1]))
+        delay(3000)
+        self._motor_pi3.zeroMotor(motor=motor)
+        calib = np.vstack((angles, np.array(powers))).T
+        self.power_calibration[motor] = np.roll(calib, np.argmax(calib[:,1]) - len(calib))
+        # self._power_range = (min(self._power_calibration[:,1]), max(self._power_calibration[:,1]))
 
         # self._motor_pi3.stopAllMovements()
     
     @property
-    def power_calib(self):
-        return self._power_calib
+    def power_calibration(self):
+        return self._power_calibration
     
-    @power_calib.setter
-    def power_calib(self, calibration):
-        self._power_calib = calibration
-        print("New power range")
-        self._power_range = (min(calibration[:,1]), max(calibration[:,1]))
+    @power_calibration.setter
+    def power_calibration(self, calibration):
+        self._power_calibration = calibration
+        self._power_range.update({motor: (min(calibration[motor][:,1]), max(calibration[motor][:,1])) for motor in calibration.keys() if len(calibration[motor]) > 0})
         
-
+        print("range", self._power_range, calibration)
+        
     @QtCore.Slot(float, int, bool)
     def set_power(self, power, motor, calibrated):
-      
+        current_position = self._motor_pi3.getPosition(motor=motor)
         if bool(calibrated) == True:
-            if (power > self._power_range[1]) or (power < self._power_range[0]):
+            if (power > self._power_range[motor][1]) or (power < self._power_range[motor][0]):
                 print("Power out of calibrated range")
                 return -1
-            new_angle = self._power_calib[:, 0][np.argmin(np.abs(self._power_calib[:, 1] - power))]
+            new_angle = self.power_calibration[motor][:, 0][np.argmin(np.abs(self.power_calibration[motor][:, 1] - power))]
             
-            self._motor_pi3.moveToAbsolutePosition(motor = motor, pos = new_angle)
+            self._motor_pi3.moveRelative(motor = motor, pos = new_angle - current_position )
             delay(5000)
             return 
         else:
             new_angle = power
-            self._motor_pi3.moveToAbsolutePosition(motor = motor, pos = new_angle)
+            self._motor_pi3.moveRelative(motor = motor, pos = new_angle - current_position )
             delay(3000)
        
 
@@ -203,13 +205,13 @@ class PowerControllerLogic(LogicBase):
         self._motor_pi3.stopAllMovements()
         self._motor_pi3.zeroMotor(motor=motor)
         # delay(10000)
-        self._motor_pi3.moveToAbsolutePosition(motor = motor, pos = 0)
+        #self._motor_pi3.moveToAbsolutePosition(motor = motor, pos = self._rotation_direction[motor])
         delay(5000)
         print("Zeroed")
        
         counts = []
-        for angle in np.sort(self._power_calib[:, 0]):
-            self._motor_pi3.moveToAbsolutePosition(motor = motor, pos = angle)
+        for angle in np.sort(self.power_calibration[motor][:, 0]):
+            self._motor_pi3.moveRelative(motor = motor, pos = angle  )
             delay(2000)
             count = self._counter.get_counter()
             counts.append(count)
@@ -219,9 +221,9 @@ class PowerControllerLogic(LogicBase):
                 self.stopRequested = False
                 return
         delay(2000)
-        self._motor_pi3.moveToAbsolutePosition(motor=motor, pos = 0)
-
-        self._saturation_data = np.vstack(( self._power_calib[:, 1], np.array(counts))).T
+        self._motor_pi3.zeroMotor(motor=motor)
+        delay(3000)
+        self._saturation_data = np.vstack(( self.power_calibration[motor][:, 1], np.array(counts))).T
         self.sig_data_updated.emit()
 
     def _calculate_corrected_spectrum(self):

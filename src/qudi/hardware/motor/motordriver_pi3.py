@@ -38,6 +38,7 @@ class Motordriver(Base):
     CCW = "CCW"
     STOP = "STOP"
 
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.ser = serial.Serial(
@@ -262,22 +263,23 @@ class Motordriver(Base):
             return
 
         if self.__checkMotor(motor):
-            cmd = "SETZEROPOS " + str(motor) + " " + str(position)
+            cmd = "SETOPTZEROPOS " + str(motor) + " " + str(position)
             self.__sendCommand(cmd)
         return
 
 
 # --------------------------------------------------------------------------
 
-    def setOpticalZeroPosition2(self, motor = 0, position = 0):
-        if not isinstance(position, int):
-            print("optical zero position must be given in steps, integer.")
-            return
+    #def setOpticalZeroPosition2(self, motor = 0, position = 0):
+    #    if not isinstance(position, int):
+    #        print("optical zero position must be given in steps, integer.")
+    #        return#
+    #
 
-        if self.__checkMotor(motor):
-            cmd = "SETOPTZEROPOS " + str(motor) + " " + str(position)
-            self.__sendCommand(cmd)
-        return
+    #   if self.__checkMotor(motor):
+    #        cmd = "SETOPTZEROPOS " + str(motor) + " " + str(position)
+    #       self.__sendCommand(cmd)
+    #    return
 
     # --------------------------------------------------------------------------
     def getGearRatio(self, motor = 0):
