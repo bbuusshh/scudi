@@ -31,12 +31,12 @@ from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
 from qudi.interface.scanning_probe_interface import ScanData
 from qudi.core.module import GuiBase
-from qudi.logic.scanning.optimize_logic import OptimizerScanSequence
+from qudi.logic.ple.optimize_logic import OptimizerScanSequence
 from qudi.util.widgets.fitting import FitConfigurationDialog
 from .fit_dockwidget import PleFitDockWidget
 from qudi.gui.ple.ple_ui_window import PLEScanMainWindow
 from qudi.util.widgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
-from qudi.gui.scanning.optimizer_setting_dialog import OptimizerSettingDialog
+from qudi.gui.ple.optimizer_setting_dialog import OptimizerSettingDialog
 from qudi.gui.ple.optimizer_dockwidget import OptimizerDockWidget
 
 
