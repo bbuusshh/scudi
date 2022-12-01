@@ -79,13 +79,13 @@ class MicrowaveSmbv(MicrowaveInterface):
         self._command_wait('*RST')
 
         # Generate constraints
-        if self.model == 'SMB100A':
-            freq_limits = (9e3, 3.2e9)
+        if self._model == 'SMB100A':
+            freq_limits = (100e3, 12.75e9)
         else:
             freq_limits = (9e3, 6e9)
             self.log.warning('Model string unknown, hardware limits may be wrong.')
         self._constraints = MicrowaveConstraints(
-            power_limits=(-145, 30 if self._max_power is None else max(-145, self._max_power)),
+            power_limits=(-20, 0 if self._max_power is None else max(-145, self._max_power)),
             frequency_limits=freq_limits,
             scan_size_limits=(2, 10001),
             sample_rate_limits=(0.1, 100),  # FIXME: Look up the proper specs for sample rate
@@ -241,7 +241,7 @@ class MicrowaveSmbv(MicrowaveInterface):
             self._scan_sample_rate = sample_rate
             self._scan_power = power
             self._scan_frequencies = np.asarray(frequencies, dtype=np.float64)
-            self._write_list()
+            self._write_sweep()     
             self._set_trigger_edge()
 
     def off(self):
@@ -308,7 +308,7 @@ class MicrowaveSmbv(MicrowaveInterface):
         with self._thread_lock:
             if self.module_state() == 'idle':
                 return
-            if self._in_cw_mode:
+            if self._in_cw_mode():
                 raise RuntimeError('Can not reset frequency scan. CW microwave output active.')
 
             self._command_wait(':ABOR:SWE')

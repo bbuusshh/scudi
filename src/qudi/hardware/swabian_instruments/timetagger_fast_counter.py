@@ -21,7 +21,7 @@ If not, see <https://www.gnu.org/licenses/>.
 """
 
 import numpy as np
-#import TimeTagger as tt
+import TimeTagger as tt
 
 from qudi.interface.fast_counter_interface import FastCounterInterface
 from qudi.core.configoption import ConfigOption
@@ -145,21 +145,20 @@ class TimeTaggerFastCounter(FastCounterInterface):
                     number_of_gates: the number of gated, which are accepted
         """
         self._number_of_gates = number_of_gates
-        #self._bin_width = bin_width_s * 1e9
-        #self._record_length = 1 + int(record_length_s / bin_width_s)
+        self._bin_width = bin_width_s * 1e9
+        self._record_length = 1 + int(record_length_s / bin_width_s)
         self.statusvar = 1
         bin_width = int(bin_width_s*1e12)
         n_values = int(record_length_s*1e12/bin_width)
-        self.pulsed = self._tagger.counter(channels = [self._channel_apd], bin_width=bin_width, n_values=n_values)
-        #self.pulsed = self._tagger.time_differences(
-        #    click_channel=self._channel_apd,
-        #    start_channel=self._channel_detect,
-        #    next_channel=self._channel_detect,
-        #    #sync_channel=tt.CHANNEL_UNUSED,
-        #    binwidth=int(np.round(self._bin_width * 1000)),
-        #    n_bins=int(self._record_length),
-        #    n_histograms=number_of_gates
-        #)
+        # self.pulsed = self._tagger.counter(channels = [self._channel_apd], bin_width=bin_width, n_values=n_values)
+        self.pulsed = self._tagger.time_differences(
+           click_channel=self._channel_apd,
+           start_channel=self._channel_detect,
+           next_channel=self._channel_detect,
+           binwidth=int(np.round(self._bin_width * 1000)),
+           n_bins=int(self._record_length),
+           n_histograms=number_of_gates
+        )
         self.pulsed.stop()
 
         return bin_width_s, record_length_s, number_of_gates

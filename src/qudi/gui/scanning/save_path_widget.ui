@@ -7,8 +7,11 @@
     <x>0</x>
     <y>0</y>
     <width>436</width>
-    <height>123</height>
+    <height>127</height>
    </rect>
+  </property>
+  <property name="features">
+   <set>QDockWidget::DockWidgetMovable</set>
   </property>
   <property name="windowTitle">
    <string>Save</string>
@@ -89,14 +92,14 @@
           </widget>
          </item>
          <item>
-          <widget class="QCheckBox" name="DailyPathCheckBox">
+          <widget class="QPushButton" name="DailyPathPushButton">
            <property name="text">
             <string>Daily Path</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QCheckBox" name="newPathCheckBox">
+          <widget class="QPushButton" name="newPathPushButton">
            <property name="text">
             <string>New Path</string>
            </property>

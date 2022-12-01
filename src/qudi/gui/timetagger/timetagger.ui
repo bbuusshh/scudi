@@ -65,6 +65,9 @@
      <height>95</height>
     </size>
    </property>
+   <property name="features">
+    <set>QDockWidget::NoDockWidgetFeatures</set>
+   </property>
    <property name="allowedAreas">
     <set>Qt::BottomDockWidgetArea</set>
    </property>
@@ -147,35 +150,35 @@
         </widget>
        </item>
        <item>
-        <widget class="QCheckBox" name="DailyPathCheckBox">
+        <widget class="QPushButton" name="DailyPathPushButton">
          <property name="text">
           <string>Daily Path</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QCheckBox" name="newPathCheckBox">
+        <widget class="QPushButton" name="newPathPushButton">
          <property name="text">
           <string>New Path</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QRadioButton" name="radioButton_3">
+        <widget class="QCheckBox" name="checkBox_3">
          <property name="text">
           <string>Counter</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QRadioButton" name="radioButton">
+        <widget class="QCheckBox" name="checkBox">
          <property name="text">
           <string>Autcorrelation</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QRadioButton" name="radioButton_2">
+        <widget class="QCheckBox" name="checkBox_2">
          <property name="text">
           <string>Histogram</string>
          </property>
