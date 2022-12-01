@@ -40,6 +40,9 @@ from qudi.gui.wavemeter.wavelogger_mw import WavemeterMainWindow
 class WavemeterLogGui(GuiBase):
     """
     This GUI is for PLE measurements, reading out a wavemeter
+
+    Todo: Example config for copy-paste:
+
     """
     # declare connectors
     wavemeterloggerlogic = Connector(interface='WavemeterLoggerLogic')

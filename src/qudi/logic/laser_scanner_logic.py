@@ -36,8 +36,12 @@ from qudi.core.statusvariable import StatusVar
 
 class LaserScannerLogic(LogicBase):
 
-    """This logic module controls scans of DC voltage on the fourth analog
+    """
+    This logic module controls scans of DC voltage on the fourth analog
     output channel of the NI Card.  It collects countrate as a function of voltage.
+
+    Todo: Example config for copy-paste:
+
     """
 
     sig_data_updated = QtCore.Signal()

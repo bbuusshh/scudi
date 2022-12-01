@@ -17,6 +17,14 @@ See the GNU Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public License along with qudi.
 If not, see <https://www.gnu.org/licenses/>.
+
+
+Example config:
+
+    cameragui:
+        module.Class: 'camera.cameragui.CameraGui'
+        connect:
+            camera_logic: 'camlogic'
 """
 
 import os
@@ -76,7 +84,11 @@ class CameraMainWindow(QtWidgets.QMainWindow):
 
 
 class CameraGui(GuiBase):
-    """ Main spectrometer camera class.
+    """
+    Main spectrometer camera class.
+
+    Todo: Example config for copy-paste:
+
     """
 
     _camera_logic = Connector(name='camera_logic', interface='CameraLogic')
@@ -205,4 +217,3 @@ class CameraGui(GuiBase):
         else:
             self.log.error('No Data acquired. Nothing to save.')
         return
-
