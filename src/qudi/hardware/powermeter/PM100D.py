@@ -27,7 +27,7 @@ except ImportError:
 from qudi.core.module import Base
 from qudi.core.configoption import ConfigOption
 
-from qudi.interface.process_control_interface import ProcessValueInterface
+from qudi.interface.process_control_interface import ProcessValueInterface, ProcessControlConstraints
 
 try:
     from ThorlabsPM100 import ThorlabsPM100
@@ -61,13 +61,14 @@ class PM100D(ProcessValueInterface):
     
     _process_value_channels = ConfigOption(
         name='process_value_channels',
-        default={'Power': {'unit': 'W', 'limits': (0, 0.5), 'dtype': float}}
+        default={'Power': {'unit': 'W', 'limits': (0, 0.5)}}
     )
 
     _address = ConfigOption('address', missing='error')
     _timeout = ConfigOption('timeout', 1)
     _power_meter = None
     __constraints = None
+    _active = False
     
     def on_activate(self):
         """ Startup the module """
@@ -75,20 +76,22 @@ class PM100D(ProcessValueInterface):
         rm = visa.ResourceManager()
         try:
             self._inst = rm.open_resource(self._address, timeout=self._timeout)
+            
         except:
             self.log.error('Could not connect to hardware. Please check the wires and the address.')
-
+        
         self._power_meter = ThorlabsPM100(inst=self._inst)
+        
         
         units = {ch: d['unit'] for ch, d in self._process_value_channels.items() if 'unit' in d}
         limits = {ch: d['limits'] for ch, d in self._process_value_channels.items() if 'limits' in d}
-        dtypes = {ch: d['dtype'] for ch, d in self._process_value_channels.items() if 'dtype' in d}
+        # dtypes = {ch: d['dtype'] for ch, d in self._process_value_channels.items() if 'dtype' in d}
         self.__constraints = ProcessControlConstraints(
             setpoint_channels=None,
             process_channels=tuple(self._process_value_channels),
             units=units,
             limits=limits,
-            dtypes=dtypes
+            # dtypes=dtypes
         )
 
     def on_deactivate(self):
@@ -102,7 +105,8 @@ class PM100D(ProcessValueInterface):
 
         @return bool: Activity state (active: True, inactive: False)
         """
-        return activity
+        
+        return self._active
    
     @is_active.setter
     def is_active(self, active):
@@ -110,8 +114,14 @@ class PM100D(ProcessValueInterface):
 
         @param bool active: Activity state to set (active: True, inactive: False)
         """
-        activity = active
+        self._active = active
         pass   
+    
+    def set_activity_state(self, active: bool) -> None:
+        """ Set activity state. State is bool type and refers to active (True) and inactive (False).
+        """
+        pass
+
 
     @property    
     def process_values(self):
@@ -128,7 +138,7 @@ class PM100D(ProcessValueInterface):
 
         @return ProcessControlConstraints: Hardware constraints
         """
-        return __constraints
+        return self.__constraints
 
     def get_power(self):
         """ Return the power read from the ThorlabsPM100 package """

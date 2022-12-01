@@ -62,8 +62,6 @@ class HighFinesseWavemeterClient(WavemeterInterface):
             #get wavelength
             self.wlm_time = np.vstack((self.wlm_time, response))
             return response[0]
-        elif flag == 'd':
-            return response
         elif flag == 'k':
             if action != None:
                 self.tcp_client.sendall(action.encode())
@@ -125,7 +123,7 @@ class HighFinesseWavemeterClient(WavemeterInterface):
         #   if kind == "freq":
         #        return self.wavelength_to_freq(self.wavelengths[-1]) if len(self.wavelengths) > 0 else -1
         #    else:
-        return self.send_request("get_wavelength")#1e12 * self.wavelengths[-1] if len(self.wavelengths) > 0 else -1
+        return self.send_request("get_wavelength") #1e12 * self.wavelengths[-1] if len(self.wavelengths) > 0 else -1
 
     def get_current_wavelength2(self, kind="air"):
         """ This method returns the current wavelength of the second input channel.
@@ -159,3 +157,6 @@ class HighFinesseWavemeterClient(WavemeterInterface):
         aa = 299792458.0 * 1e9 * np.ones(wavelength.shape[0])
         freqs = np.divide(aa, wavelength, out=np.zeros_like(aa), where=wavelength!=0)
         return freqs
+
+    def empty_buffer(self):
+        return self.send_request("empty_buffer")

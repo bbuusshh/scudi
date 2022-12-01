@@ -613,8 +613,13 @@ class PoiManagerGui(GuiBase):
         if button.button() != QtCore.Qt.MouseButton.LeftButton:
             return
         # Z position from ROI origin, X and Y positions from click event
+        # Getting Z from ROI origin is wrong. The ROI origin is initialized as [0,0,0].
+        # Therefore, the pois would have a z coordinate of 0 eventhoough you might be somewhere else.
+        # Fix: we send None as z and check in the logic what the scanner position in z is and take that one
+        # (similar to adding a poi from the scanner posi).
         new_pos = self._poi_manager_logic().roi_origin
         new_pos[0], new_pos[1] = (pos[0], pos[1])
+        new_pos[2] = 99999999999 # I would like to have put None but qudi wants a number
         self.sigAddPoiByClick.emit(new_pos)
         return
 

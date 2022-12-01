@@ -18,6 +18,11 @@ try:
 except NameError:
     import qudi.gui.wavemeter.countlog_widget as countlog_widget
 
+try:
+    importlib.reload(matrix_countlog_widget)
+except NameError:
+    import qudi.gui.wavemeter.matrix_countlog_widget as matrix_countlog_widget
+
 
 
 class WavemeterMainWindow(QtWidgets.QMainWindow):
@@ -41,7 +46,8 @@ class WavemeterMainWindow(QtWidgets.QMainWindow):
         self.countlog_widget = countlog_widget.CountlogDataWidget()
         self.counts_log_dockWidget.setWidget(self.countlog_widget)
 
-
+        self.matrix_countlog_widget = matrix_countlog_widget.MatrixCountlogDataWidget()
+        self.matrix_counts_log_dockWidget.setWidget(self.matrix_countlog_widget)
 
 
     def restore_view(self):

@@ -7,9 +7,11 @@ from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.module import LogicBase
 from qudi.util.mutex import Mutex
+import traceback
 from qtpy import QtCore
 from qudi.util.datastorage import TextDataStorage, ImageFormat
 from qudi.util.units import ScaledFloat
+from qudi.util.datafitting import FitContainer, FitConfigurationsModel
 class TimeTaggerLogic(LogicBase):
     """ Logic module agreggating multiple hardware switches.
     """
@@ -25,13 +27,25 @@ class TimeTaggerLogic(LogicBase):
     sigNewMeasurement = QtCore.Signal()
     sigHistRefresh = QtCore.Signal(float)
     sigUpdateGuiParams=QtCore.Signal()
+
+    sig_fit_updated = QtCore.Signal(str, object)
+    _default_fit_configs = (
+        {'name'             : 'g2',
+        'model'            : 'Autocorrelation',
+        'estimator'        : 'Dip',
+        'custom_parameters': None},
+    )
+
     def __init__(self, **kwargs):
         """ Create CwaveScannerLogic object with connectors.
 
           @param dict kwargs: optional parameters
         """
         super().__init__(**kwargs)
-
+        self._fit_config_model = None
+        self._fit_container = None
+        self._fit_results = None
+        self._fit_method = ''
         # locking for thread safety
         self.threadlock = Mutex()
         self.stopRequested = False
@@ -43,6 +57,10 @@ class TimeTaggerLogic(LogicBase):
         self._constraints = self._timetagger._constraints
         self.stopRequested = False
 
+        self._fit_config_model = FitConfigurationsModel(parent=self)
+        self._fit_config_model.load_configs(self._default_fit_configs)
+        self._fit_container = FitContainer(parent=self, config_model=self._fit_config_model)
+
         self._counter_poll_timer = QtCore.QTimer()
         self._counter_poll_timer.setSingleShot(False)
         self._counter_poll_timer.timeout.connect(self.acquire_data_block, QtCore.Qt.QueuedConnection)
@@ -52,7 +70,7 @@ class TimeTaggerLogic(LogicBase):
         self._corr_poll_timer.setSingleShot(False)
         self._corr_poll_timer.timeout.connect(self.acquire_corr_block, QtCore.Qt.QueuedConnection)
         self._corr_poll_timer.setInterval(50)
-
+        
         self._hist_poll_timer = QtCore.QTimer()
         self._hist_poll_timer.setSingleShot(False)
         self._hist_poll_timer.timeout.connect(self.acquire_hist_block, QtCore.Qt.QueuedConnection)
@@ -72,6 +90,7 @@ class TimeTaggerLogic(LogicBase):
         self.metadata = {'counter':None, 'hist':None, 'corr':None}
     
     def on_deactivate(self):
+        self._fit_config = self._fit_config_model.dump_configs()
         pass
     
     def configure_counter(self, data):
@@ -271,3 +290,52 @@ class TimeTaggerLogic(LogicBase):
         ax.set_xlabel('Time (s)')
         ax.set_ylabel('Signal ({0}{1})'.format(max_abs_value.scale, y_unit))
         return fig
+    
+    ################
+    # Fitting things
+
+    @property
+    def fit_config_model(self):
+        return self._fit_config_model
+
+    @property
+    def fit_container(self):
+        return self._fit_container
+
+    def do_fit(self, fit_method):
+        print("hey", fit_method)
+        if fit_method == 'No Fit':
+            print("NOFIT")
+            self.sig_fit_updated.emit('No Fit', None)
+            return 'No Fit', None
+
+        # self.fit_region = self._fit_region
+        if self.corr_data is None:
+            print("NO data")
+            self.log.error('No data to fit.')
+            self.sig_fit_updated.emit('No Fit', None)
+            return 'No Fit', None
+
+        
+
+        print("Yo")
+        x_data = self.corr_data[0]#[start:end]
+        y_data = self.corr_data[1]#[start:end]
+        print("HELLO", x_data, y_data)
+        try:
+            self._fit_method, self._fit_results = self._fit_container.fit_data(fit_method, x_data, y_data)
+        except:
+            self.log.exception(f'Data fitting failed:\n{traceback.format_exc()}')
+            self.sig_fit_updated.emit('No Fit', None)
+            return 'No Fit', None
+
+        self.sig_fit_updated.emit(self._fit_method, self._fit_results)
+        return self._fit_method, self._fit_results
+
+    @property
+    def fit_results(self):
+        return self._fit_results
+
+    @property
+    def fit_method(self):
+        return self._fit_method

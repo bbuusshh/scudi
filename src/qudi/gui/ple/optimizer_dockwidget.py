@@ -36,7 +36,7 @@ class OptimizerDockWidget(QtWidgets.QDockWidget):
     """
     """
 
-    def __init__(self, axes, sequence, *args, **kwargs):
+    def __init__(self, axes, plot_dims, sequence, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setWindowTitle('Optimizer')
         self.setObjectName('optimizer_dockWidget')
@@ -44,17 +44,12 @@ class OptimizerDockWidget(QtWidgets.QDockWidget):
         self._last_optimal_pos = {}
         self._last_optimal_sigma = {}
         self._scanner_sequence = sequence
-        
+        self._plot_widgets = []
 
         self.pos_ax_label = QtWidgets.QLabel(f'({", ".join(axes)}):')
         self.pos_ax_label.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
         self.result_label = QtWidgets.QLabel(f'({", ".join(["?"]*len(axes))}):')
         self.result_label.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
-        optimizer_plot_dims = [len(i) for i in sequence]
-        self.layout_the_plot(optimizer_plot_dims)
-
-    def layout_the_plot(self, plot_dims):
-        self._plot_widgets = []
         label_layout = QtWidgets.QHBoxLayout()
         label_layout.addWidget(self.pos_ax_label)
         label_layout.addWidget(self.result_label)
@@ -68,7 +63,7 @@ class OptimizerDockWidget(QtWidgets.QDockWidget):
                                        symbol='o',
                                        symbolPen=QudiPalette.c1,
                                        symbolBrush=QudiPalette.c1,
-                                       symbolSize=7)
+                                       symbolSize=4)
                 fit_plot_item = XYPlotItem(pen=mkPen(QudiPalette.c2))
                 plot1d_widget = DataSelectionPlotWidget()
                 plot1d_widget.set_selection_mutable(False)
@@ -107,10 +102,6 @@ class OptimizerDockWidget(QtWidgets.QDockWidget):
 
     @scan_sequence.setter
     def scan_sequence(self, sequence):
-        
-        optimizer_plot_dims = [len(i) for i in sequence]
-        self.layout_the_plot(optimizer_plot_dims)
-
         self._scanner_sequence = sequence
 
     def _get_all_widgets_part(self, part='widget', dim=None):
@@ -219,7 +210,7 @@ class OptimizerDockWidget(QtWidgets.QDockWidget):
                     out_str += f"{key}, "
                 else:
                     if val:
-                        out_str += f"{val*1e6:.3f}, "
+                        out_str += f"{val:.3f}, "
                     else:
                         out_str += "?, "
 

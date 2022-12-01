@@ -90,7 +90,7 @@ class CountlogDataWidget(QtWidgets.QWidget):
         else:
             self._data_item.setData(y=data, x=frequency)
 
-    def _update_scan_data(self, data, update_range: bool) -> None:
+    def _update_scan_data(self, data, update_range = False) -> None:
         if data is None:
             self.data_curve.clear()
         else:
