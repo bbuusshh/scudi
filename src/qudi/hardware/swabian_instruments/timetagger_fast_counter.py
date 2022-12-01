@@ -21,7 +21,7 @@ If not, see <https://www.gnu.org/licenses/>.
 """
 
 import numpy as np
-import TimeTagger as tt
+#import TimeTagger as tt
 
 from qudi.interface.fast_counter_interface import FastCounterInterface
 from qudi.core.configoption import ConfigOption
@@ -145,8 +145,8 @@ class TimeTaggerFastCounter(FastCounterInterface):
                     number_of_gates: the number of gated, which are accepted
         """
         self._number_of_gates = number_of_gates
-        self._bin_width = bin_width_s * 1e9
-        self._record_length = 1 + int(record_length_s / bin_width_s)
+        #self._bin_width = bin_width_s * 1e9
+        #self._record_length = 1 + int(record_length_s / bin_width_s)
         self.statusvar = 1
         bin_width = int(bin_width_s*1e12)
         n_values = int(record_length_s*1e12/bin_width)
