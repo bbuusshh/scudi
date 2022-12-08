@@ -118,6 +118,10 @@ class HighFinesseWavemeter(WavemeterInterface):
         self._current_wavelength = 0.0
         self._current_wavelength2 = 0.0
 
+        self.reference_course_center = None
+        self.wavelengths = []
+        self.reference_course_amplitude = None
+
 
     def on_activate(self):
         #############################################
@@ -209,12 +213,12 @@ class HighFinesseWavemeter(WavemeterInterface):
         """
         string_buffer = ctypes.create_string_buffer(1024)
         xp = ctypes.cast(string_buffer, ctypes.POINTER(ctypes.c_char))
-        self.dll.GetPIDCourseNum.restype = ctypes.c_long
-        self.dll.GetPIDCourseNum.argtypes = [ctypes.c_long, xp]
-        self.dll.GetPIDCourseNum(channel, string_buffer)
+        self._wavemeterdll.GetPIDCourseNum.restype = ctypes.c_long
+        self._wavemeterdll.GetPIDCourseNum.argtypes = [ctypes.c_long, xp]
+        self._wavemeterdll.GetPIDCourseNum(channel, string_buffer)
         return string_buffer.value
 
-    def set_reference_course(self,function:str, channel = 1):
+    def set_reference_course(self, function:str, channel = 1):
         """
         Arguments: the string corresponing to the reference set on the WLM.
         For example, constant reference: '619.1234'
@@ -237,10 +241,10 @@ class HighFinesseWavemeter(WavemeterInterface):
         else:
             string_buffer = ctypes.create_string_buffer(1024)
             xp = ctypes.cast(string_buffer, ctypes.POINTER(ctypes.c_char))
-            self.dll.SetPIDCourseNum.restype = ctypes.c_long
-            self.dll.SetPIDCourseNum.argtypes = [ctypes.c_long, xp]
+            self._wavemeterdll.SetPIDCourseNum.restype = ctypes.c_long
+            self._wavemeterdll.SetPIDCourseNum.argtypes = [ctypes.c_long, xp]
             string_buffer.value = "{}".format(function).encode()
-            self.dll.SetPIDCourseNum(channel, string_buffer)
+            self._wavemeterdll.SetPIDCourseNum(channel, string_buffer)
         #!TODO split function into center_wavelength , scanning function.!
         
             
