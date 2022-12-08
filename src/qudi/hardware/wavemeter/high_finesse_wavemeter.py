@@ -200,7 +200,50 @@ class HighFinesseWavemeter(WavemeterInterface):
         """
         self._current_wavelength = wavelength1
         self._current_wavelength2 = wavelength2
+    def get_reference_course(self, channel = 1) -> str:
+        """
+        Arguments: channel
+        Returns: the string corresponing to the reference set on the WLM.
+        For example, constant reference: '619.1234'
+        Or a sawtooth with a center at '619.1234 + 0.001 * sawtooth(t/10)'
+        """
+        string_buffer = ctypes.create_string_buffer(1024)
+        xp = ctypes.cast(string_buffer, ctypes.POINTER(ctypes.c_char))
+        self.dll.GetPIDCourseNum.restype = ctypes.c_long
+        self.dll.GetPIDCourseNum.argtypes = [ctypes.c_long, xp]
+        self.dll.GetPIDCourseNum(channel, string_buffer)
+        return string_buffer.value
 
+    def set_reference_course(self,function:str, channel = 1):
+        """
+        Arguments: the string corresponing to the reference set on the WLM.
+        For example, constant reference: '619.1234'
+        Or a sawtooth with a center at '619.1234 + 0.001 * sawtooth(t/10)'
+        Returns: None
+        """ 
+        if '+' and '*' in function:
+            if function.index('+') < function.index('*'):
+                center_wavelength,  scan_params= function.split('+', 1)
+                scan_amplitude, scan_function = scan_params.split('*', 1)
+                self.reference_course_center = float(center_wavelength)
+                self.reference_course_amplitude = float(scan_amplitude)
+            else:
+                raise Exception("Center wavelength should go before scan parameters.\nPlease, comply to the format: c_lambda + amplitude * func (t / scan_speed)")
+        else:
+            self.reference_course_center = float(function)
+            self.reference_course_amplitude = None
+        if self.reference_course_center < 0:
+            raise Exception("No signal at the wavelengthmeter!")
+        else:
+            string_buffer = ctypes.create_string_buffer(1024)
+            xp = ctypes.cast(string_buffer, ctypes.POINTER(ctypes.c_char))
+            self.dll.SetPIDCourseNum.restype = ctypes.c_long
+            self.dll.SetPIDCourseNum.argtypes = [ctypes.c_long, xp]
+            string_buffer.value = "{}".format(function).encode()
+            self.dll.SetPIDCourseNum(channel, string_buffer)
+        #!TODO split function into center_wavelength , scanning function.!
+        
+            
     def start_acquisition(self):
         """ Method to start the wavemeter software.
 
@@ -290,4 +333,3 @@ class HighFinesseWavemeter(WavemeterInterface):
         """
         self._measurement_timing=float(timing)
         return 0
-
