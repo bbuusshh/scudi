@@ -150,14 +150,19 @@ class PLEScanGui(GuiBase):
 
         self._mw.action_optimize_position.triggered[bool].connect(self.toggle_optimize, QtCore.Qt.QueuedConnection)
         #self._mw.ple_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing)
-        self._mw.ple_widget.selected_region.sigRegionChanged.connect(self.sliders_values_are_changing)
+        # self._mw.ple_widget.selected_region.sigRegionChanged.connect(self.sliders_values_are_changing)
+        # self._mw.ple_averaged_widget.selected_region.sigRegionChanged.connect(self.sliders_values_are_changing_averaged_data)
         self._optimize_logic().sigOptimizeStateChanged.connect(
             self.optimize_state_updated, QtCore.Qt.QueuedConnection
         )
-        self._mw.ple_widget.target_point.sigPositionChanged.connect(self.set_scanner_target_position)
+        self._mw.ple_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing) #set_scanner_target_position
         self._mw.ple_widget.selected_region.sigRegionChangeFinished.connect(self.region_value_changed) 
 
+        self._mw.ple_averaged_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing_averaged_data)
+        self._mw.ple_averaged_widget.selected_region.sigRegionChangeFinished.connect(self.region_value_changed_averaged_data) 
 
+        self._mw.ple_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
+        self._mw.ple_averaged_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
         # x_range = settings['range'][self.scan_axis]
         # dec_places = decimal_places = np.abs(int(f'{x_range[0]:e}'.split('e')[-1])) + 3
         self._mw.startDoubleSpinBox.setSuffix(self.axis.unit)
@@ -368,6 +373,7 @@ class PLEScanGui(GuiBase):
         
         ch = self._scanning_logic.scanner_channels[value]
         self._mw.ple_widget.channel = ch
+        self._mw.ple_averaged_widget.channel = ch
         self._mw.matrix_widget.channel = ch
         # self.optimizer_dockwidget.
 
@@ -434,11 +440,33 @@ class PLEScanGui(GuiBase):
         self._mw.raise_()
 
     @QtCore.Slot()
+    def region_value_changed_averaged_data(self):
+        region = self._mw.ple_averaged_widget.selected_region.getRegion()
+        self.sigScanSettingsChanged.emit({'range': {self.scan_axis: region}})
+        self._mw.startDoubleSpinBox.setValue(region[0])
+        self._mw.stopDoubleSpinBox.setValue(region[1])
+        self._mw.ple_widget.selected_region.setRegion(region)
+
+
+    @QtCore.Slot()
     def region_value_changed(self):
         region = self._mw.ple_widget.selected_region.getRegion()
         self.sigScanSettingsChanged.emit({'range': {self.scan_axis: region}})
         self._mw.startDoubleSpinBox.setValue(region[0])
         self._mw.stopDoubleSpinBox.setValue(region[1])
+        self._mw.ple_averaged_widget.selected_region.setRegion(region)
+
+    @QtCore.Slot()
+    def sliders_values_are_changing_averaged_data(self):
+        region = self._mw.ple_averaged_widget.selected_region.getRegion()
+        self._mw.startDoubleSpinBox.setValue(region[0])
+        self._mw.stopDoubleSpinBox.setValue(region[1])
+
+        value = self._mw.ple_averaged_widget.target_point.value()
+        self._mw.constDoubleSpinBox.setValue(value)
+
+        self._mw.ple_widget.target_point.setValue(value)
+
 
     @QtCore.Slot()
     def sliders_values_are_changing(self):
@@ -448,6 +476,8 @@ class PLEScanGui(GuiBase):
 
         value = self._mw.ple_widget.target_point.value()
         self._mw.constDoubleSpinBox.setValue(value)
+
+        self._mw.ple_averaged_widget.target_point.setValue(value)
 
 
     @QtCore.Slot()
@@ -497,6 +527,10 @@ class PLEScanGui(GuiBase):
             self._mw.ple_widget.target_point.setValue(self._scanning_logic.scanner_target[self._scanning_logic._scan_axis])
             self._mw.ple_widget.plot_widget.setRange(xRange = x_range)
 
+            self._mw.ple_averaged_widget.selected_region.setRegion(x_range)
+            self._mw.ple_averaged_widget.target_point.setValue(self._scanning_logic.scanner_target[self._scanning_logic._scan_axis])
+            self._mw.ple_averaged_widget.plot_widget.setRange(xRange = x_range)
+
         if 'frequency' in settings:
             self._mw.frequencyDoubleSpinBox.setValue(settings['frequency'][self.scan_axis])
         
@@ -516,7 +550,7 @@ class PLEScanGui(GuiBase):
         @param dict target_pos:
         """
         target = self.sender().value()
-        
+        print(target)
         # target = self._mw.ple_widget.target_point.value()
         
         target_pos = {self._scanning_logic._scan_axis: target}
@@ -545,6 +579,7 @@ class PLEScanGui(GuiBase):
         self._mw.constDoubleSpinBox.blockSignals(True)
 
         self._mw.ple_widget.target_point.setValue(pos_dict[self._scanning_logic._scan_axis])
+        self._mw.ple_averaged_widget.target_point.setValue(pos_dict[self._scanning_logic._scan_axis])
         self._mw.constDoubleSpinBox.setValue(pos_dict[self._scanning_logic._scan_axis])
 
         self._mw.constDoubleSpinBox.blockSignals(False)

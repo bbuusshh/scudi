@@ -85,7 +85,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
     _frequency_ranges = ConfigOption(name='frequency_ranges', missing='error')
     _resolution_ranges = ConfigOption(name='resolution_ranges', missing='error')
     _input_channel_units = ConfigOption(name='input_channel_units', missing='error')
-
+    _scan_units = ConfigOption(name='scan_units', missing='error')
     __backwards_line_resolution = ConfigOption(name='backwards_line_resolution', default=50)
     __max_move_velocity = ConfigOption(name='maximum_move_velocity', default=400e-6)
 
@@ -140,7 +140,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         axes = list()
         for axis in self._position_ranges:
             axes.append(ScannerAxis(name=axis,
-                                    unit='m',
+                                    unit=self._scan_units,
                                     value_range=self._position_ranges[axis],
                                     step_range=(0, abs(np.diff(self._position_ranges[axis]))),
                                     resolution_range=self._resolution_ranges[axis],
