@@ -174,6 +174,45 @@ class ScannerSettingsWidget(QtWidgets.QWidget):
         self.setLayout(QtWidgets.QVBoxLayout())
         self.layout().addWidget(shift_groupbox)
 
+        
+        scan_range_groupbox = QtWidgets.QGroupBox('Scan range')
+        scan_range_groupbox.setFont(font)
+        scan_range_groupbox.setLayout(layout)
+
+        self.setLayout(QtWidgets.QVBoxLayout())
+        self.layout().addWidget(scan_range_groupbox)
+        
+        layout_scan_range = QtWidgets.QGridLayout()
+
+        for index, axis in enumerate(scanner_axes):
+
+            label = QtWidgets.QLabel(axis.name.title())
+            label.setFont(font)
+            label.setAlignment(QtCore.Qt.AlignCenter)
+            layout_shift.addWidget(label, index, 0)
+
+            start_scan_spinbox = ScienDSpinBox()
+            start_scan_spinbox.setObjectName('{0}_shift_scienDSpinBox'.format(axis.name))
+            start_scan_spinbox.setRange(*axis.value_range)
+            start_scan_spinbox.setValue(0)
+            start_scan_spinbox.setSuffix('m')
+            start_scan_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+            start_scan_spinbox.setMinimumSize(75, 0)
+            start_scan_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                            QtWidgets.QSizePolicy.Preferred)
+            layout_scan_range.addWidget(start_scan_spinbox, index, 2)
+
+            # Remember widgets references for later access
+            self.axes_widgets[axis.name]['start_scan_spinbox'] = start_scan_spinbox
+            
+
+        # shift_groupbox = QtWidgets.QGroupBox('Shift')
+        # shift_groupbox.setFont(font)
+        # shift_groupbox.setLayout(layout_shift)
+
+        # self.setLayout(QtWidgets.QVBoxLayout())
+        # self.layout().addWidget(shift_groupbox)
+
     @property
     def axes(self):
         return tuple(self.axes_widgets)
