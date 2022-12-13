@@ -37,6 +37,7 @@ from .fit_dockwidget import PleFitDockWidget
 from qudi.gui.ple.ple_ui_window import PLEScanMainWindow
 from qudi.util.widgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
 from qudi.gui.ple.optimizer_setting_dialog import OptimizerSettingDialog
+from qudi.gui.ple.ple_settings_dialog import PleSettingDialog
 from qudi.gui.ple.optimizer_dockwidget import OptimizerDockWidget
 
 
@@ -198,6 +199,7 @@ class PLEScanGui(GuiBase):
         self._init_ui_connectors()
         self._init_static_widgets()
         self._init_optimizer_settings()
+        self._init_scanner_settings()
         self.setup_fit_widget()
         self.__connect_fit_control_signals()
 
@@ -241,6 +243,34 @@ class PLEScanGui(GuiBase):
         # pull in data
         self.update_optimizer_settings()
         return
+
+    def _init_scanner_settings(self):
+        """
+        """
+        # Create the Settings dialog
+        self._psd = PleSettingDialog(tuple(self._scanning_logic.scanner_axes.values()),
+                                         self._scanning_logic.scanner_constraints)
+
+        # Connect MainWindow actions
+        self._mw.action_ple_settings.triggered.connect(lambda x: self._psd.exec_())
+
+        # Connect the action of the settings dialog with the GUI module:
+        self._psd.accepted.connect(self.apply_scanner_settings)
+        self._psd.rejected.connect(self.restore_scanner_settings)
+        self._psd.button_box.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
+            self.apply_scanner_settings
+        )
+    
+    @QtCore.Slot()
+    def apply_scanner_settings(self):
+        """ ToDo: Document
+        """
+        # ToDo: Implement backwards scanning functionality
+        forward_freq = {ax: freq[0] for ax, freq in self._psd.settings_widget.frequency.items()}
+        self.sigScanSettingsChanged.emit({'frequency': forward_freq})
+
+        shift = {ax: shift for ax, shift in self._psd.settings_widget.shift.items()}
+        self.sigScanSettingsChanged.emit({'shift': shift})
 
     @QtCore.Slot()
     def change_optimizer_settings(self):

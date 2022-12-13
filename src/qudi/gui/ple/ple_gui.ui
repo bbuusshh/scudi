@@ -60,7 +60,7 @@
     <property name="title">
      <string>O&amp;ptions</string>
     </property>
-    <addaction name="action_Settings"/>
+    <addaction name="action_ple_settings"/>
     <addaction name="action_optimizer_settings"/>
    </widget>
    <addaction name="menu_File"/>
@@ -598,7 +598,7 @@
     </layout>
    </widget>
   </widget>
-  <action name="action_Settings">
+  <action name="action_ple_settings">
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/oxygen/22x22/configure.png</normaloff>../../artwork/icons/oxygen/22x22/configure.png</iconset>
