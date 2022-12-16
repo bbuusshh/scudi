@@ -29,7 +29,7 @@ from qudi.logic.pulsed.sampling_functions import SamplingFunctions
 from PySide2 import QtCore
 import numpy as np
 from qudi.core.statusvariable import StatusVar
-
+from qudi.util.delay import delay
 
 class RepumpInterfuseLogic(LogicBase):
     sigGuiParamsUpdated = QtCore.Signal(object,  QtCore.Qt.QueuedConnection)
@@ -278,7 +278,7 @@ class RepumpInterfuseLogic(LogicBase):
 
     def repump_before_scan(self):
         self.cw_repump_on(True)
-        
+        delay(msec = self.repump_scan_length)
         self.cw_repump_on(False)
-        print("Here we repump")
+        
         
