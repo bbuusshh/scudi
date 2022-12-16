@@ -190,7 +190,7 @@ class PLEScanGui(GuiBase):
             self._mw.add_dock_widget('Pulsed')
             self._mw.Pulsed_widget.sig_pulser_params_updated.connect(self._repump_logic.pulser_updated, QtCore.Qt.QueuedConnection)
             self._repump_logic.sigGuiParamsUpdated.connect(self._mw.Pulsed_widget.update_gui, QtCore.Qt.QueuedConnection)
-            
+            self._mw.Pulsed_widget.sig_prescan_repump.connect(self.setup_repump_before_scan)
             self._repump_logic.sigGuiParamsUpdated.emit(self._repump_logic.parameters)
 
 
@@ -227,6 +227,13 @@ class PLEScanGui(GuiBase):
 
 
         self.load_view()
+
+    @QtCore.Slot(bool)
+    def setup_repump_before_scan(self, do_repump):
+        if do_repump:
+            self._scanning_logic.sigRepeatScan.connect(self. _repump_logic.repump_before_scan)
+        else:
+            self._scanning_logic.sigRepeatScan.disconnect()
 
     def _init_optimizer_settings(self):
         """ Configuration and initialisation of the optimizer settings dialog.

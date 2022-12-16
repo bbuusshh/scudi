@@ -7,7 +7,7 @@ import pyqtgraph as pg
 
 class PlePulsedWidget(QtWidgets.QWidget):
     sig_pulser_params_updated = QtCore.Signal(dict)
-    sig_repump_enabled = QtCore.Signal(bool)
+    sig_prescan_repump = QtCore.Signal(bool)
 
     def __init__(self, name, *args, **kwargs):
         this_dir = os.path.dirname(__file__)
@@ -28,6 +28,12 @@ class PlePulsedWidget(QtWidgets.QWidget):
         self.ResonantPeriodDoubleSpinBox.setSuffix('s')
 
         self.PulserupdatePushButton.pressed.connect(self.update_params)
+
+        self.prescan_checkBox.toggled.connect(
+            lambda: self.sig_prescan_repump.emit(self.prescan_checkBox.isChecked())
+        )
+        
+
 
         self.set_constraints()
 
