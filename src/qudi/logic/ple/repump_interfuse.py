@@ -34,6 +34,7 @@ class RepumpInterfuseLogic(LogicBase):
     sigGuiParamsUpdated = QtCore.Signal(object,  QtCore.Qt.QueuedConnection)
     sigTimingPlotUpdated = QtCore.Signal(object,  QtCore.Qt.QueuedConnection)
     _pulsed = Connector(name='pulsed', interface='PulsedMasterLogic')
+    _switcher = Connector(name='switcher', interface="PulseStreamer")
     _resonant_laser = ConfigOption(name='resonant_laser', default=None)
     _repump_laser = ConfigOption(name='repump_laser', default=None)
 
@@ -57,6 +58,7 @@ class RepumpInterfuseLogic(LogicBase):
     test = StatusVar(name="test", default=0)
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
+        self.repump_scan_length = 100 #msec
     
     def on_activate(self):
         self.pulsed = self._pulsed()
@@ -69,7 +71,11 @@ class RepumpInterfuseLogic(LogicBase):
         'd_ch1': False, 
         'd_ch2': False, 
         'd_ch3': False, 
-        'd_ch4': False
+        'd_ch4': False,
+        'd_ch5': False,
+        'd_ch6': False,
+        'd_ch7': False,
+        'd_ch8': False
         }
         
     def on_deactivate(self):
@@ -243,3 +249,7 @@ class RepumpInterfuseLogic(LogicBase):
         self.timing_diagram['repump'] = self._repump_laser
         
         self.sigTimingPlotUpdated.emit(self.timing_diagram)
+
+    def repump_before_scan(self):
+        print("Here we repump")
+        

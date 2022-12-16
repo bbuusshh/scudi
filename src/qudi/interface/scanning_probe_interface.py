@@ -193,6 +193,7 @@ class ScanData:
         self._timestamp = None
         self._data = None
         self._accumulated_data = None
+        self._averaged_data = None
         self._position_data = None
         self._target_at_start = target_at_start
 

@@ -113,7 +113,7 @@ class PLEAveragedDataWidget(QtWidgets.QWidget):
         if (self._scan_data is None) or (self._scan_data.data is None):
             self.data_curve.clear()
         else:
-            y_data = self._scan_data.accumulated_data[current_channel].mean(axis=1)
+            y_data = self._scan_data.accumulated_data[current_channel].mean(axis=0)
             if update_range:
                 x_data = np.linspace(*self._scan_data.scan_range[0],
                                      self._scan_data.scan_resolution[0])

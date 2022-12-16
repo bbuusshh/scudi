@@ -156,14 +156,14 @@ class PLEScanGui(GuiBase):
         self._optimize_logic().sigOptimizeStateChanged.connect(
             self.optimize_state_updated, QtCore.Qt.QueuedConnection
         )
-        self._mw.ple_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing) #set_scanner_target_position
+        # self._mw.ple_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing) #set_scanner_target_position
         self._mw.ple_widget.selected_region.sigRegionChangeFinished.connect(self.region_value_changed) 
 
-        self._mw.ple_averaged_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing_averaged_data)
+        # self._mw.ple_averaged_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing_averaged_data)
         self._mw.ple_averaged_widget.selected_region.sigRegionChangeFinished.connect(self.region_value_changed_averaged_data) 
 
-        self._mw.ple_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
-        self._mw.ple_averaged_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
+        # self._mw.ple_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
+        # self._mw.ple_averaged_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
         # x_range = settings['range'][self.scan_axis]
         # dec_places = decimal_places = np.abs(int(f'{x_range[0]:e}'.split('e')[-1])) + 3
         self._mw.startDoubleSpinBox.setSuffix(self.axis.unit)
@@ -173,7 +173,6 @@ class PLEScanGui(GuiBase):
         self._mw.channel_comboBox.addItems(self._scanning_logic.scanner_channels.keys())
         self._mw.channel_comboBox.currentTextChanged.connect(self._set_channel)
         self._mw.channel_comboBox.setCurrentText(self._scanning_logic._channel)
- 
         #create microwave control window if microwave is set
         if self._microwave_logic() is not None:
             self._microwave_logic = self._microwave_logic()
@@ -186,11 +185,16 @@ class PLEScanGui(GuiBase):
             repump = self._repump_logic._repump_laser
             resonant = self._repump_logic._resonant_laser
 
+            self._scanning_logic.sigRepeatScan.connect(self. _repump_logic.repump_before_scan)
+            
             self._mw.add_dock_widget('Pulsed')
             self._mw.Pulsed_widget.sig_pulser_params_updated.connect(self._repump_logic.pulser_updated, QtCore.Qt.QueuedConnection)
             self._repump_logic.sigGuiParamsUpdated.connect(self._mw.Pulsed_widget.update_gui, QtCore.Qt.QueuedConnection)
             
             self._repump_logic.sigGuiParamsUpdated.emit(self._repump_logic.parameters)
+
+
+
         self.scanner_target_updated()
         self.scan_state_updated(self._scanning_logic.module_state() != 'idle')
         self.scan_state_updated(self._scanning_logic.module_state() != 'idle', caller_id=self._optimizer_id)
@@ -332,7 +336,6 @@ class PLEScanGui(GuiBase):
 
                 # Adjust crosshair size according to optimizer range
                 # self.update_crosshair_sizes()
-
 
     def _init_microwave(self):
         
@@ -492,10 +495,10 @@ class PLEScanGui(GuiBase):
         self._mw.startDoubleSpinBox.setValue(region[0])
         self._mw.stopDoubleSpinBox.setValue(region[1])
 
-        value = self._mw.ple_averaged_widget.target_point.value()
+        # value = self._mw.ple_averaged_widget.target_point.value()
         self._mw.constDoubleSpinBox.setValue(value)
 
-        self._mw.ple_widget.target_point.setValue(value)
+        # self._mw.ple_widget.target_point.setValue(value)
 
 
     @QtCore.Slot()
@@ -504,10 +507,10 @@ class PLEScanGui(GuiBase):
         self._mw.startDoubleSpinBox.setValue(region[0])
         self._mw.stopDoubleSpinBox.setValue(region[1])
 
-        value = self._mw.ple_widget.target_point.value()
-        self._mw.constDoubleSpinBox.setValue(value)
+        # value = self._mw.ple_widget.target_point.value()
+        # self._mw.constDoubleSpinBox.setValue(value)
 
-        self._mw.ple_averaged_widget.target_point.setValue(value)
+        # self._mw.ple_averaged_widget.target_point.setValue(value)
 
 
     @QtCore.Slot()
@@ -605,15 +608,15 @@ class PLEScanGui(GuiBase):
         if not isinstance(pos_dict, dict):
             pos_dict = self._scanning_logic.scanner_target
         
-        self._mw.ple_widget.target_point.blockSignals(True)
-        self._mw.constDoubleSpinBox.blockSignals(True)
+        # self._mw.ple_widget.target_point.blockSignals(True)
+        # self._mw.constDoubleSpinBox.blockSignals(True)
 
-        self._mw.ple_widget.target_point.setValue(pos_dict[self._scanning_logic._scan_axis])
-        self._mw.ple_averaged_widget.target_point.setValue(pos_dict[self._scanning_logic._scan_axis])
-        self._mw.constDoubleSpinBox.setValue(pos_dict[self._scanning_logic._scan_axis])
+        # self._mw.ple_widget.target_point.setValue(pos_dict[self._scanning_logic._scan_axis])
+        # self._mw.ple_averaged_widget.target_point.setValue(pos_dict[self._scanning_logic._scan_axis])
+        # self._mw.constDoubleSpinBox.setValue(pos_dict[self._scanning_logic._scan_axis])
 
-        self._mw.constDoubleSpinBox.blockSignals(False)
-        self._mw.ple_widget.target_point.blockSignals(False)
+        # self._mw.constDoubleSpinBox.blockSignals(False)
+        # self._mw.ple_widget.target_point.blockSignals(False)
         # self.scanner_control_dockwidget.set_target(pos_dict)
 
     @QtCore.Slot(bool, object, object)
