@@ -162,8 +162,8 @@ class PLEScanGui(GuiBase):
         # self._mw.ple_averaged_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing_averaged_data)
         self._mw.ple_averaged_widget.selected_region.sigRegionChangeFinished.connect(self.region_value_changed_averaged_data) 
 
-        # self._mw.ple_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
-        # self._mw.ple_averaged_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
+        self._mw.ple_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
+        #self._mw.ple_averaged_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
         # x_range = settings['range'][self.scan_axis]
         # dec_places = decimal_places = np.abs(int(f'{x_range[0]:e}'.split('e')[-1])) + 3
         self._mw.startDoubleSpinBox.setSuffix(self.axis.unit)
