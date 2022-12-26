@@ -36,6 +36,7 @@ class RepumpInterfuseLogic(LogicBase):
     sigTimingPlotUpdated = QtCore.Signal(object,  QtCore.Qt.QueuedConnection)
     _pulsed = Connector(name='pulsed', interface='PulsedMasterLogic')
     _switcher = Connector(name='switcher', interface="SwitchLogic") 
+    _switcher_channel = ConfigOption(name='switcher_channel', default=None)
     _resonant_laser = ConfigOption(name='resonant_laser', default=None)
     _repump_laser = ConfigOption(name='repump_laser', default=None)
 
@@ -277,8 +278,8 @@ class RepumpInterfuseLogic(LogicBase):
         self.sigTimingPlotUpdated.emit(self.timing_diagram)
 
     def repump_before_scan(self):
-        self._switcher.set_state('405 nm laser', 'On')
+        self._switcher.set_state(self._switcher_channel, 'On')
         delay(msec = self.repump_scan_length)
-        self._switcher.set_state('405 nm laser', 'Off')
+        self._switcher.set_state(self._switcher_channel, 'Off')
         
         
