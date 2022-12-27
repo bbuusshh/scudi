@@ -230,11 +230,8 @@ class PLEScanGui(GuiBase):
 
     @QtCore.Slot(bool)
     def setup_repump_before_scan(self, do_repump):
-        if do_repump:
-            self._scanning_logic.sigRepeatScan.connect(self. _repump_logic.repump_before_scan)
-        else:
-            self._scanning_logic.sigRepeatScan.disconnect()
-
+        self._repump_logic.do_prescan_repump = do_repump
+        
     def _init_optimizer_settings(self):
         """ Configuration and initialisation of the optimizer settings dialog.
         """
