@@ -69,6 +69,7 @@ class PowerControllerLogic(LogicBase):
     _rotation_direction = StatusVar('rotation_direction', default = dict())
     fc = StatusVar('fits', None)
     plot_domain = (0, 10000)
+    _current_positions = StatusVar("current_positions", default=dict())
     # Internal signals
     sig_data_updated = QtCore.Signal()
     sig_run_calibration = QtCore.Signal(int)
@@ -97,6 +98,7 @@ class PowerControllerLogic(LogicBase):
         self.channels = self._motor_pi3._active_motor_numbers
         self._rotation_direction.update({ch : 1 for ch in self.channels if ch not in self._rotation_direction.keys()})
         # self._counter = self.counter()
+        self._current_positions.update({ch : 0 for ch in self.channels if ch not in self._current_positions.keys()})
 
         self._power_calibration.update({ch : np.array([]) for ch in self.channels if ch not in self._power_calibration.keys()})
         self.power_calibration = self._power_calibration
@@ -181,6 +183,7 @@ class PowerControllerLogic(LogicBase):
     @QtCore.Slot(float, int, bool)
     def set_power(self, power, motor, calibrated):
         current_position = self._motor_pi3.getPosition(motor=motor)
+        self._current_positions.update({motor: current_position})
         if bool(calibrated) == True:
             if (power > self._power_range[motor][1]) or (power < self._power_range[motor][0]):
                 print("Power out of calibrated range")
