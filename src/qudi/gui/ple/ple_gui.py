@@ -162,8 +162,8 @@ class PLEScanGui(GuiBase):
         # self._mw.ple_averaged_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing_averaged_data)
         self._mw.ple_averaged_widget.selected_region.sigRegionChangeFinished.connect(self.region_value_changed_averaged_data) 
 
-        # self._mw.ple_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
-        # self._mw.ple_averaged_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
+        self._mw.ple_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
+        self._mw.ple_averaged_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
         # x_range = settings['range'][self.scan_axis]
         # dec_places = decimal_places = np.abs(int(f'{x_range[0]:e}'.split('e')[-1])) + 3
         self._mw.startDoubleSpinBox.setSuffix(self.axis.unit)
@@ -495,6 +495,7 @@ class PLEScanGui(GuiBase):
         self._mw.startDoubleSpinBox.setValue(region[0])
         self._mw.stopDoubleSpinBox.setValue(region[1])
         self._mw.ple_averaged_widget.selected_region.setRegion(region)
+        self._mw.ple_widget.target_point.setValue(region[0])
 
     @QtCore.Slot()
     def sliders_values_are_changing_averaged_data(self):
@@ -502,8 +503,8 @@ class PLEScanGui(GuiBase):
         self._mw.startDoubleSpinBox.setValue(region[0])
         self._mw.stopDoubleSpinBox.setValue(region[1])
 
-        # value = self._mw.ple_averaged_widget.target_point.value()
-        self._mw.constDoubleSpinBox.setValue(value)
+        value = self._mw.ple_averaged_widget.target_point.value()
+        #self._mw.constDoubleSpinBox.setValue(value)
 
         # self._mw.ple_widget.target_point.setValue(value)
 
@@ -582,7 +583,6 @@ class PLEScanGui(GuiBase):
     def scan_repeated(self, start, scan_axes):
         self._mw.elapsed_lines_DisplayWidget.display(self._scanning_logic.display_repeated)
 
-    # @QtCore.Slot(dict)
     def set_scanner_target_position(self):
         """
         Issues new target to logic and updates gui.
@@ -590,7 +590,7 @@ class PLEScanGui(GuiBase):
         @param dict target_pos:
         """
         target = self.sender().value()
-        print(target)
+        
         # target = self._mw.ple_widget.target_point.value()
         
         target_pos = {self._scanning_logic._scan_axis: target}

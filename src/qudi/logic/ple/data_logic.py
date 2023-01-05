@@ -413,7 +413,7 @@ class PleDataLogic(LogicBase):
                             extent=(*np.asarray(scan_range_x)/si_factor_x,
                                     *np.asarray(scan_range_y)/si_factor_y))
 
-        ax.set_aspect(1)
+        ax.set_aspect('auto')
         ax.set_xlabel(scan_axes[0] + f' position ({si_prefix_x}{scan_data.axes_units[scan_axes[0]]})')
         ax.set_ylabel("Line #")
         ax.spines['bottom'].set_position(('outward', 10))
