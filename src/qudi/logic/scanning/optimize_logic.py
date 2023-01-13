@@ -412,7 +412,7 @@ class ScanningOptimizeLogic(LogicBase):
         with self._thread_lock:
             if self.module_state() == 'idle':
                 self.sigOptimizeStateChanged.emit(False, dict(), None)
-                self.sigOptimizeDone.emit()
+                
 
             if self._scan_logic().module_state() != 'idle':
                 # optimizer scans are never saved in scanning history
@@ -423,6 +423,8 @@ class ScanningOptimizeLogic(LogicBase):
             self._stashed_scan_settings = dict()
             self.module_state.unlock()
             self.sigOptimizeStateChanged.emit(False, dict(), None)
+            self.sigOptimizeDone.emit()
+            print('stop_optimize, sig sent')
             return err
 
     def _get_pos_from_2d_gauss_fit(self, xy, data):
