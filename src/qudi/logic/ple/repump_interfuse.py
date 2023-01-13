@@ -29,16 +29,20 @@ from qudi.logic.pulsed.sampling_functions import SamplingFunctions
 from PySide2 import QtCore
 import numpy as np
 from qudi.core.statusvariable import StatusVar
+from qudi.util.delay import delay
+import time
 
 class RepumpInterfuseLogic(LogicBase):
     sigGuiParamsUpdated = QtCore.Signal(object,  QtCore.Qt.QueuedConnection)
     sigTimingPlotUpdated = QtCore.Signal(object,  QtCore.Qt.QueuedConnection)
     _pulsed = Connector(name='pulsed', interface='PulsedMasterLogic')
+    _switchlogic = Connector(name='switchlogic', interface="SwitchLogic", optional=True) 
+    _switch_name = ConfigOption(name='switcher_name', default=None)
     _resonant_laser = ConfigOption(name='resonant_laser', default=None)
     _repump_laser = ConfigOption(name='repump_laser', default=None)
 
     ensembles = []
-    trigger_channel = 'd_ch5'
+    trigger_channel = 'd_ch6'
 
     default_params = {
         "resonant":
@@ -57,9 +61,12 @@ class RepumpInterfuseLogic(LogicBase):
     test = StatusVar(name="test", default=0)
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
+        self.repump_scan_length = 200 #msec
     
     def on_activate(self):
         self.pulsed = self._pulsed()
+        self.switch = self._switchlogic()
+        self.do_prescan_repump = False
         #self.create_pulse_block(channels = list(self._resonant_lasers.values()))
         self.a_ch = {
         'a_ch1': SamplingFunctions.Idle(),
@@ -69,7 +76,11 @@ class RepumpInterfuseLogic(LogicBase):
         'd_ch1': False, 
         'd_ch2': False, 
         'd_ch3': False, 
-        'd_ch4': False
+        'd_ch4': False,
+        'd_ch5': False,
+        'd_ch6': False,
+        'd_ch7': False,
+        'd_ch8': False,
         }
         
     def on_deactivate(self):
@@ -213,6 +224,31 @@ class RepumpInterfuseLogic(LogicBase):
         self.pulsed.sigSavePulseBlock.emit(pulse_block)
         return pulse_block
     
+    def cw_repump_on(self, enable):
+        element_list = []
+
+        d_ch = self.d_ch.copy() 
+        d_ch.update({self._repump_laser: True}) 
+        repump_pulse_block = PulseBlockElement(
+            init_length_s=self.parameters['repump']['length'], 
+            increment_s=0, 
+            # pulse_function=self.a_ch, 
+            digital_high=d_ch,
+            laser_on=False
+        )
+        element_list.append(repump_pulse_block)
+        pulse_block = PulseBlock(name='repump_on', element_list=element_list)
+        self.pulsed.sigSavePulseBlock.emit(pulse_block)
+        block_list = [(pulse_block.name, 0)]
+        block_ensemble = PulseBlockEnsemble(name='repump_on', block_list=block_list, rotating_frame=False)
+        self.pulsed.sigSaveBlockEnsemble.emit(block_ensemble)
+
+        self.pulsed.sigSampleBlockEnsemble.emit('repump_on')
+        self.pulsed.sigLoadBlockEnsemble.emit('repump_on') 
+
+        self.start_pulsed(enable, 'repump_on')
+    
+
     def construct_resonant_and_repump_ensemble(self):
         repeat_every = self.parameters['repump']['repeat']
 
@@ -243,3 +279,15 @@ class RepumpInterfuseLogic(LogicBase):
         self.timing_diagram['repump'] = self._repump_laser
         
         self.sigTimingPlotUpdated.emit(self.timing_diagram)
+
+    def repump_before_scan(self):
+        if self.do_prescan_repump:
+            if self.switch is None:
+                return 
+           
+            self.switch.set_state(self._switch_name, 'On')
+            time.sleep(self.repump_scan_length/1000)
+            #delay(msec = self.repump_scan_length)
+            self.switch.set_state(self._switch_name, 'Off')
+            
+        

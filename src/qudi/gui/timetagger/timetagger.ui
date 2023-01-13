@@ -51,7 +51,6 @@
     </sizepolicy>
    </property>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="dockWidget_6">
    <property name="minimumSize">
     <size>
@@ -69,7 +68,7 @@
     <set>QDockWidget::NoDockWidgetFeatures</set>
    </property>
    <property name="allowedAreas">
-    <set>Qt::BottomDockWidgetArea</set>
+    <set>Qt::AllDockWidgetAreas</set>
    </property>
    <property name="windowTitle">
     <string>Save</string>
@@ -202,7 +201,7 @@
     </layout>
    </widget>
   </widget>
-  <widget class="QDockWidget" name="dockWidget_5">
+  <widget class="QDockWidget" name="corr_dockWidget">
    <property name="allowedAreas">
     <set>Qt::AllDockWidgetAreas</set>
    </property>
@@ -212,7 +211,7 @@
    <attribute name="dockWidgetArea">
     <number>4</number>
    </attribute>
-   <widget class="QWidget" name="dockWidgetContents_5">
+   <widget class="QWidget" name="corr_dockWidgetContents">
     <property name="sizePolicy">
      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
       <horstretch>0</horstretch>
@@ -221,7 +220,7 @@
     </property>
     <layout class="QGridLayout" name="gridLayout_7">
      <item row="0" column="1">
-      <widget class="QGroupBox" name="groupBox_4">
+      <widget class="QGroupBox" name="corr_groupBox">
        <property name="maximumSize">
         <size>
          <width>178</width>
@@ -231,8 +230,8 @@
        <property name="title">
         <string>Settings</string>
        </property>
-       <layout class="QGridLayout" name="gridLayout_5">
-        <item row="0" column="0">
+       <layout class="QVBoxLayout" name="verticalLayout_3">
+        <item>
          <layout class="QFormLayout" name="formLayout_10">
           <item row="1" column="0">
            <widget class="QLabel" name="label_5">
@@ -256,7 +255,7 @@
           </item>
          </layout>
         </item>
-        <item row="1" column="0">
+        <item>
          <layout class="QFormLayout" name="formLayout_9">
           <item row="0" column="0">
            <widget class="QLabel" name="label_6">
@@ -283,7 +282,7 @@
           </item>
          </layout>
         </item>
-        <item row="2" column="0">
+        <item>
          <layout class="QFormLayout" name="formLayout_11">
           <item row="0" column="0">
            <widget class="QPushButton" name="toggleCorrPushButton">
@@ -309,6 +308,9 @@
            </widget>
           </item>
          </layout>
+        </item>
+        <item>
+         <layout class="QGridLayout" name="fitLayout"/>
         </item>
        </layout>
       </widget>
@@ -710,6 +712,34 @@
     </layout>
    </widget>
   </widget>
+  <widget class="QToolBar" name="toolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="actionFit_settings"/>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>837</width>
+     <height>21</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionFit_settings">
+   <property name="text">
+    <string>Fit settings</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>

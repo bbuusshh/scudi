@@ -84,6 +84,13 @@ class ScanningProbeLogic(LogicBase):
 
         constr = self.scanner_constraints
         self._scan_saved_to_hist = True
+        try:
+            # variable name has __ in front of its name --> crap with unique identifier
+            # Will not work out if a file with a different class name is chosen.
+            # No idea how to make it better but i also did not start with this crap.
+            self._max_move_velocity = self._scan_logic()._scanner().get_max_move_velocity()
+        except:
+            self._max_move_velocity = None
 
         self.log.debug(f"Scanner settings at startup, type {type(self._scan_ranges)} {self._scan_ranges, self._scan_resolution}")
         # scanner settings loaded from StatusVar or defaulted
@@ -187,6 +194,8 @@ class ScanningProbeLogic(LogicBase):
                 self.set_scan_resolution(settings['resolution'])
             if 'frequency' in settings:
                 self.set_scan_frequency(settings['frequency'])
+            if 'shift' in settings:
+                self.set_scan_shift(settings['shift'])
             if 'save_to_history' in settings:
                 self._scan_saved_to_hist = settings['save_to_history']
 
@@ -265,6 +274,18 @@ class ScanningProbeLogic(LogicBase):
             new_resolution = {ax: self._scan_resolution[ax] for ax in resolution}
             self.sigScanSettingsChanged.emit({'resolution': new_resolution})
             return new_resolution
+
+    def set_scan_shift(self, shift):
+        with self._thread_lock:
+            if self.module_state() != 'idle':
+                self.log.warning('Scan is running. Unable to change shift.')
+                return {ax.name : ax.axis_shift for ax in self.scanner_axes}
+            
+            for name, ax in self.scanner_axes.items():
+                ax.axis_shift = shift[name]
+            new_shift = {name : ax.axis_shift for name, ax in self.scanner_axes.items()}
+            
+            self.sigScanSettingsChanged.emit({'shift': new_shift})
 
     def set_scan_frequency(self, frequency):
         with self._thread_lock:
@@ -349,6 +370,9 @@ class ScanningProbeLogic(LogicBase):
             self.sigScanSettingsChanged.emit({'frequency': {scan_axes[0]: new}})
 
     def start_scan(self, scan_axes, caller_id=None):
+        # get position of the scanner at the start of the scan. This is useful for the poimanager.
+        # ideally you would get it at the end of the scan. Otherwise you get the wrong z position if you get the (old) confocal image while a scan is running.
+        self._scanner_position_at_start_scan = self.scanner_position
         with self._thread_lock:
             if self.module_state() != 'idle':
                 self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)

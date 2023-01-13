@@ -85,7 +85,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
     _frequency_ranges = ConfigOption(name='frequency_ranges', missing='error')
     _resolution_ranges = ConfigOption(name='resolution_ranges', missing='error')
     _input_channel_units = ConfigOption(name='input_channel_units', missing='error')
-
+    _scan_units = ConfigOption(name='scan_units', missing='error')
     __backwards_line_resolution = ConfigOption(name='backwards_line_resolution', default=50)
     __max_move_velocity = ConfigOption(name='maximum_move_velocity', default=400e-6)
 
@@ -120,7 +120,6 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         self._thread_lock_data = Mutex()
 
     def on_activate(self):
-
         # Sanity checks for ni_ao and ni finite sampling io
         # TODO check that config values within fsio range?
         assert set(self._position_ranges) == set(self._frequency_ranges) == set(self._resolution_ranges), \
@@ -141,7 +140,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         axes = list()
         for axis in self._position_ranges:
             axes.append(ScannerAxis(name=axis,
-                                    unit='m',
+                                    unit=self._scan_units,
                                     value_range=self._position_ranges[axis],
                                     step_range=(0, abs(np.diff(self._position_ranges[axis]))),
                                     resolution_range=self._resolution_ranges[axis],
@@ -189,6 +188,16 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         @return dict: scanner constraints
         """
         return self._constraints
+
+
+    def get_max_move_velocity(self):
+        """Gets the maximum move velocity of the scanner that was set in the config.
+        
+        @return float: max velocity of te scanner
+        """
+        max_velocity = self.__max_move_velocity.copy()
+        return max_velocity
+
 
     def reset(self):
         """ Hard reset of the hardware.

@@ -22,6 +22,7 @@ If not, see <https://www.gnu.org/licenses/>.
 
 import datetime
 import numpy as np
+import copy as cp
 from abc import abstractmethod
 from qudi.core.module import Base
 
@@ -192,6 +193,7 @@ class ScanData:
         self._timestamp = None
         self._data = None
         self._accumulated_data = None
+        self._averaged_data = None
         self._position_data = None
         self._target_at_start = target_at_start
 
@@ -420,6 +422,7 @@ class ScannerAxis:
 
         self._name = name
         self._unit = unit
+        self._shift = 0
         self._resolution_range = (int(min(resolution_range)), int(max(resolution_range))) #TODO np.inf cannot be casted as an int
         self._step_range = (float(min(step_range)), float(max(step_range)))
         self._value_range = (float(min(value_range)), float(max(value_range)))
@@ -491,6 +494,17 @@ class ScannerAxis:
     @property
     def max_frequency(self):
         return self._frequency_range[1]
+
+    @property
+    def axis_shift(self):
+        return cp.copy(self._shift)
+
+    @axis_shift.setter
+    def axis_shift(self, shift):
+        # shifted_range = (self.clip_value(self._value_range[0] + shift), 
+        #                         self.clip_value(self._value_range[1] + shift))
+        # self._value_range = shifted_range
+        self._shift = shift
 
     def clip_value(self, value):
         if value < self.min_value:

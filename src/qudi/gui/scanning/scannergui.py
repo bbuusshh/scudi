@@ -95,8 +95,8 @@ class ScannerGui(GuiBase):
     # config options for gui
     _default_position_unit_prefix = ConfigOption(name='default_position_unit_prefix', default=None)
     # for all optimizer sub widgets, (2= xy, 1=z)
-    _optimizer_plot_dims = ConfigOption(name='optimizer_plot_dimensions', default=[2,1])
-
+    _default_sequence = ConfigOption(name='default_sequence', default=[["x", "y"], ["z"]])
+    
     # status vars
     _window_state = StatusVar(name='window_state', default=None)
     _window_geometry = StatusVar(name='window_geometry', default=None)
@@ -152,14 +152,14 @@ class ScannerGui(GuiBase):
         # Initialize main window
         self._mw = ConfocalMainWindow()
         self._mw.setDockNestingEnabled(True)
-
+        self._save_dialog = SaveDialog(self._mw)
         # Initialize fixed dockwidgets
         self._init_static_dockwidgets()
 
         # Initialize dialog windows
         self._init_optimizer_settings()
         self._init_scanner_settings()
-        self._save_dialog = SaveDialog(self._mw)
+        
 
         # Automatically generate scanning widgets for desired scans
         scans = list()
@@ -171,6 +171,8 @@ class ScannerGui(GuiBase):
                 scans.append((first_ax, second_ax))
         for scan in scans:
             self._add_scan_dockwidget(scan)
+
+        self._shifts = {ax : 0 for ax in axes}
 
         # Initialize widget data
         self.scanner_settings_updated()
@@ -241,10 +243,10 @@ class ScannerGui(GuiBase):
 
         self._restore_window_geometry(self._mw)
 
-        self._send_pop_up_message('We would appreciate your contribution',
-                                  'The scanning probe toolchain is still in active development. '
-                                  'Please report bugs and issues in the qudi-iqo-modules repository '
-                                  'or even fix them and contribute your pull request. Your help is highly appreciated.')
+        # self._send_pop_up_message('We would appreciate your contribution',
+        #                           'The scanning probe toolchain is still in active development. '
+        #                           'Please report bugs and issues in the qudi-iqo-modules repository '
+        #                           'or even fix them and contribute your pull request. Your help is highly appreciated.')
 
         return
 
@@ -294,8 +296,7 @@ class ScannerGui(GuiBase):
         """
         # Create the Settings window
         self._osd = OptimizerSettingDialog(tuple(self._scanning_logic().scanner_axes.values()),
-                                           tuple(self._scanning_logic().scanner_channels.values()),
-                                           self._optimizer_plot_dims)
+                                           tuple(self._scanning_logic().scanner_channels.values()),)
 
         # Connect MainWindow actions
         self._mw.action_optimizer_settings.triggered.connect(lambda x: self._osd.exec_())
@@ -363,7 +364,6 @@ class ScannerGui(GuiBase):
         )
 
         self.optimizer_dockwidget = OptimizerDockWidget(axes=self._scanning_logic().scanner_axes,
-                                                        plot_dims=self._optimizer_plot_dims,
                                                         sequence=self._optimize_logic().scan_sequence)
         self.optimizer_dockwidget.setAllowedAreas(QtCore.Qt.TopDockWidgetArea)
         self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self.optimizer_dockwidget)
@@ -613,11 +613,15 @@ class ScannerGui(GuiBase):
         forward_freq = {ax: freq[0] for ax, freq in self._ssd.settings_widget.frequency.items()}
         self.sigScanSettingsChanged.emit({'frequency': forward_freq})
 
+        shift = {ax: shift for ax, shift in self._ssd.settings_widget.shift.items()}
+        self.sigScanSettingsChanged.emit({'shift': shift})
+
     @QtCore.Slot()
     def restore_scanner_settings(self):
         """ ToDo: Document
         """
         self.scanner_settings_updated({'frequency': self._scanning_logic().scan_frequency})
+        self.scanner_settings_updated({'shift': self._shifts})
 
     @QtCore.Slot(bool)
     def scanner_settings_toggle_gui_lock(self, locked):
@@ -653,6 +657,13 @@ class ScannerGui(GuiBase):
                 ax: (forward, old_freq[ax][1]) for ax, forward in settings['frequency'].items()
             }
             self._ssd.settings_widget.set_frequency(new_freq)
+            
+        if 'shift' in settings:
+            old_shift = self._ssd.settings_widget.shift
+            new_shift = {
+                ax: shift for ax, shift in settings['shift'].items()
+            }
+            self._ssd.settings_widget.set_shift(new_shift)
         return
 
     @QtCore.Slot(dict)
@@ -966,8 +977,10 @@ class ScannerGui(GuiBase):
         self._osd.change_settings(settings)
 
         # Adjust optimizer settings
+        
         if 'scan_sequence' in settings:
-            new_settings = self._optimize_logic().check_sanity_optimizer_settings(settings, self._optimizer_plot_dims)
+            new_settings = self._optimize_logic().check_sanity_optimizer_settings(settings)
+            
             if settings['scan_sequence'] != new_settings['scan_sequence']:
                 new_seq = new_settings['scan_sequence']
                 self.log.warning(f"Tried to update gui with illegal optimizer sequence= {settings['scan_sequence']}."
@@ -976,6 +989,7 @@ class ScannerGui(GuiBase):
             settings = new_settings
 
             axes_constr = self._scanning_logic().scanner_axes
+
             self.optimizer_dockwidget.scan_sequence = settings['scan_sequence']
 
             for seq_step in settings['scan_sequence']:

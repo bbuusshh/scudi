@@ -25,20 +25,22 @@ class PLE2DWidget(QtWidgets.QWidget):
                 parent: Optional[QtWidgets.QWidget] = None):
         super().__init__(parent=parent)
 
-        self.channel = channel
+        
         main_layout = QtWidgets.QGridLayout()
         self.setLayout(main_layout)
+
+        self._channel = channel
+        self.axis = axis
         matrix_group_box = QtWidgets.QGroupBox('Matrix Region')
- 
         self.image_widget = ImageWidget(colorscale = ColorScale) #_Colorscale().lut
         self.image_item = self.image_widget.image_item
 
-        self.image_widget.set_axis_label('left', label=channel.name, unit=channel.unit)
-        self.image_widget.set_axis_label('bottom', label=axis.name.title(), unit=axis.unit)
-        self.image_widget.set_data_label(label=channel.name, unit=channel.unit)
+        self.image_widget.set_axis_label('left', label=self._channel.name, unit=self._channel.unit)
+        self.image_widget.set_axis_label('bottom', label=self.axis.name.title(), unit=self.axis.unit)
+        self.image_widget.set_data_label(label=self._channel.name, unit=self._channel.unit)
         
         self.layout().addWidget(self.image_widget)
-
+        
         # disable buggy pyqtgraph 'Export..' context menu
         self.image_widget.plot_widget.setAspectLocked(lock=False, ratio=1.0)
         self.image_widget.plot_widget.getPlotItem().vb.scene().contextMenu[0].setVisible(False)
@@ -46,6 +48,17 @@ class PLE2DWidget(QtWidgets.QWidget):
         self.number_of_repeats=None
         self._scan_data = None
 
+    @property
+    def channel(self):
+        return self._channel
+
+    @channel.setter
+    def channel(self, ch):
+        self._channel = ch
+        self.image_widget.set_axis_label('left', label=self._channel.name, unit=self._channel.unit)
+        self.image_widget.set_axis_label('bottom', label=self.axis.name.title(), unit=self.axis.unit)
+        self.image_widget.set_data_label(label=self._channel.name, unit=self._channel.unit)
+        self._update_scan_data()
 
     def set_plot_range(self,
                        x_range: Optional[Tuple[float, float]] = None,
@@ -60,10 +73,10 @@ class PLE2DWidget(QtWidgets.QWidget):
 
     def _update_scan_data(self) -> None:
        
-        current_channel = self.channel.name 
-
-        self.image_widget.set_image(self._scan_data.accumulated_data[current_channel].T)    
-        matrix_range = (self._scan_data.scan_range[0], (0, self._scan_data.accumulated_data[current_channel].shape[0]))
-        self.image_widget.set_image_extent(matrix_range,
-                        adjust_for_px_size=True)
-        self.image_widget.autoRange()
+        current_channel = self._channel.name 
+        if self._scan_data is not None:
+            self.image_widget.set_image(self._scan_data.accumulated_data[current_channel].T)    
+            matrix_range = (self._scan_data.scan_range[0], (0, self._scan_data.accumulated_data[current_channel].shape[0]))
+            self.image_widget.set_image_extent(matrix_range,
+                            adjust_for_px_size=True)
+            self.image_widget.autoRange()

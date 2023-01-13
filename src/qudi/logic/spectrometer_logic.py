@@ -33,7 +33,7 @@ from qudi.util.network import netobtain
 from qudi.core.module import LogicBase
 from qudi.util.datastorage import TextDataStorage
 from qudi.util.datafitting import FitContainer, FitConfigurationsModel
-
+from qudi.util.plot_style import plot_style
 
 class SpectrometerLogic(LogicBase):
     """This logic module gathers data from the spectrometer.
@@ -72,6 +72,7 @@ class SpectrometerLogic(LogicBase):
     sig_data_updated = QtCore.Signal()
     sig_state_updated = QtCore.Signal()
     sig_fit_updated = QtCore.Signal(str, object)
+    sigSpectrumDone = QtCore.Signal()
     _default_fit_configs = (
         {'name'             : 'Lorentzian',
         'model'            : 'Lorentzian',
@@ -197,7 +198,7 @@ class SpectrometerLogic(LogicBase):
             
             self.flip_mirror().set_state(self.flip_mirror().switch_names[0], 'Off')
 
-
+        self.sigSpectrumDone.emit()
         return self.spectrum
 
     def run_get_background(self, constant_acquisition=None, reset=True):
@@ -385,10 +386,9 @@ class SpectrometerLogic(LogicBase):
                 header.append('Signal ON')
                 data.append(self._spectrum[1])
                 header.append('Signal OFF')
-
+        plt.style.use(plot_style)
         # save the date to file
         ds = TextDataStorage(root_dir=self.module_default_data_dir if root_dir is None else root_dir)
-
         file_path, _, _ = ds.save_data(np.array(data).T,
                                        column_headers=header,
                                        metadata=parameters,
@@ -398,9 +398,10 @@ class SpectrometerLogic(LogicBase):
 
         # save the figure into a file
         figure, ax1 = plt.subplots()
+        
         rescale_factor, prefix = self._get_si_scaling(np.max(data[1]))
 
-        ax1.plot(data[0],
+        ax1.plot(data[0] / 1e9,
                  data[1] / rescale_factor,
                  linestyle=':',
                  linewidth=0.5
@@ -408,9 +409,9 @@ class SpectrometerLogic(LogicBase):
 
         if self.fit_method != 'No Fit' and self.fit_results is not None:
             if self._axis_type_frequency:
-                x_data = self.fit_results.high_res_best_fit[0] * 1e-12
+                x_data = self.fit_results.high_res_best_fit[0]
             else:
-                x_data = self.fit_results.high_res_best_fit[0] * 1e9
+                x_data = self.fit_results.high_res_best_fit[0]
 
             ax1.plot(x_data,
                      self.fit_results.high_res_best_fit[1] / rescale_factor,
