@@ -31,7 +31,7 @@ class Automatedmeasurements(LogicBase):
     poimanagerlogic = Connector(name='poimanagerlogic',interface='PoiManagerLogic')
     switchlogic = Connector(name='switchlogic',interface='SwitchLogic', optional=True)
     scanningprobelogic = Connector(name='scanningprobelogic',interface='ScanningProbeLogic')
-
+    ple_gui = Connector(name='ple_gui', interface= 'PLEScanGui', optional = True)
     # internal signals
     sigNextPoi = QtCore.Signal()
     sigNextStep = QtCore.Signal()
@@ -61,6 +61,7 @@ class Automatedmeasurements(LogicBase):
         # (to make sure we don't catch signals when we don't want to)
         self._optimizer_started = False
         self._spectrum_started = False
+        self._ple_started = False
         self._blue_is_on = None # status of blue laser (True: blue laser shines on sample, False: it does not)
 
         return
@@ -76,6 +77,7 @@ class Automatedmeasurements(LogicBase):
         self._optimizer_logic = self.optimizerlogic()
         self._poimanager_logic = self.poimanagerlogic()
         self._scanning_probe_logic = self.scanningprobelogic()
+        self._ple_gui = self.ple_gui()
         # optional conecctors
         if self.spectrometergui():
             self._spectrometer_gui = self.spectrometergui()
@@ -200,6 +202,7 @@ class Automatedmeasurements(LogicBase):
             self.abort = True
             self._optimizer_started = False
             self._spectrum_started = False
+            self._ple_started = False
             return
         # Choose the first poi in the list, set it as the current one and delete it.
         self._current_poi_name = self._poi_names.pop(0)
@@ -255,7 +258,7 @@ class Automatedmeasurements(LogicBase):
         # We will wait for a bit and send a signal ourselves.
         # We calculate the time by assuming our start- and endposition are within the scanned area.
         if self._poimanager_logic._max_move_velocity == None:
-            sleep_time = 0.1
+            sleep_time = 5
         else:
             x_range = self._poimanager_logic.roi_scan_image_extent[0]
             y_range = self._poimanager_logic.roi_scan_image_extent[1]
@@ -290,11 +293,16 @@ class Automatedmeasurements(LogicBase):
         if self._optimizer_started == True:
             # make sure we only do sth with the signal if we initialized the measurement
             self._optimizer_started = False
+            
             optimal_posi = np.array([self._optimizer_logic.optimal_position['x'], self._optimizer_logic.optimal_position['y'], self._optimizer_logic.optimal_position['z']])
+            
             position_before_optimize = np.array([self._position_before_optimize['x'],self._position_before_optimize['y'],self._position_before_optimize['z']])
+          
             deviation_from_old_posi = optimal_posi - position_before_optimize
+            
             if self._deviation_within_limits(deviation_from_old_posi,[None,None,200e-9]):
                 # if defect is closse enough to poi position continue wit this defect
+              
                 if self.debug:
                     print('Result of fit is within limits.')
                 self.sigNextStep.emit()
@@ -320,6 +328,7 @@ class Automatedmeasurements(LogicBase):
                     self.sigNextPoi.emit()
                     return
         else:
+         
             return
 
 
@@ -394,7 +403,45 @@ class Automatedmeasurements(LogicBase):
         # hit save
         self.sigSaveSpectrum.emit()
         return
+
+    def take_ple(self):
+        if self.debug:
+            print(f'{__name__}, {inspect.stack()[0][3]}')
+        if self._ple_gui is None:
+            raise Exception('spectrometerlogic not connected.')
         
+        self._ple_started = True
+        self._ple_gui._mw.actionToggle_scan.setChecked(True)
+        self._ple_gui._mw.actionToggle_scan.triggered.emit()
+
+
+        return
+        
+
+    def _ple_done(self):
+        """Catches the signal
+        """
+        if self.debug:
+            print(f'{__name__}, {inspect.stack()[0][3]}, _ple_started = {self._ple_started}')
+        if self._ple_started:
+            name_tag = f'defect-name-{self._current_poi_name}_blue-on-{self._blue_is_on}'
+            self.save_ple(name_tag)
+            self._ple_started = False
+            self.sigNextStep.emit()
+        else:
+            return
+
+    def save_ple(self, name_tag=None):
+        if self.debug:
+            print(f'{__name__}, {inspect.stack()[0][3]}, name = {name_tag}')
+        #if not self._ple_connected:
+        #    raise Exception('spectrometergui not connected.')
+        # This is really ugly but also the fastest way to make it work
+        # set parameters in gui
+        self._ple_gui.save_path_widget.saveTagLineEdit.setText(name_tag)
+        # hit save
+        self._ple_gui._mw.action_Save.triggered.emit()
+        return
 
     def turn_on_blue_laser(self):
         """Turns on the blue laser.
