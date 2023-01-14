@@ -83,6 +83,7 @@ class PowerControllerGui(GuiBase):
 
         
         self._mw.channel_comboBox.addItems(np.array(self._powercontrollerlogic.channels).astype(str))
+        self._mw.channel_comboBox.currentIndexChanged.connect(self.channel_changed)
         self.sigRecordSaturation.connect(self._powercontrollerlogic.run_saturation)
         # self._powercontrollerlogic.sig_data_updated.connect(self.update_data)
         self._mw.actionSet_current_as_zero.triggered.connect(self.set_new_zero)
@@ -119,6 +120,10 @@ class PowerControllerGui(GuiBase):
         QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
+
+    def channel_changed(self):
+        motor = int(self._mw.channel_comboBox.currentText())
+        self._mw.powerHorizontalSlider.setValue(self._powercontrollerlogic._current_positions[motor])
 
     def set_power_slider(self):
         slider_val = float(self._mw.powerHorizontalSlider.value())

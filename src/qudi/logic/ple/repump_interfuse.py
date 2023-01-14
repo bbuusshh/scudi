@@ -30,13 +30,14 @@ from PySide2 import QtCore
 import numpy as np
 from qudi.core.statusvariable import StatusVar
 from qudi.util.delay import delay
+import time
 
 class RepumpInterfuseLogic(LogicBase):
     sigGuiParamsUpdated = QtCore.Signal(object,  QtCore.Qt.QueuedConnection)
     sigTimingPlotUpdated = QtCore.Signal(object,  QtCore.Qt.QueuedConnection)
     _pulsed = Connector(name='pulsed', interface='PulsedMasterLogic')
-    _switcher = Connector(name='switcher', interface="SwitchLogic") 
-    _switcher_channel = ConfigOption(name='switcher_channel', default=None)
+    _switchlogic = Connector(name='switchlogic', interface="SwitchLogic", optional=True) 
+    _switch_name = ConfigOption(name='switcher_name', default=None)
     _resonant_laser = ConfigOption(name='resonant_laser', default=None)
     _repump_laser = ConfigOption(name='repump_laser', default=None)
 
@@ -60,10 +61,12 @@ class RepumpInterfuseLogic(LogicBase):
     test = StatusVar(name="test", default=0)
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-        self.repump_scan_length = 100 #msec
+        self.repump_scan_length = 200 #msec
     
     def on_activate(self):
         self.pulsed = self._pulsed()
+        self.switch = self._switchlogic()
+        self.do_prescan_repump = False
         #self.create_pulse_block(channels = list(self._resonant_lasers.values()))
         self.a_ch = {
         'a_ch1': SamplingFunctions.Idle(),
@@ -278,8 +281,8 @@ class RepumpInterfuseLogic(LogicBase):
         self.sigTimingPlotUpdated.emit(self.timing_diagram)
 
     def repump_before_scan(self):
-        self._switcher.set_state(self._switcher_channel, 'On')
+        self._switcher.set_state('405 nm laser', 'On')
         delay(msec = self.repump_scan_length)
-        self._switcher.set_state(self._switcher_channel, 'Off')
+        self._switcher.set_state('405 nm laser', 'Off')
         
         

@@ -89,6 +89,7 @@ class PLEScanGui(GuiBase):
     _n_save_tasks = 0
 
     sigDoFit = QtCore.Signal(str, str)
+    fit_result = None
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -224,17 +225,14 @@ class PLEScanGui(GuiBase):
 
 
         self._mw.action_Save.triggered.connect(lambda x: self.save_scan_data(scan_axes=None))
-
+        self._mw.actionSave.triggered.connect(lambda x: self.save_scan_data(scan_axes=None))
 
         self.load_view()
 
     @QtCore.Slot(bool)
     def setup_repump_before_scan(self, do_repump):
-        if do_repump:
-            self._scanning_logic.sigRepeatScan.connect(self. _repump_logic.repump_before_scan)
-        else:
-            self._scanning_logic.sigRepeatScan.disconnect()
-
+        self._repump_logic.do_prescan_repump = do_repump
+        
     def _init_optimizer_settings(self):
         """ Configuration and initialisation of the optimizer settings dialog.
         """
@@ -425,7 +423,7 @@ class PLEScanGui(GuiBase):
     def _update_fit_result(self, fit_cfg_result, channel):
         current_channel = channel#self._scan_control_dockwidget.selected_channel
         # current_range_index = self._scan_control_dockwidget.selected_range
-        print(fit_cfg_result)
+        self.fit_result = fit_cfg_result
         if current_channel == channel:# and current_range_index == range_index:
             if fit_cfg_result is None:
                 self._fit_dockwidget.fit_widget.update_fit_result('No Fit', None)
@@ -495,6 +493,7 @@ class PLEScanGui(GuiBase):
         self._mw.startDoubleSpinBox.setValue(region[0])
         self._mw.stopDoubleSpinBox.setValue(region[1])
         self._mw.ple_averaged_widget.selected_region.setRegion(region)
+        self._mw.ple_widget.target_point.setValue(region[0])
 
     @QtCore.Slot()
     def sliders_values_are_changing_averaged_data(self):
@@ -502,8 +501,8 @@ class PLEScanGui(GuiBase):
         self._mw.startDoubleSpinBox.setValue(region[0])
         self._mw.stopDoubleSpinBox.setValue(region[1])
 
-        # value = self._mw.ple_averaged_widget.target_point.value()
-        self._mw.constDoubleSpinBox.setValue(value)
+        value = self._mw.ple_averaged_widget.target_point.value()
+        #self._mw.constDoubleSpinBox.setValue(value)
 
         # self._mw.ple_widget.target_point.setValue(value)
 
@@ -582,7 +581,6 @@ class PLEScanGui(GuiBase):
     def scan_repeated(self, start, scan_axes):
         self._mw.elapsed_lines_DisplayWidget.display(self._scanning_logic.display_repeated)
 
-    # @QtCore.Slot(dict)
     def set_scanner_target_position(self):
         """
         Issues new target to logic and updates gui.
@@ -590,7 +588,7 @@ class PLEScanGui(GuiBase):
         @param dict target_pos:
         """
         target = self.sender().value()
-        print(target)
+        
         # target = self._mw.ple_widget.target_point.value()
         
         target_pos = {self._scanning_logic._scan_axis: target}
