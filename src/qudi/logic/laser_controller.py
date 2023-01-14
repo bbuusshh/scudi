@@ -16,7 +16,7 @@ from PySide2 import QtCore
 class LaserControllerLogic(LogicBase):
     motor_pulser = Connector(interface='DigitalSwitchNI')
     ao_laser_control = Connector(interface='NIXSeriesAnalogOutput')
-    
+    power_controller = Connector(interface='')
     def __init__(self):
         self._motor_pulser = self.motor_pulser()
         self._ao_laser_control = self.ao_laser_control()
