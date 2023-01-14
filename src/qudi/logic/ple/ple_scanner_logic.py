@@ -73,14 +73,20 @@ class PLEScannerLogic(ScanningProbeLogic):
 
     _default_fit_configs = (
         {'name'             : 'Lorentzian',
-         'model'            : 'Lorentzian',
-         'estimator'        : 'Peak',
-         'custom_parameters': None},
+        'model'            : 'Lorentzian',
+        'estimator'        : 'Peak',
+        'custom_parameters': None},
+        
+        {'name'             : 'DoubleLorentzian',
+        'model'            : 'DoubleLorentzian',
+        'estimator'        : 'Peaks',
+        'custom_parameters': None},
 
         {'name'             : 'Gaussian',
-         'model'            : 'Gaussian',
-         'estimator'        : 'Peak',
-         'custom_parameters': None}
+        'model'            : 'Gaussian',
+        'estimator'        : 'Peak',
+        'custom_parameters': None}
+        
     )
 
     accumulated_data = None
