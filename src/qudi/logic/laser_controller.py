@@ -14,16 +14,19 @@ from qudi.hardware.cwave.cwave_api import PiezoChannel, StatusBit, PiezoMode, Ex
 from PySide2 import QtCore
 
 class LaserControllerLogic(LogicBase):
-    cwavelaser = Connector(interface='CWave')
+    motor_pulser = Connector(interface='DigitalSwitchNI')
+    ao_laser_control = Connector(interface='NIXSeriesAnalogOutput')
     
     def __init__(self):
-        self.ni = ni_card.NationalInstruments()
+        self._motor_pulser = self.motor_pulser()
+        self._ao_laser_control = self.ao_laser_control()
+
     def set_thin_etalon_voltage(self,v):
-        self.ni.scanner_set_position(a2 = v)
+        self._ao_laser_control.set_voltage(a0 = v)
     def set_motor_direction(self,sign):
         if sign > 0:
-            self.ni.scanner_set_position(a2 = 5)
+            self._ao_laser_control(a2 = 5)
         elif sign < 0 :
-            self.ni.scanner_set_position(a1=-5)
+            self._ao_laser_control(a2=-5)
     def move_motor_pulse(self):
-        self.ni.pulse_digital_channel(self.ni._stepper_pulse_channel)
+        self._motor_pulser(self.ni._stepper_pulse_channel)
