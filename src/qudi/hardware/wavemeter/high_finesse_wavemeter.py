@@ -106,11 +106,11 @@ class HighFinesseWavemeter(WavemeterInterface):
     _cReturnWavelangthVac        = ctypes.c_long(0x0000)
 
 
-    def __init__(self, config, **kwargs):
-        self.log.warning("This module has not been tested on the new qudi core."
-                         "Use with caution and contribute bug fixed back, please.")
-        super().__init__(config=config, **kwargs)
-
+    def __init__(self, *args, **kwargs):
+        
+        super().__init__(*args, **kwargs)
+        # self.log.warning("This module has not been tested on the new qudi core."
+        #                  "Use with caution and contribute bug fixed back, please.")
         #locking for thread safety
         self.threadlock = Mutex()
 
@@ -215,7 +215,7 @@ class HighFinesseWavemeter(WavemeterInterface):
             return -1
 
 
-        self.module_state.run()
+        # self.module_state.run()
         # actually start the wavemeter
         self._wavemeterdll.Operation(self._cCtrlStartMeasurment) #starts measurement
 
