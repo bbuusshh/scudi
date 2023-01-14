@@ -25,17 +25,21 @@ class LaserControllerLogic(LogicBase):
         return 
 
     def on_deactivate(self) -> None:
-        return 
+        self._ao_laser_control.set_activity_state(active=False)
+       
 
     def set_thin_etalon_voltage(self,v):
-        self._ao_laser_control.set_voltage(channel = 'a0', value = v)
-        
+        self._ao_laser_control.set_activity_state(active=True)
+        self._ao_laser_control.set_setpoint(channel = 'a0', value = v)
+        self._ao_laser_control.set_activity_state(active=False)
+
     def set_motor_direction(self,sign):
+        self._ao_laser_control.set_activity_state(active=True)
         if sign > 0:
-            self._ao_laser_control.set_voltage(channel = 'a2', value = 5)
+            self._ao_laser_control.set_setpoint(channel = 'a2', value = 5)
         elif sign < 0 :
             self._ao_laser_control.set_voltage(channel = 'a2', value = -5)
-
+        self._ao_laser_control.set_activity_state(active=False)
     def move_motor_pulse(self):
         self._motor_pulser.set_state(switch="motor", state='Low') #'High' should be pulsing?
         
