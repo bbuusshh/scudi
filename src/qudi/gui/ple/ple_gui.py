@@ -75,6 +75,7 @@ class PLEScanGui(GuiBase):
     _save_folderpath = StatusVar('save_folderpath', default=None)
     _optimizer_plot_dims = ConfigOption(name='optimizer_plot_dimensions', default=[1])
     _optimizer_state = {'is_running': False}
+    _accumulated_data = None
     _optimizer_id = 0
     # signals
     sigScannerTargetChanged = QtCore.Signal(dict)#, object)
@@ -82,7 +83,7 @@ class PLEScanGui(GuiBase):
     # sigToggleScan = QtCore.Signal(bool, tuple, object)
     sigOptimizerSettingsChanged = QtCore.Signal(dict)
     sigToggleOptimize = QtCore.Signal(bool)
-    sigSaveScan = QtCore.Signal(object, object, object, object)
+    sigSaveScan = QtCore.Signal(object, object, object, object, object)
     sigSaveFinished = QtCore.Signal()
     sigShowSaveDialog = QtCore.Signal(bool)
 
@@ -131,6 +132,7 @@ class PLEScanGui(GuiBase):
         self.sigScanSettingsChanged.connect(
             self._scanning_logic.set_scan_settings, QtCore.Qt.QueuedConnection
         )
+        self._scanning_logic.sigUpdateAccumulated.connect(self._update_accumulated_scan, QtCore.Qt.QueuedConnection)
         self._scanning_logic.sigToggleScan.connect(self._scanning_logic.toggle_scan, QtCore.Qt.QueuedConnection)
         self._mw.actionToggle_scan.triggered.connect(self.toggle_scan, QtCore.Qt.QueuedConnection)
         self._scanning_logic.sigRepeatScan.connect(self.scan_repeated, QtCore.Qt.QueuedConnection)
@@ -573,7 +575,7 @@ class PLEScanGui(GuiBase):
         if 'frequency' in settings:
             self._mw.frequencyDoubleSpinBox.setValue(settings['frequency'][self.scan_axis])
         
-        self._scanning_logic.reset_accumulated()
+        #self._scanning_logic.reset_accumulated()
         self._mw.number_of_repeats_SpinBox.setValue(self._scanning_logic._number_of_repeats)
         
 
@@ -739,11 +741,14 @@ class PLEScanGui(GuiBase):
         """
         @param ScanData scan_data:
         """
-        axes = scan_data.scan_axes
-    
-        if scan_data.accumulated_data is not None:
-            self._mw.ple_widget.set_scan_data(scan_data)
-            self._mw.matrix_widget.set_scan_data(scan_data)
+        self._mw.ple_widget.set_scan_data(scan_data)
+       
+
+    @QtCore.Slot(object)
+    def _update_accumulated_scan(self, accumulated_data, scan_data):
+         if accumulated_data is not None:
+            self._mw.matrix_widget.set_scan_data(accumulated_data, scan_data)
+            self._accumulated_data = accumulated_data
 
     @QtCore.Slot(tuple)
     def save_scan_data(self, scan_axes=None):
@@ -777,7 +782,7 @@ class PLEScanGui(GuiBase):
             # else:
             #     scan_axes = [scan_axes]
             cbar_range = self._mw.matrix_widget.image_widget.levels
-            self.sigSaveScan.emit(scans[0], cbar_range, name_tag, self._save_folderpath)
+            self.sigSaveScan.emit(scans[0], self._accumulated_data, cbar_range, name_tag, self._save_folderpath)
 
         finally:
             pass

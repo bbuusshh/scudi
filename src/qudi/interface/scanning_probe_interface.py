@@ -59,22 +59,25 @@ class ScanningProbeInterface(Base):
         pass
 
     @abstractmethod
-    def move_absolute(self, position, velocity=None):
+    def move_absolute(self, position, velocity=None, blocking=False):
         """ Move the scanning probe to an absolute position as fast as possible or with a defined
         velocity.
 
         Log error and return current target position if something fails or a scan is in progress.
+
+        @param bool blocking: If True this call returns only after the final position is reached.
         """
         pass
 
     @abstractmethod
-    def move_relative(self, distance, velocity=None):
+    def move_relative(self, distance, velocity=None, blocking=False):
         """ Move the scanning probe by a relative distance from the current target position as fast
         as possible or with a defined velocity.
 
         Log error and return current target position if something fails or a 1D/2D scan is in
         progress.
 
+        @param bool blocking: If True this call returns only after the final position is reached.
 
         """
         pass
@@ -192,7 +195,7 @@ class ScanData:
 
         self._timestamp = None
         self._data = None
-        self._accumulated_data = None
+        self._accumulated = None
         self._averaged_data = None
         self._position_data = None
         self._target_at_start = target_at_start
@@ -212,8 +215,8 @@ class ScanData:
             new_inst._data = self._data.copy()
         if self._position_data is not None:
             new_inst._position_data = self._position_data.copy()
-        if self._accumulated_data is not None:
-            new_inst._accumulated_data = self._accumulated_data.copy()
+        if self._accumulated is not None:
+            new_inst._accumulated = self._accumulated.copy()
         return new_inst
 
     def __deepcopy__(self, memodict={}):
@@ -224,7 +227,7 @@ class ScanData:
             raise NotImplemented
 
         attrs = ('_timestamp', '_scan_frequency', '_scan_axes', '_scan_range', '_scan_resolution',
-                 '_channels', '_position_feedback_axes', '_data', '_accumulated_data', '_position_data', '_timestamp')
+                 '_channels', '_position_feedback_axes', '_data', '_accumulated', '_position_data', '_timestamp')
         return all(getattr(self, a) == getattr(other, a) for a in attrs)
 
     @property
@@ -270,9 +273,21 @@ class ScanData:
     def data(self):
         return self._data
 
+    @data.setter
+    def data(self, data_dict):
+        assert tuple(data_dict.keys()) == self.channels
+        assert all([val.shape == self.scan_resolution for val in data_dict.values()])
+        self._data = data_dict
+
     @property
-    def accumulated_data(self):
-        return self._accumulated_data
+    def accumulated(self):
+        return self._accumulated
+    
+    @accumulated.setter
+    def accumulated(self, accumulated_dict):
+        assert tuple(accumulated_dict.keys()) == self.channels
+        self._accumulated = accumulated_dict
+
     @property
     def position_data(self):
         return self._position_data
@@ -313,7 +328,8 @@ class ScanData:
                             scan_range=self._scan_range,
                             scan_resolution=self._scan_resolution,
                             scan_frequency=self._scan_frequency,
-                            position_feedback_axes=self._position_feedback_axes)
+                            position_feedback_axes=self._position_feedback_axes,
+                            target_at_start=self._target_at_start)
         new_inst._timestamp = self._timestamp
         if self._data is not None:
             new_inst._data = {ch: arr.copy() for ch, arr in self._data.items()}

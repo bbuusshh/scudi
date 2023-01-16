@@ -73,10 +73,16 @@ class SpectrometerLogic(LogicBase):
     sig_state_updated = QtCore.Signal()
     sig_fit_updated = QtCore.Signal(str, object)
     sigSpectrumDone = QtCore.Signal()
+
     _default_fit_configs = (
         {'name'             : 'Lorentzian',
         'model'            : 'Lorentzian',
         'estimator'        : 'Peak',
+        'custom_parameters': None},
+        
+        {'name'             : 'DoubleLorentzian',
+        'model'            : 'DoubleLorentzian',
+        'estimator'        : 'Peaks',
         'custom_parameters': None},
 
         {'name'             : 'Gaussian',
