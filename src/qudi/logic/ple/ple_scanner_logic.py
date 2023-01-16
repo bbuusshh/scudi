@@ -89,11 +89,12 @@ class PLEScannerLogic(ScanningProbeLogic):
         
     )
 
-    accumulated_data = None
+    accumulated = None
     sigRepeatScan = QtCore.Signal(bool, tuple)
     sigFitUpdated = QtCore.Signal(object, str)
     sigToggleScan = QtCore.Signal(bool, tuple, object)
     sigSetScannerTarget = QtCore.Signal(dict)
+    sigUpdateAccumulated = QtCore.Signal(object, object)
 
     def __init__(self, config, **kwargs):
         super(PLEScannerLogic, self).__init__(config=config, **kwargs)
@@ -243,16 +244,19 @@ class PLEScannerLogic(ScanningProbeLogic):
         return self._fit_results.copy()
     def stack_data(self):
         if (self.scan_data is not None) and (self.scan_data.scan_dimension == 1):
-            print("Hi")
-            if self.accumulated_data is None:
-                self.accumulated_data = {channel: data_i[np.newaxis, :] for channel, data_i in self.scan_data.data.items()}
+           
+            if self.accumulated is None:
+                
+                self.accumulated = {channel: data_i[np.newaxis, :] for channel, data_i in self.scan_data.data.items()}
+                
             else:
                 if len(list(self.scan_data.data.values())[0]) > 0:
-                    self.accumulated_data = {channel : np.vstack((self.accumulated_data[channel], data_i))[-self._number_of_repeats:] for channel, data_i in self.scan_data.data.items()}
+                    self.accumulated = {channel : np.vstack((self.accumulated[channel], data_i))[-self._number_of_repeats:] for channel, data_i in self.scan_data.data.items()}
                 else:
-                    return 
-            self.scan_data._accumulated_data = self.accumulated_data
+                    return
+
             self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)
+            self.sigUpdateAccumulated.emit(self.accumulated, self.scan_data)
 
     @QtCore.Slot(dict)
     def set_scan_settings(self, settings):
@@ -381,9 +385,9 @@ class PLEScannerLogic(ScanningProbeLogic):
             return err
 
     def reset_accumulated(self):
-        self.accumulated_data = None
+        self.accumulated = None
         #if self.scan_data is not None:
-        #    self.scan_data._accumulated_data = None
+        #    self.scan_data._accumulated = None
     
     def _update_scan_settings(self, scan_axes, settings):
         for ax_index, ax in enumerate(scan_axes):

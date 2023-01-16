@@ -195,7 +195,7 @@ class ScanData:
 
         self._timestamp = None
         self._data = None
-        self._accumulated_data = None
+        self._accumulated = None
         self._averaged_data = None
         self._position_data = None
         self._target_at_start = target_at_start
@@ -215,8 +215,8 @@ class ScanData:
             new_inst._data = self._data.copy()
         if self._position_data is not None:
             new_inst._position_data = self._position_data.copy()
-        if self._accumulated_data is not None:
-            new_inst._accumulated_data = self._accumulated_data.copy()
+        if self._accumulated is not None:
+            new_inst._accumulated = self._accumulated.copy()
         return new_inst
 
     def __deepcopy__(self, memodict={}):
@@ -227,7 +227,7 @@ class ScanData:
             raise NotImplemented
 
         attrs = ('_timestamp', '_scan_frequency', '_scan_axes', '_scan_range', '_scan_resolution',
-                 '_channels', '_position_feedback_axes', '_data', '_accumulated_data', '_position_data', '_timestamp')
+                 '_channels', '_position_feedback_axes', '_data', '_accumulated', '_position_data', '_timestamp')
         return all(getattr(self, a) == getattr(other, a) for a in attrs)
 
     @property
@@ -280,8 +280,14 @@ class ScanData:
         self._data = data_dict
 
     @property
-    def accumulated_data(self):
-        return self._accumulated_data
+    def accumulated(self):
+        return self._accumulated
+    
+    @accumulated.setter
+    def accumulated(self, accumulated_dict):
+        assert tuple(accumulated_dict.keys()) == self.channels
+        self._accumulated = accumulated_dict
+
     @property
     def position_data(self):
         return self._position_data
