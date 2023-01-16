@@ -14,19 +14,32 @@ from qudi.hardware.cwave.cwave_api import PiezoChannel, StatusBit, PiezoMode, Ex
 from PySide2 import QtCore
 
 class LaserControllerLogic(LogicBase):
-    motor_pulser = Connector(interface='DigitalSwitchNI')
-    ao_laser_control = Connector(interface='NIXSeriesAnalogOutput')
-    power_controller = Connector(interface='')
-    def __init__(self):
+    motor_pulser = Connector(name = 'motor_pulser', interface='DigitalSwitchNI')
+    ao_laser_control = Connector(name = 'ao_laser_control', interface='NIXSeriesAnalogOutput')
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def on_activate(self) -> None:
         self._motor_pulser = self.motor_pulser()
-        self._ao_laser_control = self.ao_laser_control()
+        self._ao_laser_control = self.ao_laser_control() 
+
+    def on_deactivate(self) -> None:
+        self._ao_laser_control.set_activity_state(active=False)
+       
 
     def set_thin_etalon_voltage(self,v):
-        self._ao_laser_control.set_voltage(a0 = v)
+        self._ao_laser_control.set_activity_state(active=True)
+        self._ao_laser_control.set_setpoint(channel = 'ao0', value = v)
+        self._ao_laser_control.set_activity_state(active=False)
+
     def set_motor_direction(self,sign):
+        self._ao_laser_control.set_activity_state(active=True)
         if sign > 0:
-            self._ao_laser_control(a2 = 5)
+            self._ao_laser_control.set_setpoint(channel = 'ao2', value = 5)
         elif sign < 0 :
-            self._ao_laser_control(a2=-5)
+            self._ao_laser_control.set_setpoint(channel = 'ao2', value = -5)
+        self._ao_laser_control.set_activity_state(active=False)
     def move_motor_pulse(self):
-        self._motor_pulser(self.ni._stepper_pulse_channel)
+        self._motor_pulser.set_state(switch="motor", state='Low') #'High' should be pulsing?
+        
