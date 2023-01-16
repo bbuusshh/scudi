@@ -25,25 +25,32 @@ import numpy as np
 from PySide2 import QtCore
 import itertools
 import copy as cp
-import time
+
 from qudi.core.module import LogicBase
 from qudi.util.mutex import RecursiveMutex
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 from qudi.util.fit_models.gaussian import Gaussian2D, Gaussian
-from qudi.util.fit_models.gaussian import Gaussian2D, Gaussian
 
 from qudi.interface.scanning_probe_interface import ScanData
 
 
-class PLEOptimizeScannerLogic(LogicBase):
+class ScanningOptimizeLogic(LogicBase):
     """
     ToDo: Write documentation
+
+    Example config for copy-paste:
+
+    scanning_optimize_logic:
+        module.Class: 'scanning_optimize_logic.ScanningOptimizeLogic'
+        connect:
+            scan_logic: scanning_probe_logic
+
     """
 
     # declare connectors
-    _scan_logic = Connector(name='scan_logic', interface='PLEScannerLogic')
+    _scan_logic = Connector(name='scan_logic', interface='ScanningProbeLogic')
 
     # config options
 
@@ -322,31 +329,22 @@ class PLEOptimizeScannerLogic(LogicBase):
 
             if self.module_state() == 'idle':
                 return
-            try:
-                self.log.debug(f"Starting new scan for next seq step {self._sequence_index}")
-                # time.sleep(2)
-                # if self._scan_logic().toggle_scan(True,list(self._scan_sequence[self._sequence_index]),
-                #                                 self.module_uuid) < 0:
-                    
-                self._scan_logic().sigToggleScan.emit(True, list(self._scan_sequence[self._sequence_index]), self.module_uuid)
-                    # self.log.error('Unable to start {0} scan. Optimize aborted.'.format(
-                    # self._scan_sequence[self._sequence_index])
-                # )
-                    # self.stop_optimize()    
-                return
-            except:
-                self.log.exception()
+
+            if self._scan_logic().toggle_scan(True,
+                                              self._scan_sequence[self._sequence_index],
+                                              self.module_uuid) < 0:
+                self.log.error('Unable to start {0} scan. Optimize aborted.'.format(
+                    self._scan_sequence[self._sequence_index])
+                )
+                self.stop_optimize()
+            return
 
     def _scan_state_changed(self, is_running, data, caller_id):
 
         with self._thread_lock:
-            
             if is_running or self.module_state() == 'idle' or caller_id != self.module_uuid:
-                self.log.debug(f"Don't handle changed scan state, running: {is_running},"
-                               f" caller {self.module_uuid}. Optimize logic: {self.module_uuid} ")
                 return
             elif data is not None:
-               
                 try:
                     if data.scan_dimension == 1:
                         x = np.linspace(*data.scan_range[0], data.scan_resolution[0])
@@ -365,66 +363,50 @@ class PLEOptimizeScannerLogic(LogicBase):
 
                     position_update = {ax: opt_pos[ii] for ii, ax in enumerate(data.scan_axes)}
                     if fit_data is not None:
-                        
-                        # new_pos = self._scan_logic().set_target_position(position_update, self.module_uuid)
-                        # for ax in tuple(position_update):
-                        #     position_update[ax] = new_pos[ax]
-                        self._scan_logic().sigSetScannerTarget.emit(position_update)
-                        
+                        new_pos = self._scan_logic().set_target_position(position_update)
+                        for ax in tuple(position_update):
+                            position_update[ax] = new_pos[ax]
 
                         fit_data = {'fit_data':fit_data, 'full_fit_res':fit_res}
 
-                    self.log.debug(f"Optimizer issueing position update: {position_update}")
+                    self.log.debug(f"Optimizer issuing position update: {position_update}")
                     self._optimal_position.update(position_update)
                     self.sigOptimizeStateChanged.emit(True, position_update, fit_data)
 
                     # Abort optimize if fit failed
                     if fit_data is None:
                         self.log.warning("Stopping optimization due to failed fit.")
-                        pass # TODO DEBUG ONLY
-                        #self.stop_optimize()
-                        #return
-                    
+                        self.stop_optimize()
+                        return
+
                 except:
                     self.log.exception()
 
             self._sequence_index += 1
 
-            self.log.debug(f"Handle changed scan state, running: {is_running}, caller {self.module_uuid} ")
-            self.log.debug(f"Iterating seq idx: {self._sequence_index}")
-
             # Terminate optimize sequence if finished; continue with next sequence step otherwise
             if self._sequence_index >= len(self._scan_sequence):
-                self.log.debug(f"Scan sequence finished. Stopping.")
                 self.stop_optimize()
             else:
                 self._sigNextSequenceStep.emit()
-
-            self.log.debug(f"stepping out scan_state_changed")
             return
 
     def stop_optimize(self):
         with self._thread_lock:
-            try:
-                self.log.debug("Stopping optimize...")
-                if self.module_state() == 'idle':
-                    self.sigOptimizeStateChanged.emit(False, dict(), None)
-                    return 0
-
-                if self._scan_logic().module_state() != 'idle':
-                    # optimizer scans are never saved in scanning history
-                    err = self._scan_logic().stop_scan()
-                else:
-                    err = 0
-                self._scan_logic().set_scan_settings(self._stashed_scan_settings)
-                self._stashed_scan_settings = dict()
-                self.module_state.unlock()
+            if self.module_state() == 'idle':
                 self.sigOptimizeStateChanged.emit(False, dict(), None)
+                return 0
 
-                self.log.debug(f"Done. code {err}")
-                return err
-            except:
-                self.log.exception()
+            if self._scan_logic().module_state() != 'idle':
+                # optimizer scans are never saved in scanning history
+                err = self._scan_logic().stop_scan()
+            else:
+                err = 0
+            self._scan_logic().set_scan_settings(self._stashed_scan_settings)
+            self._stashed_scan_settings = dict()
+            self.module_state.unlock()
+            self.sigOptimizeStateChanged.emit(False, dict(), None)
+            return err
 
     def _get_pos_from_2d_gauss_fit(self, xy, data):
         model = Gaussian2D()
