@@ -429,9 +429,8 @@ class ScanningOptimizeLogic(LogicBase):
 
     def _get_pos_from_2d_gauss_fit(self, xy, data):
         model = Gaussian2D()
-
         try:
-            fit_result = model.fit(data, xy=xy, **model.estimate_peak(data, xy))
+            fit_result = model.fit(data, x=xy, **model.estimate_peak(data, xy))
         except:
             x_min, x_max = xy[0].min(), xy[0].max()
             y_min, y_max = xy[1].min(), xy[1].max()

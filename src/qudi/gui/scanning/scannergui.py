@@ -96,7 +96,7 @@ class ScannerGui(GuiBase):
     _default_position_unit_prefix = ConfigOption(name='default_position_unit_prefix', default=None)
     # for all optimizer sub widgets, (2= xy, 1=z)
     _optimizer_plot_dims = ConfigOption(name='optimizer_plot_dimensions', default=[2,1])
-
+    _min_crosshair_size_fraction = ConfigOption(name='min_crosshair_size_fraction', default=1/50, missing='nothing')
     # status vars
     _window_state = StatusVar(name='window_state', default=None)
     _window_geometry = StatusVar(name='window_geometry', default=None)
@@ -230,10 +230,10 @@ class ScannerGui(GuiBase):
                                        QtCore.Qt.DirectConnection)
 
         self.save_path_widget.currPathLabel.setText('Default' if self._save_folderpath is None else self._save_folderpath)
-        self.save_path_widget.DailyPathCheckBox.clicked.connect(lambda: self.save_path_widget.newPathCheckBox.setEnabled(not self.save_path_widget.DailyPathCheckBox.isChecked()))
+        self.save_path_widget.DailyPathPushButton.clicked.connect(lambda: self.save_path_widget.newPathPushButton.setEnabled(not self.save_path_widget.DailyPathPushButton.isChecked()))
         if self._save_folderpath is None:
-            self.save_path_widget.DailyPathCheckBox.setChecked(True)
-            self.save_path_widget.DailyPathCheckBox.clicked.emit()
+            self.save_path_widget.DailyPathPushButton.setChecked(True)
+            self.save_path_widget.DailyPathPushButton.clicked.emit()
 
         # Initialize dockwidgets to default view
         self.restore_default_view()
@@ -483,18 +483,18 @@ class ScannerGui(GuiBase):
         """
         
         name_tag = self.save_path_widget.saveTagLineEdit.text()
-        if self.save_path_widget.newPathCheckBox.isChecked() and self.save_path_widget.newPathCheckBox.isEnabled():
+        if self.save_path_widget.newPathPushButton.isChecked() and self.save_path_widget.newPathPushButton.isEnabled():
             new_path = QtWidgets.QFileDialog.getExistingDirectory(self._mw, 'Select Folder')
             if new_path:
                 self._save_folderpath = new_path
                 self.save_path_widget.currPathLabel.setText(self._save_folderpath)
-                self.save_path_widget.newPathCheckBox.setChecked(False)
+                self.save_path_widget.newPathPushButton.setChecked(False)
             else:
                 return
 
         self.sigShowSaveDialog.emit(True)
 
-        if self.save_path_widget.DailyPathCheckBox.isChecked():
+        if self.save_path_widget.DailyPathPushButton.isChecked():
             self._save_folderpath = None
             self.save_path_widget.currPathLabel.setText('Default')
 

@@ -243,6 +243,7 @@ class PLEScannerLogic(ScanningProbeLogic):
         return self._fit_results.copy()
     def stack_data(self):
         if (self.scan_data is not None) and (self.scan_data.scan_dimension == 1):
+            print("Hi")
             if self.accumulated_data is None:
                 self.accumulated_data = {channel: data_i[np.newaxis, :] for channel, data_i in self.scan_data.data.items()}
             else:
@@ -269,10 +270,9 @@ class PLEScannerLogic(ScanningProbeLogic):
     def update_number_of_repeats(self, number_of_repeats):
         self._number_of_repeats = number_of_repeats
 
-    def set_target_position(self, pos_dict, caller_id=None):
+    
+    def set_target_position(self, pos_dict, caller_id=None, move_blocking=False):
         with self._thread_lock:
-            # self._scanner().stop_sc
-            
             if self.module_state() != 'idle':
                 self.log.error('Unable to change scanner target position while a scan is running.')
                 new_pos = self._scanner().get_target()
@@ -293,18 +293,16 @@ class PLEScannerLogic(ScanningProbeLogic):
                     self.log.warning('Scanner position target value out of bounds for axis "{0}". '
                                      'Clipping value to {1:.3e}.'.format(ax, new_pos[ax]))
 
-            new_pos = self._scanner().move_absolute(new_pos)
+            new_pos = self._scanner().move_absolute(new_pos, blocking=move_blocking)
             if any(pos != new_pos[ax] for ax, pos in pos_dict.items()):
                 caller_id = None
-            #self.log.debug(f"Logic issuing with id {caller_id}: {new_pos}")
+            #self.log.debug(f"Logic set target with id {caller_id} to new: {new_pos}")
             self.sigScannerTargetChanged.emit(
                 new_pos,
                 self.module_uuid if caller_id is None else caller_id
             )
             return new_pos
 
-    # @QtCore.Slot(bool, tuple)
-    # @QtCore.Slot(bool, tuple, object)
     def toggle_scan(self, start, scan_axes, caller_id=None):
         self._toggled_scan_axes = scan_axes
         with self._thread_lock:
@@ -314,11 +312,10 @@ class PLEScannerLogic(ScanningProbeLogic):
                 return self.start_scan(self._toggled_scan_axes, caller_id)
             return self.stop_scan()
 
-    @QtCore.Slot(tuple)
-    @QtCore.Slot(tuple, object)
     def start_scan(self, scan_axes, caller_id=None):
         self._curr_caller_id = self.module_uuid if caller_id is None else caller_id
         self.display_repeated = self._repeated
+        
         with self._thread_lock:
 
             if self.module_state() != 'idle':
@@ -385,8 +382,8 @@ class PLEScannerLogic(ScanningProbeLogic):
 
     def reset_accumulated(self):
         self.accumulated_data = None
-        if self.scan_data is not None:
-            self.scan_data._accumulated_data = None
+        #if self.scan_data is not None:
+        #    self.scan_data._accumulated_data = None
     
     def _update_scan_settings(self, scan_axes, settings):
         for ax_index, ax in enumerate(scan_axes):
@@ -423,6 +420,7 @@ class PLEScannerLogic(ScanningProbeLogic):
                 if (self._curr_caller_id == self._scan_id) or (self._curr_caller_id == self.module_uuid):
                     self._repeated += 1
                     self.display_repeated += 1
+                    
                     self.stack_data()
                     if self._number_of_repeats > self._repeated or self._number_of_repeats == 0:
                         self.sigRepeatScan.emit(True, self._toggled_scan_axes) 

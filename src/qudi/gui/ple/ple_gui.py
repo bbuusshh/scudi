@@ -739,11 +739,10 @@ class PLEScanGui(GuiBase):
         """
         @param ScanData scan_data:
         """
-        axes = scan_data.scan_axes
-    
-        if scan_data.accumulated_data is not None:
-            self._mw.ple_widget.set_scan_data(scan_data)
-            self._mw.matrix_widget.set_scan_data(scan_data)
+        self._mw.ple_widget.set_scan_data(scan_data)
+        #if scan_data.accumulated_data is not None:
+            
+        #    self._mw.matrix_widget.set_scan_data(scan_data)
 
     @QtCore.Slot(tuple)
     def save_scan_data(self, scan_axes=None):
