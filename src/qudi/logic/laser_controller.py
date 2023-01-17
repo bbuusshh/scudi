@@ -16,6 +16,8 @@ from PySide2 import QtCore
 class LaserControllerLogic(LogicBase):
     motor_pulser = Connector(name = 'motor_pulser', interface='DigitalSwitchNI')
     ao_laser_control = Connector(name = 'ao_laser_control', interface='NIXSeriesAnalogOutput')
+    _etalon_voltage = 0
+    _motor_direction = 1
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -27,19 +29,31 @@ class LaserControllerLogic(LogicBase):
     def on_deactivate(self) -> None:
         self._ao_laser_control.set_activity_state(active=False)
        
+    @property
+    def etalon_voltage(self):
+        return self._etalon_voltage
 
-    def set_thin_etalon_voltage(self,v):
-        self._ao_laser_control.set_activity_state(active=True)
-        self._ao_laser_control.set_setpoint(channel = 'ao0', value = v)
-        self._ao_laser_control.set_activity_state(active=False)
+    @etalon_voltage.setter
+    def etalon_voltage(self, voltage):
+        self._ao_laser_control.set_activity_state(channel = 'ao0', active=True)
+        self._ao_laser_control.set_setpoint(channel = 'ao0', value = voltage)
+        self._ao_laser_control.set_activity_state(channel = 'ao0', active=False)
+        self._etalon_voltage = voltage
 
-    def set_motor_direction(self,sign):
-        self._ao_laser_control.set_activity_state(active=True)
+    @property
+    def motor_direction(self):
+        return self._motor_direction
+
+    @motor_direction.setter
+    def motor_direction(self, sign):
+        self._ao_laser_control.set_activity_state(channel = 'ao2', active=True)
         if sign > 0:
             self._ao_laser_control.set_setpoint(channel = 'ao2', value = 5)
         elif sign < 0 :
             self._ao_laser_control.set_setpoint(channel = 'ao2', value = -5)
-        self._ao_laser_control.set_activity_state(active=False)
+        self._ao_laser_control.set_activity_state(channel = 'ao2', active=False)
+        self._motor_direction = sign
+
     def move_motor_pulse(self):
         self._motor_pulser.set_state(switch="motor", state='Low') #'High' should be pulsing?
         
