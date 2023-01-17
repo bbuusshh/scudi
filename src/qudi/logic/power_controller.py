@@ -70,6 +70,8 @@ class PowerControllerLogic(LogicBase):
     fc = StatusVar('fits', None)
     plot_domain = (0, 10000)
     _current_positions = StatusVar("current_positions", default=dict())
+    _current_motor = 0
+    _motor_position = 0
     # Internal signals
     sig_data_updated = QtCore.Signal()
     sig_run_calibration = QtCore.Signal(int)
@@ -183,6 +185,7 @@ class PowerControllerLogic(LogicBase):
     @QtCore.Slot(float, int, bool)
     def set_power(self, power, motor, calibrated):
         current_position = self._motor_pi3.getPosition(motor=motor)
+        self._current_motor = motor
         self._current_positions.update({motor: current_position})
         if bool(calibrated) == True:
             if (power > self._power_range[motor][1]) or (power < self._power_range[motor][0]):
@@ -197,6 +200,17 @@ class PowerControllerLogic(LogicBase):
             new_angle = power
             self._motor_pi3.moveRelative(motor = motor, pos = new_angle - current_position )
             delay(3000)
+       
+    @property
+    def motor_position(self):
+        return self._motor_position
+    
+    @motor_position.setter
+    def motor_position(self, step):
+        self._motor_pi3.moveRelative(motor = self._current_motor, pos = step - self._current_positions[self._current_motor] )
+        delay(3000)
+        self._motor_position = step
+        self._current_positions.update({self._current_motor: step})
        
 
     def run_saturation(self, motor = 0):
