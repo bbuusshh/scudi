@@ -95,6 +95,7 @@ class PLEScannerLogic(ScanningProbeLogic):
     sigToggleScan = QtCore.Signal(bool, tuple, object)
     sigSetScannerTarget = QtCore.Signal(dict)
     sigUpdateAccumulated = QtCore.Signal(object, object)
+    sigScanningDone = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
         super(PLEScannerLogic, self).__init__(config=config, **kwargs)
@@ -429,6 +430,8 @@ class PLEScannerLogic(ScanningProbeLogic):
                     if self._number_of_repeats > self._repeated or self._number_of_repeats == 0:
                         self.sigRepeatScan.emit(True, self._toggled_scan_axes) 
                     else:
+                      
+                        self.sigScanningDone.emit()
                         self.sigRepeatScan.emit(False, self._toggled_scan_axes)
                         self._repeated = 0 
                 return

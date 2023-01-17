@@ -32,10 +32,16 @@ class Automatedmeasurements(LogicBase):
     switchlogic = Connector(name='switchlogic',interface='SwitchLogic', optional=True)
     scanningprobelogic = Connector(name='scanningprobelogic',interface='ScanningProbeLogic')
     ple_gui = Connector(name='ple_gui', interface= 'PLEScanGui', optional = True)
+    powercontroller_logic = Connector(name='power_controller', interface='PowerControllerLogic', optional=True)
+    laser_controller = Connector(name='laser_controller', interface= 'LaserControllerLogic', optional=True)
+    wavemeter = Connector(name='wavemeter', interface='HighFinesseWavemeter', optional=True)
+
+    power_steps = []
+    etalon_voltages = []
     # internal signals
     sigNextPoi = QtCore.Signal()
     sigNextStep = QtCore.Signal()
-
+    sigStartPle = QtCore.Signal()
     # external signals
     sigSaveSpectrum = QtCore.Signal()
     sigSwitchStatus = QtCore.Signal(str,str) # switch, state
@@ -49,13 +55,17 @@ class Automatedmeasurements(LogicBase):
             'optimize' : self.optimize_on_poi,
             'spectrum' : self.take_spectrum,
             'blue_on' : self.turn_on_blue_laser,
-            'blue_off' : self.turn_off_blue_laser
+            'blue_off' : self.turn_off_blue_laser,
+            'ple_saturation' : self.ple_saturation
         }
 
         ## init variables
         self.abort = False
         self.steps = []
         self.debug = False # prints for debugging
+
+        self.power_steps = [10, 30, 43, 56, 60, 70, 80, 90, 100]
+        self.etalon_voltages = [-10, -9, -8, -7, -6]
 
         # init variables that tell teh script if certain measurement was started here
         # (to make sure we don't catch signals when we don't want to)
@@ -77,7 +87,12 @@ class Automatedmeasurements(LogicBase):
         self._optimizer_logic = self.optimizerlogic()
         self._poimanager_logic = self.poimanagerlogic()
         self._scanning_probe_logic = self.scanningprobelogic()
-        self._ple_gui = self.ple_gui()
+        
+        if self.ple_gui():
+            self._ple_gui = self.ple_gui()
+            self._ple_gui._scanning_logic.sigScanningDone.connect(self._ple_done,  QtCore.Qt.QueuedConnection)
+            self.sigStartPle.connect(self.start_ple,  QtCore.Qt.QueuedConnection)
+            self._ple_gui_connected = True
         # optional conecctors
         if self.spectrometergui():
             self._spectrometer_gui = self.spectrometergui()
@@ -244,7 +259,6 @@ class Automatedmeasurements(LogicBase):
         self.func_dict[self._current_step]()
         return
 
-
     def move_to_poi(self, poi_name=None):
         """Moves the focus to the poi.
         """
@@ -255,7 +269,9 @@ class Automatedmeasurements(LogicBase):
         # go to poi
         self._poimanager_logic.go_to_poi(name=poi_name)
         # poimanager does not send signal once point is reached. 
-        # We will wait for a bit and send a signal ourselves.
+        # We will wait for a bit and send a signal ourselves..
+
+
         # We calculate the time by assuming our start- and endposition are within the scanned area.
         if self._poimanager_logic._max_move_velocity == None:
             sleep_time = 5
@@ -404,17 +420,21 @@ class Automatedmeasurements(LogicBase):
         self.sigSaveSpectrum.emit()
         return
 
-    def take_ple(self):
+    def start_ple(self):
         if self.debug:
             print(f'{__name__}, {inspect.stack()[0][3]}')
         if self._ple_gui is None:
-            raise Exception('spectrometerlogic not connected.')
-        
-        self._ple_started = True
+            raise Exception('ple module is not connected.')
+        self.eta, self.power = self.saturation_parameters[0]
+
+        self.laser_controller.etalon_voltage = self.eta
+        self.powercontroller_logic.motor_position = self.power
+        print(self.laser_controller.etalon_voltage, self.powercontroller_logic.motor_position)
+        #self._ple_started = True
         self._ple_gui._mw.actionToggle_scan.setChecked(True)
-        self._ple_gui._mw.actionToggle_scan.triggered.emit()
-
-
+        self._ple_gui.toggle_scan()
+        #self._ple_gui._mw.actionToggle_scan.triggered.emit()
+        
         return
         
 
@@ -423,23 +443,42 @@ class Automatedmeasurements(LogicBase):
         """
         if self.debug:
             print(f'{__name__}, {inspect.stack()[0][3]}, _ple_started = {self._ple_started}')
-        if self._ple_started:
-            name_tag = f'defect-name-{self._current_poi_name}_blue-on-{self._blue_is_on}'
+        if True:#self._ple_started:
+            name_tag = f'defect-name-{self._current_poi_name}_power-{self.power}_eta_{self.eta}'
             self.save_ple(name_tag)
-            self._ple_started = False
-            self.sigNextStep.emit()
+            #self._ple_started = False
+            self.saturation_parameters = np.delete(self.saturation_parameters, 0, axis=0)
+
+            if len(self.saturation_parameters) < 1:
+                self.ple_saturation_done()
+            else:
+                self.sigStartPle.emit()
         else:
             return
+
+    def ple_saturation_done(self):
+        self.sigNextStep.emit()
+        #self._ple_started = False
+
+    def ple_saturation(self):
+        
+        #scan 20 line
+        #Set programmatically number of repetitions
+        #self._ple_gui._mw.number_of_repeats_SpinBox.setValue(self.)
+        #self._ple_gui._mw.number_of_repeats_SpinBox.editingFinished.emit()
+        
+
+        self.saturation_parameters = np.transpose([np.tile(self.power_steps, len(self.etalon_voltages)), np.repeat(self.etalon_voltages, len(self.power_steps))])
+
+        self.start_ple()
+
 
     def save_ple(self, name_tag=None):
         if self.debug:
             print(f'{__name__}, {inspect.stack()[0][3]}, name = {name_tag}')
-        #if not self._ple_connected:
-        #    raise Exception('spectrometergui not connected.')
-        # This is really ugly but also the fastest way to make it work
-        # set parameters in gui
+
         self._ple_gui.save_path_widget.saveTagLineEdit.setText(name_tag)
-        # hit save
+        
         self._ple_gui._mw.action_Save.triggered.emit()
         return
 

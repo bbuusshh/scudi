@@ -233,6 +233,7 @@ class PLEScanGui(GuiBase):
 
     @QtCore.Slot(bool)
     def setup_repump_before_scan(self, do_repump):
+        #here we can measure the start frequency!
         self._repump_logic.do_prescan_repump = do_repump
         
     def _init_optimizer_settings(self):
