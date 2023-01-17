@@ -254,7 +254,7 @@ class TTGui(GuiBase):
         self._mw.DailyPathPushButton.clicked.connect(self._daily_path_clicked)
         self._mw.newPathPushButton.clicked.connect(self._new_path_clicked)
 
-        self._mw.checkBox_3.setChecked(True)
+        self._mw.counter_checkBox.setChecked(True)
     
     def show(self):
         """Make window visible and put it above all other windows.
@@ -331,19 +331,19 @@ class TTGui(GuiBase):
         self._mw.currPathLabel.setText(self._save_folderpath)
 
     def _save_data_clicked(self):
-        save_types = {'counter': self._mw.radioButton_3.isChecked(), 'corr': self._mw.radioButton.isChecked(), 'hist': self._mw.radioButton_2.isChecked()}
+        save_types = {'counter': self._mw.counter_checkBox.isChecked(), 'corr': self._mw.corr_checkBox.isChecked(), 'hist': self._mw.hist_checkBox.isChecked()}
         for st in save_types:
             if save_types[st]:
                 save_type = st
                 break
-        if self._mw.newPathCheckBox.isChecked() and self._mw.newPathCheckBox.isEnabled():
+        if self._mw.newPathPushButton.isChecked() and self._mw.newPathPushButton.isEnabled():
             new_path = QtWidgets.QFileDialog.getExistingDirectory(self._mw, 'Select Folder')
             if new_path:
                 self._save_folderpath = new_path
                 self._mw.currPathLabel.setText(self._save_folderpath)
-                self._mw.newPathCheckBox.setChecked(False)
+                self._mw.newPathPushButton.setChecked(False)
                 save = True
-        if self._mw.DailyPathCheckBox.isChecked():
+        if self._mw.DailyPathPushButton.isChecked():
             self._save_folderpath = 'Default'
             self._mw.currPathLabel.setText(self._save_folderpath)
             save = True

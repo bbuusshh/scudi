@@ -228,7 +228,8 @@ class ScannerGui(GuiBase):
 
         self.sigShowSaveDialog.connect(lambda x: self._save_dialog.show() if x else self._save_dialog.hide(),
                                        QtCore.Qt.DirectConnection)
-
+        self.save_path_widget.DailyPathPushButton.setCheckable(True)
+        self.save_path_widget.newPathPushButton.setCheckable(True)
         self.save_path_widget.currPathLabel.setText('Default' if self._save_folderpath is None else self._save_folderpath)
         self.save_path_widget.DailyPathPushButton.clicked.connect(lambda: self.save_path_widget.newPathPushButton.setEnabled(not self.save_path_widget.DailyPathPushButton.isChecked()))
         if self._save_folderpath is None:

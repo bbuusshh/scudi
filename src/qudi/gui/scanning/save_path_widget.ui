@@ -96,12 +96,18 @@
            <property name="text">
             <string>Daily Path</string>
            </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
           </widget>
          </item>
          <item>
           <widget class="QPushButton" name="newPathPushButton">
            <property name="text">
             <string>New Path</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
            </property>
           </widget>
          </item>

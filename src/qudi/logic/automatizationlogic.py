@@ -15,7 +15,7 @@ from qtpy import QtCore
 import inspect
 import time
 import numpy as np
-
+import os
 from qudi.core.module import LogicBase
 from qudi.core.connector import Connector
 
@@ -64,8 +64,8 @@ class Automatedmeasurements(LogicBase):
         self.steps = []
         self.debug = False # prints for debugging
 
-        self.power_steps = [10, 30, 43, 56, 60, 70, 80, 90, 100]
-        self.etalon_voltages = [-10, -9, -8, -7, -6]
+        self.power_steps = [10, 43, 56, 60, 70, 80]
+        self.etalon_voltages = [-9, -8, -7]
 
         # init variables that tell teh script if certain measurement was started here
         # (to make sure we don't catch signals when we don't want to)
@@ -87,7 +87,12 @@ class Automatedmeasurements(LogicBase):
         self._optimizer_logic = self.optimizerlogic()
         self._poimanager_logic = self.poimanagerlogic()
         self._scanning_probe_logic = self.scanningprobelogic()
-        
+        if self.wavemeter():
+            self._wavemeter = self.wavemeter()
+        if self.powercontroller_logic():
+            self._powercontroller_logic = self.powercontroller_logic()
+        if self.laser_controller():
+            self._laser_controller = self.laser_controller()
         if self.ple_gui():
             self._ple_gui = self.ple_gui()
             self._ple_gui._scanning_logic.sigScanningDone.connect(self._ple_done,  QtCore.Qt.QueuedConnection)
@@ -425,11 +430,11 @@ class Automatedmeasurements(LogicBase):
             print(f'{__name__}, {inspect.stack()[0][3]}')
         if self._ple_gui is None:
             raise Exception('ple module is not connected.')
-        self.eta, self.power = self.saturation_parameters[0]
-
-        self.laser_controller.etalon_voltage = self.eta
-        self.powercontroller_logic.motor_position = self.power
-        print(self.laser_controller.etalon_voltage, self.powercontroller_logic.motor_position)
+        self.power, self.eta = self.saturation_parameters[0]
+        self._wavemeter._wavelength_buffer = []
+        self._laser_controller.etalon_voltage = self.eta
+        self._powercontroller_logic.motor_position = self.power
+    
         #self._ple_started = True
         self._ple_gui._mw.actionToggle_scan.setChecked(True)
         self._ple_gui.toggle_scan()
@@ -446,13 +451,15 @@ class Automatedmeasurements(LogicBase):
         if True:#self._ple_started:
             name_tag = f'defect-name-{self._current_poi_name}_power-{self.power}_eta_{self.eta}'
             self.save_ple(name_tag)
+            np.savetxt(os.path.join(self._ple_gui._save_folderpath,f"{name_tag}.csv"), self._wavemeter._wavelength_buffer)
             #self._ple_started = False
             self.saturation_parameters = np.delete(self.saturation_parameters, 0, axis=0)
 
             if len(self.saturation_parameters) < 1:
                 self.ple_saturation_done()
             else:
-                self.sigStartPle.emit()
+                self.start_ple()
+                #self.sigStartPle.emit()
         else:
             return
 
