@@ -189,3 +189,6 @@ class CameraLogic(LogicBase):
         cbar = plt.colorbar(cfimage, shrink=0.8)
         cbar.ax.tick_params(which=u'both', length=0)
         return fig
+
+
+    
