@@ -72,6 +72,7 @@ class Automatedmeasurements(LogicBase):
         self._optimizer_started = False
         self._spectrum_started = False
         self._ple_started = False
+        self._stop_after_step_done = False
         self._blue_is_on = None # status of blue laser (True: blue laser shines on sample, False: it does not)
 
         return
@@ -451,10 +452,10 @@ class Automatedmeasurements(LogicBase):
         if True:#self._ple_started:
             name_tag = f'defect-name-{self._current_poi_name}_power-{self.power}_eta_{self.eta}'
             self.save_ple(name_tag)
-            np.savetxt(os.path.join(self._ple_gui._save_folderpath,f"{name_tag}.csv"), self._wavemeter._wavelength_buffer)
+            np.savetxt(os.path.join(self._ple_gui._save_folderpath,f"{name_tag}_wavelength.csv"), self._wavemeter._wavelength_buffer)
             #self._ple_started = False
             self.saturation_parameters = np.delete(self.saturation_parameters, 0, axis=0)
-
+#
             if len(self.saturation_parameters) < 1:
                 self.ple_saturation_done()
             else:
@@ -464,11 +465,21 @@ class Automatedmeasurements(LogicBase):
             return
 
     def ple_saturation_done(self):
+        if self._stop_after_step_done:
+            return 
         self.sigNextStep.emit()
         #self._ple_started = False
 
-    def ple_saturation(self):
-        
+    def ple_saturation(self, poi_name=None, power_steps = None, etalon_voltages = None):
+        if poi_name is not None:
+            self._current_poi_name = poi_name
+            self._stop_after_step_done = True
+        if power_steps is not None:
+            self.power_steps = power_steps
+            self._stop_after_step_done = True
+        if etalon_voltages is not None:
+            self.etalon_voltages = etalon_voltages
+            self._stop_after_step_done = True
         #scan 20 line
         #Set programmatically number of repetitions
         #self._ple_gui._mw.number_of_repeats_SpinBox.setValue(self.)
