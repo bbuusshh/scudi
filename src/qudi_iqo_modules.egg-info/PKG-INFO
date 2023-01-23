@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: qudi-iqo-modules
-Version: 0.3.0
+Version: 0.4.1.dev0
 Summary: IQO measurement modules collection for qudi
 Home-page: https://github.com/Ulm-IQO/qudi-iqo-modules
 License: LGPLv3

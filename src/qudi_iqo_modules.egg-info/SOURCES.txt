@@ -5,6 +5,9 @@ README.md
 pyproject.toml
 setup.py
 src/qudi/default.cfg
+src/qudi/gui/camera/_cameragui_prime95b.py
+src/qudi/gui/camera/_ui_camera_prime95b.ui
+src/qudi/gui/camera/_ui_camera_settings.ui
 src/qudi/gui/camera/camera_settings_dialog.py
 src/qudi/gui/camera/cameragui.py
 src/qudi/gui/cwave/cwave.ui
@@ -95,12 +98,14 @@ src/qudi/gui/wavemeter/wavelength_widget.py
 src/qudi/gui/wavemeter/wavelogger_mw.py
 src/qudi/gui/wavemeter/wavemeterloggui.py
 src/qudi/hardware/interface_test_hardware.py
+src/qudi/hardware/attocube/anc300.py
 src/qudi/hardware/awg/keysight_M3202A.py
 src/qudi/hardware/awg/keysight_m819x.py
 src/qudi/hardware/awg/tektronix_awg5002c.py
 src/qudi/hardware/awg/tektronix_awg70k.py
 src/qudi/hardware/awg/tektronix_awg7k.py
 src/qudi/hardware/camera/prime95b.py
+src/qudi/hardware/camera/prime95b_oli.py
 src/qudi/hardware/camera/andor/iXon897_ultra.py
 src/qudi/hardware/camera/thorlabs/thorlabs_DCx.py
 src/qudi/hardware/cwave/cwave.py
@@ -134,6 +139,7 @@ src/qudi/hardware/fpga_fastcounter/fast_counter_fpga_qo.py
 src/qudi/hardware/fpga_pulser/ok_fpga_pulser.py
 src/qudi/hardware/interfuse/ni_scanning_probe_interfuse.py
 src/qudi/hardware/interfuse/switch_combiner_interfuse.py
+src/qudi/hardware/laser/Verdi18.py
 src/qudi/hardware/laser/coherent_obis_laser.py
 src/qudi/hardware/laser/laserquantum_laser.py
 src/qudi/hardware/laser/millennia_ev_laser.py
@@ -155,6 +161,7 @@ src/qudi/hardware/motor/motordriver_pi3.py
 src/qudi/hardware/motor/zaber_motion.py
 src/qudi/hardware/motor/zaber_motor_rotation_stage.py
 src/qudi/hardware/ni_x_series/digital_switch_ni.py
+src/qudi/hardware/ni_x_series/helpers.py
 src/qudi/hardware/ni_x_series/ni_x_series_analog_output.py
 src/qudi/hardware/ni_x_series/ni_x_series_finite_sampling_input.py
 src/qudi/hardware/ni_x_series/ni_x_series_finite_sampling_io.py
@@ -167,6 +174,7 @@ src/qudi/hardware/picoquant/ppg512.py
 src/qudi/hardware/power_supply/Keysight_E3631A.py
 src/qudi/hardware/power_supply/Teledyne_T3PS3000.py
 src/qudi/hardware/powermeter/PM100D.py
+src/qudi/hardware/powermeter/thorlabs_powermeter.py
 src/qudi/hardware/spectrometer/lightfield_spectrometer.py
 src/qudi/hardware/spectrometer/oceanoptics_spectrometer.py
 src/qudi/hardware/spectrometer/princeton_client.py
@@ -184,6 +192,7 @@ src/qudi/hardware/temperature/CTC100_temperature.py
 src/qudi/hardware/temperature/cryocon.py
 src/qudi/hardware/vector_magnet/ami.py
 src/qudi/hardware/vector_magnet/ami_vector_magnet.py
+src/qudi/hardware/wavemeter/high_finesse_api.py
 src/qudi/hardware/wavemeter/high_finesse_client.py
 src/qudi/hardware/wavemeter/high_finesse_wavemeter.py
 src/qudi/interface/camera_interface.py
@@ -206,8 +215,11 @@ src/qudi/interface/spectrometer_interface.py
 src/qudi/interface/switch_interface.py
 src/qudi/interface/test_interface.py
 src/qudi/interface/wavemeter_interface.py
+src/qudi/interface/mixins/process_control_switch.py
 src/qudi/logic/automatizationlogic.py
 src/qudi/logic/camera_logic.py
+src/qudi/logic/camera_logic_oli.py
+src/qudi/logic/camera_logic_prime95b.py
 src/qudi/logic/cwave_logic.py
 src/qudi/logic/ello_logic.py
 src/qudi/logic/interface_test_logic.py
