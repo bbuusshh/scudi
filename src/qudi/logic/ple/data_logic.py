@@ -280,7 +280,7 @@ class PleDataLogic(LogicBase):
                         arrowprops={'facecolor': '#17becf', 'shrink': 0.05})
         return fig
 
-    def save_scan(self, scan_data, color_range=None, tag='', root_dir=None):
+    def save_scan(self, scan_data, accumulated_data, color_range=None, tag='', root_dir=None):
         with self._thread_lock:
             if self.module_state() != 'idle':
                 self.log.error('Unable to save 2D scan. Saving still in progress...')
@@ -338,12 +338,12 @@ class PleDataLogic(LogicBase):
                         figure = self.draw_1d_scan_figure(scan_data, channel)
                         ds.save_thumbnail(figure, file_path=file_path.rsplit('.', 1)[0])
                     elif len(scan_data.scan_axes) == 2:
-                        figure = self.draw_2d_scan_figure(scan_data, channel, cbar_range=color_range)
+                        figure = self.draw_2d_scan_figure(scan_data, accumulated_data, channel, cbar_range=color_range)
                         ds.save_thumbnail(figure, file_path=file_path.rsplit('.', 1)[0])
                     else:
                         self.log.warning('No figure saved for data with more than 2 dimensions.')
 
-                for channel, data in scan_data.accumulated_data.items():
+                for channel, data in accumulated_data.items():
                     # data
                     # nametag = '{0}_{1}_image_scan'.format(channel, scan_data.scan_axes[0])
                     nametag = self.create_tag_from_scan_data(scan_data, channel)
@@ -353,7 +353,7 @@ class PleDataLogic(LogicBase):
                                                    timestamp=timestamp,
                                                    column_headers='Image (columns is X, rows is Y)')
 
-                    figure = self.draw_2d_scan_figure(scan_data, channel, cbar_range=color_range)
+                    figure = self.draw_2d_scan_figure(scan_data, accumulated_data, channel, cbar_range=color_range)
                     ds.save_thumbnail(figure, file_path=file_path.rsplit('.', 1)[0])
                    
 
@@ -374,12 +374,12 @@ class PleDataLogic(LogicBase):
         tag = f"{axis_dim}D-scan with {axes_code} axes from channel {channel}"
         return tag
 
-    def draw_2d_scan_figure(self, scan_data, channel, cbar_range=None):
+    def draw_2d_scan_figure(self, scan_data, accumulated_data, channel, cbar_range=None):
         """ Create a 2-D color map figure of the scan image.
 
         @return fig: a matplotlib figure object to be saved to file.
         """
-        image_arr = scan_data.accumulated_data[channel].T
+        image_arr = accumulated_data[channel].T
         scan_axes = scan_data.scan_axes
         scanner_pos = self._scan_logic().scanner_target
 
@@ -413,7 +413,7 @@ class PleDataLogic(LogicBase):
                             extent=(*np.asarray(scan_range_x)/si_factor_x,
                                     *np.asarray(scan_range_y)/si_factor_y))
 
-        ax.set_aspect(1)
+        ax.set_aspect("auto")
         ax.set_xlabel(scan_axes[0] + f' position ({si_prefix_x}{scan_data.axes_units[scan_axes[0]]})')
         ax.set_ylabel("Line #")
         ax.spines['bottom'].set_position(('outward', 10))

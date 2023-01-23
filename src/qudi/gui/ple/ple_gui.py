@@ -31,12 +31,13 @@ from qudi.core.statusvariable import StatusVar
 from qudi.core.configoption import ConfigOption
 from qudi.interface.scanning_probe_interface import ScanData
 from qudi.core.module import GuiBase
-from qudi.logic.scanning.optimize_logic import OptimizerScanSequence
+from qudi.logic.ple.optimize_logic import OptimizerScanSequence
 from qudi.util.widgets.fitting import FitConfigurationDialog
 from .fit_dockwidget import PleFitDockWidget
 from qudi.gui.ple.ple_ui_window import PLEScanMainWindow
 from qudi.util.widgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
-from qudi.gui.scanning.optimizer_setting_dialog import OptimizerSettingDialog
+from qudi.gui.ple.optimizer_setting_dialog import OptimizerSettingDialog
+from qudi.gui.ple.ple_settings_dialog import PleSettingDialog
 from qudi.gui.ple.optimizer_dockwidget import OptimizerDockWidget
 
 
@@ -74,6 +75,7 @@ class PLEScanGui(GuiBase):
     _save_folderpath = StatusVar('save_folderpath', default=None)
     _optimizer_plot_dims = ConfigOption(name='optimizer_plot_dimensions', default=[1])
     _optimizer_state = {'is_running': False}
+    _accumulated_data = None
     _optimizer_id = 0
     # signals
     sigScannerTargetChanged = QtCore.Signal(dict)#, object)
@@ -81,13 +83,14 @@ class PLEScanGui(GuiBase):
     # sigToggleScan = QtCore.Signal(bool, tuple, object)
     sigOptimizerSettingsChanged = QtCore.Signal(dict)
     sigToggleOptimize = QtCore.Signal(bool)
-    sigSaveScan = QtCore.Signal(object, object, object, object)
+    sigSaveScan = QtCore.Signal(object, object, object, object, object)
     sigSaveFinished = QtCore.Signal()
     sigShowSaveDialog = QtCore.Signal(bool)
 
     _n_save_tasks = 0
 
     sigDoFit = QtCore.Signal(str, str)
+    fit_result = None
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -129,6 +132,7 @@ class PLEScanGui(GuiBase):
         self.sigScanSettingsChanged.connect(
             self._scanning_logic.set_scan_settings, QtCore.Qt.QueuedConnection
         )
+        self._scanning_logic.sigUpdateAccumulated.connect(self._update_accumulated_scan, QtCore.Qt.QueuedConnection)
         self._scanning_logic.sigToggleScan.connect(self._scanning_logic.toggle_scan, QtCore.Qt.QueuedConnection)
         self._mw.actionToggle_scan.triggered.connect(self.toggle_scan, QtCore.Qt.QueuedConnection)
         self._scanning_logic.sigRepeatScan.connect(self.scan_repeated, QtCore.Qt.QueuedConnection)
@@ -150,14 +154,19 @@ class PLEScanGui(GuiBase):
 
         self._mw.action_optimize_position.triggered[bool].connect(self.toggle_optimize, QtCore.Qt.QueuedConnection)
         #self._mw.ple_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing)
-        self._mw.ple_widget.selected_region.sigRegionChanged.connect(self.sliders_values_are_changing)
+        # self._mw.ple_widget.selected_region.sigRegionChanged.connect(self.sliders_values_are_changing)
+        # self._mw.ple_averaged_widget.selected_region.sigRegionChanged.connect(self.sliders_values_are_changing_averaged_data)
         self._optimize_logic().sigOptimizeStateChanged.connect(
             self.optimize_state_updated, QtCore.Qt.QueuedConnection
         )
-        self._mw.ple_widget.target_point.sigPositionChanged.connect(self.set_scanner_target_position)
+        # self._mw.ple_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing) #set_scanner_target_position
         self._mw.ple_widget.selected_region.sigRegionChangeFinished.connect(self.region_value_changed) 
 
+        # self._mw.ple_averaged_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing_averaged_data)
+        self._mw.ple_averaged_widget.selected_region.sigRegionChangeFinished.connect(self.region_value_changed_averaged_data) 
 
+        self._mw.ple_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
+        #self._mw.ple_averaged_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
         # x_range = settings['range'][self.scan_axis]
         # dec_places = decimal_places = np.abs(int(f'{x_range[0]:e}'.split('e')[-1])) + 3
         self._mw.startDoubleSpinBox.setSuffix(self.axis.unit)
@@ -167,7 +176,6 @@ class PLEScanGui(GuiBase):
         self._mw.channel_comboBox.addItems(self._scanning_logic.scanner_channels.keys())
         self._mw.channel_comboBox.currentTextChanged.connect(self._set_channel)
         self._mw.channel_comboBox.setCurrentText(self._scanning_logic._channel)
- 
         #create microwave control window if microwave is set
         if self._microwave_logic() is not None:
             self._microwave_logic = self._microwave_logic()
@@ -180,11 +188,16 @@ class PLEScanGui(GuiBase):
             repump = self._repump_logic._repump_laser
             resonant = self._repump_logic._resonant_laser
 
+            self._scanning_logic.sigRepeatScan.connect(self. _repump_logic.repump_before_scan)
+            
             self._mw.add_dock_widget('Pulsed')
             self._mw.Pulsed_widget.sig_pulser_params_updated.connect(self._repump_logic.pulser_updated, QtCore.Qt.QueuedConnection)
             self._repump_logic.sigGuiParamsUpdated.connect(self._mw.Pulsed_widget.update_gui, QtCore.Qt.QueuedConnection)
-            
+            self._mw.Pulsed_widget.sig_prescan_repump.connect(self.setup_repump_before_scan)
             self._repump_logic.sigGuiParamsUpdated.emit(self._repump_logic.parameters)
+
+
+
         self.scanner_target_updated()
         self.scan_state_updated(self._scanning_logic.module_state() != 'idle')
         self.scan_state_updated(self._scanning_logic.module_state() != 'idle', caller_id=self._optimizer_id)
@@ -193,6 +206,7 @@ class PLEScanGui(GuiBase):
         self._init_ui_connectors()
         self._init_static_widgets()
         self._init_optimizer_settings()
+        self._init_scanner_settings()
         self.setup_fit_widget()
         self.__connect_fit_control_signals()
 
@@ -213,10 +227,15 @@ class PLEScanGui(GuiBase):
 
 
         self._mw.action_Save.triggered.connect(lambda x: self.save_scan_data(scan_axes=None))
-
+        self._mw.actionSave.triggered.connect(lambda x: self.save_scan_data(scan_axes=None))
 
         self.load_view()
 
+    @QtCore.Slot(bool)
+    def setup_repump_before_scan(self, do_repump):
+        #here we can measure the start frequency!
+        self._repump_logic.do_prescan_repump = do_repump
+        
     def _init_optimizer_settings(self):
         """ Configuration and initialisation of the optimizer settings dialog.
         """
@@ -236,6 +255,34 @@ class PLEScanGui(GuiBase):
         # pull in data
         self.update_optimizer_settings()
         return
+
+    def _init_scanner_settings(self):
+        """
+        """
+        # Create the Settings dialog
+        self._psd = PleSettingDialog(tuple(self._scanning_logic.scanner_axes.values()),
+                                         self._scanning_logic.scanner_constraints)
+
+        # Connect MainWindow actions
+        self._mw.action_ple_settings.triggered.connect(lambda x: self._psd.exec_())
+
+        # Connect the action of the settings dialog with the GUI module:
+        self._psd.accepted.connect(self.apply_scanner_settings)
+        self._psd.rejected.connect(self.restore_scanner_settings)
+        self._psd.button_box.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
+            self.apply_scanner_settings
+        )
+    
+    @QtCore.Slot()
+    def apply_scanner_settings(self):
+        """ ToDo: Document
+        """
+        # ToDo: Implement backwards scanning functionality
+        forward_freq = {ax: freq[0] for ax, freq in self._psd.settings_widget.frequency.items()}
+        self.sigScanSettingsChanged.emit({'frequency': forward_freq})
+
+        shift = {ax: shift for ax, shift in self._psd.settings_widget.shift.items()}
+        self.sigScanSettingsChanged.emit({'shift': shift})
 
     @QtCore.Slot()
     def change_optimizer_settings(self):
@@ -297,7 +344,6 @@ class PLEScanGui(GuiBase):
 
                 # Adjust crosshair size according to optimizer range
                 # self.update_crosshair_sizes()
-
 
     def _init_microwave(self):
         
@@ -368,6 +414,7 @@ class PLEScanGui(GuiBase):
         
         ch = self._scanning_logic.scanner_channels[value]
         self._mw.ple_widget.channel = ch
+        self._mw.ple_averaged_widget.channel = ch
         self._mw.matrix_widget.channel = ch
         # self.optimizer_dockwidget.
 
@@ -379,7 +426,7 @@ class PLEScanGui(GuiBase):
     def _update_fit_result(self, fit_cfg_result, channel):
         current_channel = channel#self._scan_control_dockwidget.selected_channel
         # current_range_index = self._scan_control_dockwidget.selected_range
-        print(fit_cfg_result)
+        self.fit_result = fit_cfg_result
         if current_channel == channel:# and current_range_index == range_index:
             if fit_cfg_result is None:
                 self._fit_dockwidget.fit_widget.update_fit_result('No Fit', None)
@@ -434,11 +481,34 @@ class PLEScanGui(GuiBase):
         self._mw.raise_()
 
     @QtCore.Slot()
+    def region_value_changed_averaged_data(self):
+        region = self._mw.ple_averaged_widget.selected_region.getRegion()
+        self.sigScanSettingsChanged.emit({'range': {self.scan_axis: region}})
+        self._mw.startDoubleSpinBox.setValue(region[0])
+        self._mw.stopDoubleSpinBox.setValue(region[1])
+        self._mw.ple_widget.selected_region.setRegion(region)
+
+
+    @QtCore.Slot()
     def region_value_changed(self):
         region = self._mw.ple_widget.selected_region.getRegion()
         self.sigScanSettingsChanged.emit({'range': {self.scan_axis: region}})
         self._mw.startDoubleSpinBox.setValue(region[0])
         self._mw.stopDoubleSpinBox.setValue(region[1])
+        self._mw.ple_averaged_widget.selected_region.setRegion(region)
+        self._mw.ple_widget.target_point.setValue(region[0])
+
+    @QtCore.Slot()
+    def sliders_values_are_changing_averaged_data(self):
+        region = self._mw.ple_averaged_widget.selected_region.getRegion()
+        self._mw.startDoubleSpinBox.setValue(region[0])
+        self._mw.stopDoubleSpinBox.setValue(region[1])
+
+        value = self._mw.ple_averaged_widget.target_point.value()
+        #self._mw.constDoubleSpinBox.setValue(value)
+
+        # self._mw.ple_widget.target_point.setValue(value)
+
 
     @QtCore.Slot()
     def sliders_values_are_changing(self):
@@ -446,8 +516,10 @@ class PLEScanGui(GuiBase):
         self._mw.startDoubleSpinBox.setValue(region[0])
         self._mw.stopDoubleSpinBox.setValue(region[1])
 
-        value = self._mw.ple_widget.target_point.value()
-        self._mw.constDoubleSpinBox.setValue(value)
+        # value = self._mw.ple_widget.target_point.value()
+        # self._mw.constDoubleSpinBox.setValue(value)
+
+        # self._mw.ple_averaged_widget.target_point.setValue(value)
 
 
     @QtCore.Slot()
@@ -497,10 +569,14 @@ class PLEScanGui(GuiBase):
             self._mw.ple_widget.target_point.setValue(self._scanning_logic.scanner_target[self._scanning_logic._scan_axis])
             self._mw.ple_widget.plot_widget.setRange(xRange = x_range)
 
+            self._mw.ple_averaged_widget.selected_region.setRegion(x_range)
+            self._mw.ple_averaged_widget.target_point.setValue(self._scanning_logic.scanner_target[self._scanning_logic._scan_axis])
+            self._mw.ple_averaged_widget.plot_widget.setRange(xRange = x_range)
+
         if 'frequency' in settings:
             self._mw.frequencyDoubleSpinBox.setValue(settings['frequency'][self.scan_axis])
         
-        self._scanning_logic.reset_accumulated()
+        #self._scanning_logic.reset_accumulated()
         self._mw.number_of_repeats_SpinBox.setValue(self._scanning_logic._number_of_repeats)
         
 
@@ -508,7 +584,6 @@ class PLEScanGui(GuiBase):
     def scan_repeated(self, start, scan_axes):
         self._mw.elapsed_lines_DisplayWidget.display(self._scanning_logic.display_repeated)
 
-    # @QtCore.Slot(dict)
     def set_scanner_target_position(self):
         """
         Issues new target to logic and updates gui.
@@ -541,14 +616,15 @@ class PLEScanGui(GuiBase):
         if not isinstance(pos_dict, dict):
             pos_dict = self._scanning_logic.scanner_target
         
-        self._mw.ple_widget.target_point.blockSignals(True)
-        self._mw.constDoubleSpinBox.blockSignals(True)
+        # self._mw.ple_widget.target_point.blockSignals(True)
+        # self._mw.constDoubleSpinBox.blockSignals(True)
 
-        self._mw.ple_widget.target_point.setValue(pos_dict[self._scanning_logic._scan_axis])
-        self._mw.constDoubleSpinBox.setValue(pos_dict[self._scanning_logic._scan_axis])
+        # self._mw.ple_widget.target_point.setValue(pos_dict[self._scanning_logic._scan_axis])
+        # self._mw.ple_averaged_widget.target_point.setValue(pos_dict[self._scanning_logic._scan_axis])
+        # self._mw.constDoubleSpinBox.setValue(pos_dict[self._scanning_logic._scan_axis])
 
-        self._mw.constDoubleSpinBox.blockSignals(False)
-        self._mw.ple_widget.target_point.blockSignals(False)
+        # self._mw.constDoubleSpinBox.blockSignals(False)
+        # self._mw.ple_widget.target_point.blockSignals(False)
         # self.scanner_control_dockwidget.set_target(pos_dict)
 
     @QtCore.Slot(bool, object, object)
@@ -666,11 +742,14 @@ class PLEScanGui(GuiBase):
         """
         @param ScanData scan_data:
         """
-        axes = scan_data.scan_axes
-    
-        if scan_data.accumulated_data is not None:
-            self._mw.ple_widget.set_scan_data(scan_data)
-            self._mw.matrix_widget.set_scan_data(scan_data)
+        self._mw.ple_widget.set_scan_data(scan_data)
+       
+
+    @QtCore.Slot(object)
+    def _update_accumulated_scan(self, accumulated_data, scan_data):
+         if accumulated_data is not None:
+            self._mw.matrix_widget.set_scan_data(accumulated_data, scan_data)
+            self._accumulated_data = accumulated_data
 
     @QtCore.Slot(tuple)
     def save_scan_data(self, scan_axes=None):
@@ -704,7 +783,7 @@ class PLEScanGui(GuiBase):
             # else:
             #     scan_axes = [scan_axes]
             cbar_range = self._mw.matrix_widget.image_widget.levels
-            self.sigSaveScan.emit(scans[0], cbar_range, name_tag, self._save_folderpath)
+            self.sigSaveScan.emit(scans[0], self._accumulated_data, cbar_range, name_tag, self._save_folderpath)
 
         finally:
             pass

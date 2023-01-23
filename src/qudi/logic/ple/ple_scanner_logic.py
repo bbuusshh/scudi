@@ -73,21 +73,29 @@ class PLEScannerLogic(ScanningProbeLogic):
 
     _default_fit_configs = (
         {'name'             : 'Lorentzian',
-         'model'            : 'Lorentzian',
-         'estimator'        : 'Peak',
-         'custom_parameters': None},
+        'model'            : 'Lorentzian',
+        'estimator'        : 'Peak',
+        'custom_parameters': None},
+        
+        {'name'             : 'DoubleLorentzian',
+        'model'            : 'DoubleLorentzian',
+        'estimator'        : 'Peaks',
+        'custom_parameters': None},
 
         {'name'             : 'Gaussian',
-         'model'            : 'Gaussian',
-         'estimator'        : 'Peak',
-         'custom_parameters': None}
+        'model'            : 'Gaussian',
+        'estimator'        : 'Peak',
+        'custom_parameters': None}
+        
     )
 
-    accumulated_data = None
+    accumulated = None
     sigRepeatScan = QtCore.Signal(bool, tuple)
     sigFitUpdated = QtCore.Signal(object, str)
     sigToggleScan = QtCore.Signal(bool, tuple, object)
     sigSetScannerTarget = QtCore.Signal(dict)
+    sigUpdateAccumulated = QtCore.Signal(object, object)
+    sigScanningDone = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
         super(PLEScannerLogic, self).__init__(config=config, **kwargs)
@@ -237,15 +245,19 @@ class PLEScannerLogic(ScanningProbeLogic):
         return self._fit_results.copy()
     def stack_data(self):
         if (self.scan_data is not None) and (self.scan_data.scan_dimension == 1):
-            if self.accumulated_data is None:
-                self.accumulated_data = {channel: data_i[np.newaxis, :] for channel, data_i in self.scan_data.data.items()}
+           
+            if self.accumulated is None:
+                
+                self.accumulated = {channel: data_i[np.newaxis, :] for channel, data_i in self.scan_data.data.items()}
+                
             else:
                 if len(list(self.scan_data.data.values())[0]) > 0:
-                    self.accumulated_data = {channel : np.vstack((self.accumulated_data[channel], data_i))[-self._number_of_repeats:] for channel, data_i in self.scan_data.data.items()}
+                    self.accumulated = {channel : np.vstack((self.accumulated[channel], data_i))[-self._number_of_repeats:] for channel, data_i in self.scan_data.data.items()}
                 else:
-                    return 
-            self.scan_data._accumulated_data = self.accumulated_data
+                    return
+
             self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)
+            self.sigUpdateAccumulated.emit(self.accumulated, self.scan_data)
 
     @QtCore.Slot(dict)
     def set_scan_settings(self, settings):
@@ -263,10 +275,9 @@ class PLEScannerLogic(ScanningProbeLogic):
     def update_number_of_repeats(self, number_of_repeats):
         self._number_of_repeats = number_of_repeats
 
-    def set_target_position(self, pos_dict, caller_id=None):
+    
+    def set_target_position(self, pos_dict, caller_id=None, move_blocking=False):
         with self._thread_lock:
-            # self._scanner().stop_sc
-            
             if self.module_state() != 'idle':
                 self.log.error('Unable to change scanner target position while a scan is running.')
                 new_pos = self._scanner().get_target()
@@ -287,18 +298,16 @@ class PLEScannerLogic(ScanningProbeLogic):
                     self.log.warning('Scanner position target value out of bounds for axis "{0}". '
                                      'Clipping value to {1:.3e}.'.format(ax, new_pos[ax]))
 
-            new_pos = self._scanner().move_absolute(new_pos)
+            new_pos = self._scanner().move_absolute(new_pos, blocking=move_blocking)
             if any(pos != new_pos[ax] for ax, pos in pos_dict.items()):
                 caller_id = None
-            #self.log.debug(f"Logic issuing with id {caller_id}: {new_pos}")
+            #self.log.debug(f"Logic set target with id {caller_id} to new: {new_pos}")
             self.sigScannerTargetChanged.emit(
                 new_pos,
                 self.module_uuid if caller_id is None else caller_id
             )
             return new_pos
 
-    # @QtCore.Slot(bool, tuple)
-    # @QtCore.Slot(bool, tuple, object)
     def toggle_scan(self, start, scan_axes, caller_id=None):
         self._toggled_scan_axes = scan_axes
         with self._thread_lock:
@@ -308,11 +317,10 @@ class PLEScannerLogic(ScanningProbeLogic):
                 return self.start_scan(self._toggled_scan_axes, caller_id)
             return self.stop_scan()
 
-    @QtCore.Slot(tuple)
-    @QtCore.Slot(tuple, object)
     def start_scan(self, scan_axes, caller_id=None):
         self._curr_caller_id = self.module_uuid if caller_id is None else caller_id
         self.display_repeated = self._repeated
+        
         with self._thread_lock:
 
             if self.module_state() != 'idle':
@@ -378,9 +386,9 @@ class PLEScannerLogic(ScanningProbeLogic):
             return err
 
     def reset_accumulated(self):
-        self.accumulated_data = None
-        if self.scan_data is not None:
-            self.scan_data._accumulated_data = None
+        self.accumulated = None
+        #if self.scan_data is not None:
+        #    self.scan_data._accumulated = None
     
     def _update_scan_settings(self, scan_axes, settings):
         for ax_index, ax in enumerate(scan_axes):
@@ -417,10 +425,13 @@ class PLEScannerLogic(ScanningProbeLogic):
                 if (self._curr_caller_id == self._scan_id) or (self._curr_caller_id == self.module_uuid):
                     self._repeated += 1
                     self.display_repeated += 1
+                    
                     self.stack_data()
                     if self._number_of_repeats > self._repeated or self._number_of_repeats == 0:
                         self.sigRepeatScan.emit(True, self._toggled_scan_axes) 
                     else:
+                      
+                        self.sigScanningDone.emit()
                         self.sigRepeatScan.emit(False, self._toggled_scan_axes)
                         self._repeated = 0 
                 return

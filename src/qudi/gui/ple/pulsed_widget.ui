@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>508</width>
+    <width>560</width>
     <height>100</height>
    </rect>
   </property>
@@ -234,14 +234,25 @@
     </widget>
    </item>
    <item row="0" column="2">
-    <widget class="QPushButton" name="PulserupdatePushButton">
-     <property name="text">
-      <string>Update</string>
-     </property>
-     <property name="autoExclusive">
-      <bool>false</bool>
-     </property>
-    </widget>
+    <layout class="QVBoxLayout" name="verticalLayout_6">
+     <item>
+      <widget class="QPushButton" name="PulserupdatePushButton">
+       <property name="text">
+        <string>Update</string>
+       </property>
+       <property name="autoExclusive">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="prescan_checkBox">
+       <property name="text">
+        <string>Prescan init</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
   </layout>
  </widget>

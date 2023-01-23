@@ -15,7 +15,7 @@ from qtpy import QtCore
 import inspect
 import time
 import numpy as np
-
+import os
 from qudi.core.module import LogicBase
 from qudi.core.connector import Connector
 
@@ -31,11 +31,17 @@ class Automatedmeasurements(LogicBase):
     poimanagerlogic = Connector(name='poimanagerlogic',interface='PoiManagerLogic')
     switchlogic = Connector(name='switchlogic',interface='SwitchLogic', optional=True)
     scanningprobelogic = Connector(name='scanningprobelogic',interface='ScanningProbeLogic')
+    ple_gui = Connector(name='ple_gui', interface= 'PLEScanGui', optional = True)
+    powercontroller_logic = Connector(name='power_controller', interface='PowerControllerLogic', optional=True)
+    laser_controller = Connector(name='laser_controller', interface= 'LaserControllerLogic', optional=True)
+    wavemeter = Connector(name='wavemeter', interface='HighFinesseWavemeter', optional=True)
 
+    power_steps = []
+    etalon_voltages = []
     # internal signals
     sigNextPoi = QtCore.Signal()
     sigNextStep = QtCore.Signal()
-
+    sigStartPle = QtCore.Signal()
     # external signals
     sigSaveSpectrum = QtCore.Signal()
     sigSwitchStatus = QtCore.Signal(str,str) # switch, state
@@ -49,7 +55,8 @@ class Automatedmeasurements(LogicBase):
             'optimize' : self.optimize_on_poi,
             'spectrum' : self.take_spectrum,
             'blue_on' : self.turn_on_blue_laser,
-            'blue_off' : self.turn_off_blue_laser
+            'blue_off' : self.turn_off_blue_laser,
+            'ple_saturation' : self.ple_saturation
         }
 
         ## init variables
@@ -57,10 +64,15 @@ class Automatedmeasurements(LogicBase):
         self.steps = []
         self.debug = False # prints for debugging
 
+        self.power_steps = [10, 43, 56, 60, 70, 80]
+        self.etalon_voltages = [-9, -8, -7]
+
         # init variables that tell teh script if certain measurement was started here
         # (to make sure we don't catch signals when we don't want to)
         self._optimizer_started = False
         self._spectrum_started = False
+        self._ple_started = False
+        self._stop_after_step_done = False
         self._blue_is_on = None # status of blue laser (True: blue laser shines on sample, False: it does not)
 
         return
@@ -76,6 +88,17 @@ class Automatedmeasurements(LogicBase):
         self._optimizer_logic = self.optimizerlogic()
         self._poimanager_logic = self.poimanagerlogic()
         self._scanning_probe_logic = self.scanningprobelogic()
+        if self.wavemeter():
+            self._wavemeter = self.wavemeter()
+        if self.powercontroller_logic():
+            self._powercontroller_logic = self.powercontroller_logic()
+        if self.laser_controller():
+            self._laser_controller = self.laser_controller()
+        if self.ple_gui():
+            self._ple_gui = self.ple_gui()
+            self._ple_gui._scanning_logic.sigScanningDone.connect(self._ple_done,  QtCore.Qt.QueuedConnection)
+            self.sigStartPle.connect(self.start_ple,  QtCore.Qt.QueuedConnection)
+            self._ple_gui_connected = True
         # optional conecctors
         if self.spectrometergui():
             self._spectrometer_gui = self.spectrometergui()
@@ -200,6 +223,7 @@ class Automatedmeasurements(LogicBase):
             self.abort = True
             self._optimizer_started = False
             self._spectrum_started = False
+            self._ple_started = False
             return
         # Choose the first poi in the list, set it as the current one and delete it.
         self._current_poi_name = self._poi_names.pop(0)
@@ -241,7 +265,6 @@ class Automatedmeasurements(LogicBase):
         self.func_dict[self._current_step]()
         return
 
-
     def move_to_poi(self, poi_name=None):
         """Moves the focus to the poi.
         """
@@ -252,10 +275,12 @@ class Automatedmeasurements(LogicBase):
         # go to poi
         self._poimanager_logic.go_to_poi(name=poi_name)
         # poimanager does not send signal once point is reached. 
-        # We will wait for a bit and send a signal ourselves.
+        # We will wait for a bit and send a signal ourselves..
+
+
         # We calculate the time by assuming our start- and endposition are within the scanned area.
         if self._poimanager_logic._max_move_velocity == None:
-            sleep_time = 0.1
+            sleep_time = 5
         else:
             x_range = self._poimanager_logic.roi_scan_image_extent[0]
             y_range = self._poimanager_logic.roi_scan_image_extent[1]
@@ -290,11 +315,16 @@ class Automatedmeasurements(LogicBase):
         if self._optimizer_started == True:
             # make sure we only do sth with the signal if we initialized the measurement
             self._optimizer_started = False
+            
             optimal_posi = np.array([self._optimizer_logic.optimal_position['x'], self._optimizer_logic.optimal_position['y'], self._optimizer_logic.optimal_position['z']])
+            
             position_before_optimize = np.array([self._position_before_optimize['x'],self._position_before_optimize['y'],self._position_before_optimize['z']])
+          
             deviation_from_old_posi = optimal_posi - position_before_optimize
+            
             if self._deviation_within_limits(deviation_from_old_posi,[None,None,200e-9]):
                 # if defect is closse enough to poi position continue wit this defect
+              
                 if self.debug:
                     print('Result of fit is within limits.')
                 self.sigNextStep.emit()
@@ -320,6 +350,7 @@ class Automatedmeasurements(LogicBase):
                     self.sigNextPoi.emit()
                     return
         else:
+         
             return
 
 
@@ -394,7 +425,80 @@ class Automatedmeasurements(LogicBase):
         # hit save
         self.sigSaveSpectrum.emit()
         return
+
+    def start_ple(self):
+        if self.debug:
+            print(f'{__name__}, {inspect.stack()[0][3]}')
+        if self._ple_gui is None:
+            raise Exception('ple module is not connected.')
+        self.power, self.eta = self.saturation_parameters[0]
+        self._wavemeter._wavelength_buffer = []
+        self._laser_controller.etalon_voltage = self.eta
+        self._powercontroller_logic.motor_position = self.power
+    
+        #self._ple_started = True
+        self._ple_gui._mw.actionToggle_scan.setChecked(True)
+        self._ple_gui.toggle_scan()
+        #self._ple_gui._mw.actionToggle_scan.triggered.emit()
         
+        return
+        
+
+    def _ple_done(self):
+        """Catches the signal
+        """
+        if self.debug:
+            print(f'{__name__}, {inspect.stack()[0][3]}, _ple_started = {self._ple_started}')
+        if True:#self._ple_started:
+            name_tag = f'defect-name-{self._current_poi_name}_power-{self.power}_eta_{self.eta}'
+            self.save_ple(name_tag)
+            np.savetxt(os.path.join(self._ple_gui._save_folderpath,f"{name_tag}_wavelength.csv"), self._wavemeter._wavelength_buffer)
+            #self._ple_started = False
+            self.saturation_parameters = np.delete(self.saturation_parameters, 0, axis=0)
+#
+            if len(self.saturation_parameters) < 1:
+                self.ple_saturation_done()
+            else:
+                self.start_ple()
+                #self.sigStartPle.emit()
+        else:
+            return
+
+    def ple_saturation_done(self):
+        if self._stop_after_step_done:
+            return 
+        self.sigNextStep.emit()
+        #self._ple_started = False
+
+    def ple_saturation(self, poi_name=None, power_steps = None, etalon_voltages = None):
+        if poi_name is not None:
+            self._current_poi_name = poi_name
+            self._stop_after_step_done = True
+        if power_steps is not None:
+            self.power_steps = power_steps
+            self._stop_after_step_done = True
+        if etalon_voltages is not None:
+            self.etalon_voltages = etalon_voltages
+            self._stop_after_step_done = True
+        #scan 20 line
+        #Set programmatically number of repetitions
+        #self._ple_gui._mw.number_of_repeats_SpinBox.setValue(self.)
+        #self._ple_gui._mw.number_of_repeats_SpinBox.editingFinished.emit()
+        
+
+        self.saturation_parameters = np.transpose([np.tile(self.power_steps, len(self.etalon_voltages)), np.repeat(self.etalon_voltages, len(self.power_steps))])
+
+        self.start_ple()
+
+
+    def save_ple(self, name_tag=None):
+        if self.debug:
+            print(f'{__name__}, {inspect.stack()[0][3]}, name = {name_tag}')
+
+        self._ple_gui.save_path_widget.saveTagLineEdit.setText(name_tag)
+        
+        self._ple_gui._mw.action_Save.triggered.emit()
+        return
 
     def turn_on_blue_laser(self):
         """Turns on the blue laser.

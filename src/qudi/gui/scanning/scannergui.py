@@ -95,8 +95,8 @@ class ScannerGui(GuiBase):
     # config options for gui
     _default_position_unit_prefix = ConfigOption(name='default_position_unit_prefix', default=None)
     # for all optimizer sub widgets, (2= xy, 1=z)
-    _default_sequence = ConfigOption(name='default_sequence', default=[["x", "y"], ["z"]])
-    
+    _optimizer_plot_dims = ConfigOption(name='optimizer_plot_dimensions', default=[2,1])
+    _min_crosshair_size_fraction = ConfigOption(name='min_crosshair_size_fraction', default=1/50, missing='nothing')
     # status vars
     _window_state = StatusVar(name='window_state', default=None)
     _window_geometry = StatusVar(name='window_geometry', default=None)
@@ -228,12 +228,13 @@ class ScannerGui(GuiBase):
 
         self.sigShowSaveDialog.connect(lambda x: self._save_dialog.show() if x else self._save_dialog.hide(),
                                        QtCore.Qt.DirectConnection)
-
+        self.save_path_widget.DailyPathPushButton.setCheckable(True)
+        self.save_path_widget.newPathPushButton.setCheckable(True)
         self.save_path_widget.currPathLabel.setText('Default' if self._save_folderpath is None else self._save_folderpath)
-        self.save_path_widget.DailyPathCheckBox.clicked.connect(lambda: self.save_path_widget.newPathCheckBox.setEnabled(not self.save_path_widget.DailyPathCheckBox.isChecked()))
+        self.save_path_widget.DailyPathPushButton.clicked.connect(lambda: self.save_path_widget.newPathPushButton.setEnabled(not self.save_path_widget.DailyPathPushButton.isChecked()))
         if self._save_folderpath is None:
-            self.save_path_widget.DailyPathCheckBox.setChecked(True)
-            self.save_path_widget.DailyPathCheckBox.clicked.emit()
+            self.save_path_widget.DailyPathPushButton.setChecked(True)
+            self.save_path_widget.DailyPathPushButton.clicked.emit()
 
         # Initialize dockwidgets to default view
         self.restore_default_view()
@@ -483,18 +484,18 @@ class ScannerGui(GuiBase):
         """
         
         name_tag = self.save_path_widget.saveTagLineEdit.text()
-        if self.save_path_widget.newPathCheckBox.isChecked() and self.save_path_widget.newPathCheckBox.isEnabled():
+        if self.save_path_widget.newPathPushButton.isChecked() and self.save_path_widget.newPathPushButton.isEnabled():
             new_path = QtWidgets.QFileDialog.getExistingDirectory(self._mw, 'Select Folder')
             if new_path:
                 self._save_folderpath = new_path
                 self.save_path_widget.currPathLabel.setText(self._save_folderpath)
-                self.save_path_widget.newPathCheckBox.setChecked(False)
+                self.save_path_widget.newPathPushButton.setChecked(False)
             else:
                 return
 
         self.sigShowSaveDialog.emit(True)
 
-        if self.save_path_widget.DailyPathCheckBox.isChecked():
+        if self.save_path_widget.DailyPathPushButton.isChecked():
             self._save_folderpath = None
             self.save_path_widget.currPathLabel.setText('Default')
 
@@ -559,7 +560,8 @@ class ScannerGui(GuiBase):
                 return
             marker_size = tuple(abs(optimizer_range[ax]) for ax in axes)
             marker_bounds = (axes_constr[0].value_range, axes_constr[1].value_range)
-            dockwidget = ScanDockWidget(axes=axes_constr, channels=channel_constr)
+            dockwidget = ScanDockWidget(axes=axes_constr, channels=channel_constr,
+                                        xy_region_min_size_percentile=self._min_crosshair_size_fraction)
             dockwidget.scan_widget.set_marker_size(marker_size)
             dockwidget.scan_widget.set_marker_bounds(marker_bounds)
             dockwidget.scan_widget.set_plot_range(x_range=axes_constr[0].value_range,

@@ -456,7 +456,7 @@ class PoiManagerLogic(LogicBase):
         self.stop_periodic_refocus()
 
         # Disconnect signals
-        self._optimizelogic().sigOptimizeStateChanged.disconnect()
+        self._optimizelogic().sigOptimizeStateChanged.disconnect(self._optimisation_callback)
         self.__sigStartPeriodicRefocus.disconnect()
         self.__sigStopPeriodicRefocus.disconnect()
         return
@@ -1159,11 +1159,11 @@ class PoiManagerLogic(LogicBase):
             filetag = filename.rsplit('_poi_list.dat', 1)[0]
 
         # Read POI data as well as roi metadata from textfile
-        poi_names = np.loadtxt(complete_path, delimiter='\t', usecols=0, dtype=str)
+        poi_names = np.loadtxt(complete_path, delimiter='\t', usecols=0, dtype=str, ndmin=1)
         if is_legacy_format:
-            poi_coords = np.loadtxt(complete_path, delimiter='\t', usecols=(2, 3, 4), dtype=float)
+            poi_coords = np.loadtxt(complete_path, delimiter='\t', usecols=(2, 3, 4), dtype=float, ndmin=2)
         else:
-            poi_coords = np.loadtxt(complete_path, delimiter='\t', usecols=(1, 2, 3), dtype=float)
+            poi_coords = np.loadtxt(complete_path, delimiter='\t', usecols=(1, 2, 3), dtype=float, ndmin=2)
 
         # Create list of POI instances
         poi_list = [PointOfInterest(pos, poi_names[i]) for i, pos in enumerate(poi_coords)]

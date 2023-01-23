@@ -152,8 +152,11 @@ class Prime95B(CameraInterface):
 
         @return bool: Success?
         """
+        print(exposure)
+        print(self.cam.exp_time , self.exp_time , int(exposure))
         # self.cam.set_param(const.PARAM_EXPOSURE_TIME, int(exposure))
         self.cam.exp_time = self.exp_time = int(exposure)
+        print(self.cam.exp_time , self.exp_time , int(exposure))
         return True
 
     def get_exposure(self):
@@ -172,6 +175,9 @@ class Prime95B(CameraInterface):
 
         @return float: new exposure gain
         """
+        if not(gain==1 and type(gain)==int):
+            print(f'Prime95b only supports gain of 1. Setting gain to 1 insteaad of {gain}.')
+            gain = int(1)
         self.cam.gain = gain
         return self.cam.gain
 
@@ -336,7 +342,8 @@ class Prime95B(CameraInterface):
         constraints = dict()
 
         # the unit of those entries are seconds per bin. In order to get the
-        # current binwidth in seonds use the get_binwidth method.
+        # current binwidth in seconds use the get_binwidth method.
+        # TODO: change to ms.
         constraints['hardware_binwidth_list'] = [1 / 1e6]
 
         # TODO: think maybe about a software_binwidth_list, which will
@@ -459,6 +466,7 @@ class Prime95B(CameraInterface):
 
         @return float: current length of a single bin in seconds (seconds/bin)
         """
+        # TODO: change to ms here
         exp_res_dict = {0: 1000., 1: 1000000.}
         return self.get_exposure() / exp_res_dict[self.get_exp_res()]
 

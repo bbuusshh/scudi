@@ -150,6 +150,9 @@
          <property name="text">
           <string>Daily Path</string>
          </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
        <item>
@@ -157,24 +160,27 @@
          <property name="text">
           <string>New Path</string>
          </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
        <item>
-        <widget class="QRadioButton" name="radioButton_3">
+        <widget class="QCheckBox" name="counter_checkBox">
          <property name="text">
           <string>Counter</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QRadioButton" name="radioButton">
+        <widget class="QCheckBox" name="corr_checkBox">
          <property name="text">
           <string>Autcorrelation</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QRadioButton" name="radioButton_2">
+        <widget class="QCheckBox" name="hist_checkBox">
          <property name="text">
           <string>Histogram</string>
          </property>
