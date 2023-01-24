@@ -281,13 +281,8 @@ class RepumpInterfuseLogic(LogicBase):
         self.sigTimingPlotUpdated.emit(self.timing_diagram)
 
     def repump_before_scan(self):
-        if self.do_prescan_repump:
-            if self.switch is None:
-                return 
-           
-            self.switch.set_state(self._switch_name, 'On')
-            time.sleep(self.repump_scan_length/1000)
-            #delay(msec = self.repump_scan_length)
-            self.switch.set_state(self._switch_name, 'Off')
-            
+        self._switcher.set_state('405 nm laser', 'On')
+        delay(msec = self.repump_scan_length)
+        self._switcher.set_state('405 nm laser', 'Off')
+        
         

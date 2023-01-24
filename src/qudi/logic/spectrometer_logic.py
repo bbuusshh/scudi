@@ -72,6 +72,7 @@ class SpectrometerLogic(LogicBase):
     sig_data_updated = QtCore.Signal()
     sig_state_updated = QtCore.Signal()
     sig_fit_updated = QtCore.Signal(str, object)
+    sigSpectrumDone = QtCore.Signal()
     _default_fit_configs = (
         {'name'             : 'Lorentzian',
         'model'            : 'Lorentzian',

@@ -89,6 +89,7 @@ class PLEScanGui(GuiBase):
     _n_save_tasks = 0
 
     sigDoFit = QtCore.Signal(str, str)
+    fit_result = None
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -224,7 +225,7 @@ class PLEScanGui(GuiBase):
 
 
         self._mw.action_Save.triggered.connect(lambda x: self.save_scan_data(scan_axes=None))
-
+        self._mw.actionSave.triggered.connect(lambda x: self.save_scan_data(scan_axes=None))
 
         self.load_view()
 
@@ -422,7 +423,7 @@ class PLEScanGui(GuiBase):
     def _update_fit_result(self, fit_cfg_result, channel):
         current_channel = channel#self._scan_control_dockwidget.selected_channel
         # current_range_index = self._scan_control_dockwidget.selected_range
-        print(fit_cfg_result)
+        self.fit_result = fit_cfg_result
         if current_channel == channel:# and current_range_index == range_index:
             if fit_cfg_result is None:
                 self._fit_dockwidget.fit_widget.update_fit_result('No Fit', None)
