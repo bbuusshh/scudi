@@ -17,6 +17,7 @@ class MagnetLogic(LogicBase):
     sigContinueRamp = QtCore.Signal()
     sigRampToZero = QtCore.Signal()
     sigRamp = QtCore.Signal(np.ndarray,bool)
+    sigAbortRamp = QtCore.Signal()
     # to gui
     sigGotMagnetValues = QtCore.Signal(np.ndarray)
     sigGotRampingState = QtCore.Signal(np.ndarray)
@@ -39,6 +40,7 @@ class MagnetLogic(LogicBase):
         self.sigContinueRamp.connect(self._magnet.continue_ramp)
         self.sigRampToZero.connect(self._magnet.ramp_to_zero)
         self.sigRamp.connect(self._magnet.ramp)
+        self.sigAbortRamp.connect(self._magnet.abort_ramp)
 
         # switches
         self._rampForPixel = False
@@ -49,10 +51,16 @@ class MagnetLogic(LogicBase):
 
 
     def _ramp_has_finished(self):
+        """Catches the signal that the ramp was finished and processes it.
+        
+        Also updates the values in the gui.
+        """
         if self._rampForPixel:
             self._start_pixelIntegrationTimer()
         else:
             self.sigRampFinished.emit()
+        self.emit_ramping_state()
+        self.emit_magnet_values()
         return
 
 
@@ -305,6 +313,11 @@ class MagnetLogic(LogicBase):
             print(f'{__name__}, {inspect.stack()[0][3]}')
         self.sigRamp.emit(axes,False)
         # self._magnet.ramp(field_target=axes)
+        return
+
+
+    def abort_ramp(self):
+        self.sigAbortRamp.emit()
         return
 
 

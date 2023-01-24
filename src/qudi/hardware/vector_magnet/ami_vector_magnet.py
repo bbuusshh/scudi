@@ -214,6 +214,7 @@ class magnet_3d(Base):
             print('_fast_ramp_loop_body')
         # abort ramp loop if requested
         if self._abortRampLoop:
+            print('Stopping fast_ramp_loop')
             self.pause_ramp()
             return 
         ramping_state = self.get_ramping_state()

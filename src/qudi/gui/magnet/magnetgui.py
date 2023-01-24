@@ -40,6 +40,7 @@ class MagnetWindow(GuiBase):
     sigContinueRamp = QtCore.Signal()
     sigRamToZero = QtCore.Signal()
     sigRamp = QtCore.Signal(np.ndarray)
+    sigAbortRamp = QtCore.Signal()
     sigGetValues = QtCore.Signal()
     sigGetRampingState = QtCore.Signal()
 
@@ -63,6 +64,7 @@ class MagnetWindow(GuiBase):
         self._mw.continue_ramp_pushButton.clicked.connect(self.continue_ramp_pressed)
         self._mw.ramp_to_zero_pushButton.clicked.connect(self.ramp_to_zero_pressed)
         self._mw.start_ramp_pushButton.clicked.connect(self.ramp_pressed)
+        self._mw.stop_ramp_pushButton.clicked.connect(self.stop_ramp_pressed)
         self._mw.get_values_pushButton.clicked.connect(self.get_values_pressed)
         self._mw.get_ramping_state_pushButton.clicked.connect(self.get_ramping_state_pressed)
 
@@ -75,6 +77,7 @@ class MagnetWindow(GuiBase):
         self.sigContinueRamp.connect(self._magnetlogic.continue_ramp)
         self.sigRamToZero.connect(self._magnetlogic.ramp_to_zero)
         self.sigRamp.connect(self._magnetlogic.ramp)
+        self.sigAbortRamp.connect(self._magnetlogic.abort_ramp)
         self.sigGetValues.connect(self._magnetlogic.emit_magnet_values)
         self.sigGetRampingState.connect(self._magnetlogic.emit_ramping_state)
 
@@ -83,10 +86,6 @@ class MagnetWindow(GuiBase):
         self._magnetlogic.sigGotRampingState.connect(self.got_ramping_state)
         self._magnetlogic.sigScanFinished.connect(self._scan_has_finished)
         self._magnetlogic.sigRampFinished.connect(self._ramp_has_finished)
-        
-        ## signals from logic
-        self._magnetlogic.sigGotMagnetValues.connect(self.got_values)
-        self._magnetlogic.sigGotRampingState.connect(self.got_ramping_state)
 
         self.show()
 
@@ -224,12 +223,29 @@ class MagnetWindow(GuiBase):
         ax0 = self._mw.axis0_doubleSpinBox.value()
         ax1 = self._mw.axis1_doubleSpinBox.value()
         ax2 = self._mw.axis2_doubleSpinBox.value()
-        params = np.array([ax0,ax1,ax2])
+        bx = ax0 * np.sin(np.deg2rad(ax1)) * np.cos(np.deg2rad(ax2))
+        by = ax0 * np.sin(np.deg2rad(ax1)) * np.sin(np.deg2rad(ax2))
+        bz = ax0 * np.cos(np.deg2rad(ax1))
+        params = np.array([bx,by,bz])
         self.sigRamp.emit(params)
         return
         
 
+    def stop_ramp_pressed(self):
+        """Tells hardware to stop ramping and reactivates ramping buttons.
+
+        CAUTION: Buttons get reactivated straight away but loop is still running until it checks again (most probably some seconds).
+        """
+        self.reactivate_ramping_buttons()
+        self.reactivate_scanning_buttons()
+        self.sigAbortRamp.emit()
+        return
+
+
     def get_values_pressed(self):
+        if self.debug:
+            # prints name of file and function
+            print(f'{__name__}, {inspect.stack()[0][3]}') 
         # dectivate button
         self._mw.get_values_pushButton.setEnabled(False)
         self.sigGetValues.emit()
@@ -239,7 +255,9 @@ class MagnetWindow(GuiBase):
     def got_values(self,values):
         """Updates values in gui and reactivates button.
         """
-        # reactivate button
+        if self.debug:
+            # prints name of file and function
+            print(f'{__name__}, {inspect.stack()[0][3]}') 
         self._mw.bx_doubleSpinBox.setValue(values[0])
         self._mw.by_doubleSpinBox.setValue(values[1])
         self._mw.bz_doubleSpinBox.setValue(values[2])
@@ -253,6 +271,9 @@ class MagnetWindow(GuiBase):
     def get_ramping_state_pressed(self):
         """ Sends signal to ask for the magnet status. Deactivates "get staus" button.
         """
+        if self.debug:
+            # prints name of file and function
+            print(f'{__name__}, {inspect.stack()[0][3]}') 
         self._mw.get_ramping_state_pushButton.setEnabled(False)
         self.sigGetRampingState.emit()
         return
@@ -261,6 +282,9 @@ class MagnetWindow(GuiBase):
     def got_ramping_state(self,ramping_state):
         """Updates values in gui and reactivates button.
         """
+        if self.debug:
+            # prints name of file and function
+            print(f'{__name__}, {inspect.stack()[0][3]}') 
         self._mw.ramping_state_x_doubleSpinBox.setValue(ramping_state[0])
         self._mw.ramping_state_y_doubleSpinBox.setValue(ramping_state[1])
         self._mw.ramping_state_z_doubleSpinBox.setValue(ramping_state[2])
@@ -271,6 +295,9 @@ class MagnetWindow(GuiBase):
     def deactivate_scanning_buttons(self):
         """Deactivates all buttons that deal with the scanning of the magnetic field.
         """
+        if self.debug:
+            # prints name of file and function
+            print(f'{__name__}, {inspect.stack()[0][3]}') 
         status = False
         self._mw.start_scan_pushButton.setEnabled(status)
         self._mw.stop_scan_pushButton.setEnabled(status)
@@ -280,6 +307,9 @@ class MagnetWindow(GuiBase):
     def reactivate_scanning_buttons(self):
         """Ractivates all buttons that deal with the scanning of the magnetic field.
         """
+        if self.debug:
+            # prints name of file and function
+            print(f'{__name__}, {inspect.stack()[0][3]}') 
         status = True
         self._mw.start_scan_pushButton.setEnabled(status)
         self._mw.stop_scan_pushButton.setEnabled(status)
@@ -289,6 +319,9 @@ class MagnetWindow(GuiBase):
     def deactivate_ramping_buttons(self):
         """Deactivates all buttons that deal with the ramping of the magnetic field.
         """
+        if self.debug:
+            # prints name of file and function
+            print(f'{__name__}, {inspect.stack()[0][3]}') 
         status = False
         self._mw.start_ramp_pushButton.setEnabled(status)
         self._mw.stop_ramp_pushButton.setEnabled(status)
@@ -303,6 +336,9 @@ class MagnetWindow(GuiBase):
     def reactivate_ramping_buttons(self):
         """Reactivates all buttons that deal with the ramping of the magnetic field.
         """
+        if self.debug:
+            # prints name of file and function
+            print(f'{__name__}, {inspect.stack()[0][3]}') 
         status = True
         self._mw.start_ramp_pushButton.setEnabled(status)
         self._mw.stop_ramp_pushButton.setEnabled(status)
