@@ -22,6 +22,7 @@ class MagnetmainWindow(QtWidgets.QMainWindow):
 
 
 class MagnetWindow(GuiBase):
+    # TODO: deactivate buttons during ramp
     ## declare connectors
     magnetlogic = Connector(interface = 'MagnetLogic')
 
@@ -39,6 +40,8 @@ class MagnetWindow(GuiBase):
     sigContinueRamp = QtCore.Signal()
     sigRamToZero = QtCore.Signal()
     sigRamp = QtCore.Signal(np.ndarray)
+    sigGetValues = QtCore.Signal()
+    sigGetRampingState = QtCore.Signal()
 
 
     def __init__(self, *args, **kwargs):
@@ -60,6 +63,8 @@ class MagnetWindow(GuiBase):
         self._mw.continue_ramp_pushButton.clicked.connect(self.continue_ramp_pressed)
         self._mw.ramp_to_zero_pushButton.clicked.connect(self.ramp_to_zero_pressed)
         self._mw.start_ramp_pushButton.clicked.connect(self.ramp_pressed)
+        self._mw.get_values_pushButton.clicked.connect(self.get_values_pressed)
+        self._mw.get_ramping_state_pushButton.clicked.connect(self.get_ramping_state_pressed)
 
 
         ## connect signals
@@ -70,7 +75,18 @@ class MagnetWindow(GuiBase):
         self.sigContinueRamp.connect(self._magnetlogic.continue_ramp)
         self.sigRamToZero.connect(self._magnetlogic.ramp_to_zero)
         self.sigRamp.connect(self._magnetlogic.ramp)
+        self.sigGetValues.connect(self._magnetlogic.emit_magnet_values)
+        self.sigGetRampingState.connect(self._magnetlogic.emit_ramping_state)
+
+        # from logic
+        self._magnetlogic.sigGotMagnetValues.connect(self.got_values)
+        self._magnetlogic.sigGotRampingState.connect(self.got_ramping_state)
+        self._magnetlogic.sigScanFinished.connect(self._scan_has_finished)
+        self._magnetlogic.sigRampFinished.connect(self._ramp_has_finished)
         
+        ## signals from logic
+        self._magnetlogic.sigGotMagnetValues.connect(self.got_values)
+        self._magnetlogic.sigGotRampingState.connect(self.got_ramping_state)
 
         self.show()
 
@@ -86,10 +102,26 @@ class MagnetWindow(GuiBase):
         self._mw.show()
 
     
+    def _ramp_has_finished(self):
+        """Catches the signal from logic that ramping has finshed.
+        """
+        self.reactivate_ramping_buttons()
+        return
+
+
+    def _scan_has_finished(self):
+        """Catches the signal from logic that scanning has finshed.
+        """
+        self.reactivate_ramping_buttons()
+        self.switch_scan_button_status_scan_idle()
+        return
+
+
     def start_scan_pressed(self):
         # TODO: (de)activate buttons
         if self.debug:
             print('start_scan_pressed')
+        self.switch_scan_button_status_scan_running()
         # get scanning parameters from gui
         # B_abs
         ax0_start = self._mw.axis0_start_value_doubleSpinBox.value()
@@ -119,13 +151,26 @@ class MagnetWindow(GuiBase):
 
     
     def stop_scan_pressed(self):
-        # TODO: (de)activate buttons
+        self.switch_scan_button_status_scan_idle()
         self.sigStopScanPressed.emit()
+        return
+
+
+    def switch_scan_button_status_scan_running(self):
+        self._mw.start_scan_pushButton.setEnabled(False)
+        self._mw.stop_scan_pushButton.setEnabled(True)
+        return
+
+
+    def switch_scan_button_status_scan_idle(self):
+        self._mw.start_scan_pushButton.setEnabled(True)
+        self._mw.stop_scan_pushButton.setEnabled(False)
         return
 
 
     def heat_psw_pressed(self):
         # TODO: (de)activate buttons
+        # TODO: catch sigal to reactivate the buttons
         if self.debug:
             print('heat_psw_pressed')
         self.sigChangePswStatus.emit(1)
@@ -143,6 +188,8 @@ class MagnetWindow(GuiBase):
     def pause_ramp_pressed(self):
         if self.debug:
             print(f'{__name__}, {inspect.stack()[0][3]}')
+        self._mw.continue_ramp_pushButton.setEnabled(True)
+        self._mw.pause_ramp_pushButton.setEnabled(False)
         self.sigPauseRamp.emit()
         return
 
@@ -150,7 +197,9 @@ class MagnetWindow(GuiBase):
     def continue_ramp_pressed(self):
         if self.debug:
             # prints name of file and function
-            print(f'{__name__}, {inspect.stack()[0][3]}') 
+            print(f'{__name__}, {inspect.stack()[0][3]}')
+        self._mw.continue_ramp_pushButton.setEnabled(False)
+        self._mw.pause_ramp_pushButton.setEnabled(True)
         self.sigContinueRamp.emit()
         return
 
@@ -166,6 +215,12 @@ class MagnetWindow(GuiBase):
         if self.debug:
             # prints name of file and function
             print(f'{__name__}, {inspect.stack()[0][3]}') 
+        # deactivate all buttons apart from stopping and pausing ramp
+        self.deactivate_ramping_buttons()
+        self.deactivate_scanning_buttons()
+        self._mw.stop_ramp_pushButton.setEnabled(True)
+        self._mw.pause_ramp_pushButton.setEnabled(True)
+        # TODO: if pause ramp is pressed and start ramp is pressed afterwards, make sure old ramp is killed.
         ax0 = self._mw.axis0_doubleSpinBox.value()
         ax1 = self._mw.axis1_doubleSpinBox.value()
         ax2 = self._mw.axis2_doubleSpinBox.value()
@@ -173,3 +228,87 @@ class MagnetWindow(GuiBase):
         self.sigRamp.emit(params)
         return
         
+
+    def get_values_pressed(self):
+        # dectivate button
+        self._mw.get_values_pushButton.setEnabled(False)
+        self.sigGetValues.emit()
+        return
+
+
+    def got_values(self,values):
+        """Updates values in gui and reactivates button.
+        """
+        # reactivate button
+        self._mw.bx_doubleSpinBox.setValue(values[0])
+        self._mw.by_doubleSpinBox.setValue(values[1])
+        self._mw.bz_doubleSpinBox.setValue(values[2])
+        self._mw.b_doubleSpinBox.setValue(values[3])
+        self._mw.theta_doubleSpinBox.setValue(values[4])
+        self._mw.phi_doubleSpinBox.setValue(values[5])
+        self._mw.get_values_pushButton.setEnabled(True)
+        return
+
+
+    def get_ramping_state_pressed(self):
+        """ Sends signal to ask for the magnet status. Deactivates "get staus" button.
+        """
+        self._mw.get_ramping_state_pushButton.setEnabled(False)
+        self.sigGetRampingState.emit()
+        return
+
+
+    def got_ramping_state(self,ramping_state):
+        """Updates values in gui and reactivates button.
+        """
+        self._mw.ramping_state_x_doubleSpinBox.setValue(ramping_state[0])
+        self._mw.ramping_state_y_doubleSpinBox.setValue(ramping_state[1])
+        self._mw.ramping_state_z_doubleSpinBox.setValue(ramping_state[2])
+        self._mw.get_ramping_state_pushButton.setEnabled(True)
+        return
+
+
+    def deactivate_scanning_buttons(self):
+        """Deactivates all buttons that deal with the scanning of the magnetic field.
+        """
+        status = False
+        self._mw.start_scan_pushButton.setEnabled(status)
+        self._mw.stop_scan_pushButton.setEnabled(status)
+        return
+
+
+    def reactivate_scanning_buttons(self):
+        """Ractivates all buttons that deal with the scanning of the magnetic field.
+        """
+        status = True
+        self._mw.start_scan_pushButton.setEnabled(status)
+        self._mw.stop_scan_pushButton.setEnabled(status)
+        return
+
+
+    def deactivate_ramping_buttons(self):
+        """Deactivates all buttons that deal with the ramping of the magnetic field.
+        """
+        status = False
+        self._mw.start_ramp_pushButton.setEnabled(status)
+        self._mw.stop_ramp_pushButton.setEnabled(status)
+        self._mw.ramp_to_zero_pushButton.setEnabled(status)
+        self._mw.continue_ramp_pushButton.setEnabled(status)
+        self._mw.pause_ramp_pushButton.setEnabled(status)
+        self._mw.heat_psw_pushButton.setEnabled(status)
+        self._mw.cool_psw_pushButton.setEnabled(status)
+        return
+
+
+    def reactivate_ramping_buttons(self):
+        """Reactivates all buttons that deal with the ramping of the magnetic field.
+        """
+        status = True
+        self._mw.start_ramp_pushButton.setEnabled(status)
+        self._mw.stop_ramp_pushButton.setEnabled(status)
+        self._mw.ramp_to_zero_pushButton.setEnabled(status)
+        self._mw.continue_ramp_pushButton.setEnabled(status)
+        self._mw.pause_ramp_pushButton.setEnabled(status)
+        self._mw.heat_psw_pushButton.setEnabled(status)
+        self._mw.cool_psw_pushButton.setEnabled(status)
+        return

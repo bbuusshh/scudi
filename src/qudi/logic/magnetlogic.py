@@ -17,6 +17,10 @@ class MagnetLogic(LogicBase):
     sigContinueRamp = QtCore.Signal()
     sigRampToZero = QtCore.Signal()
     sigRamp = QtCore.Signal(np.ndarray,bool)
+    # to gui
+    sigGotMagnetValues = QtCore.Signal(np.ndarray)
+    sigGotRampingState = QtCore.Signal(np.ndarray)
+    sigRampFinished = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -29,7 +33,7 @@ class MagnetLogic(LogicBase):
         self._tagger = self.tagger()
 
         # connect external signals
-        self._magnet.sigRampFinished.connect(self._start_pixelIntegrationTimer)
+        self._magnet.sigRampFinished.connect(self._ramp_has_finished)
         self.sigChangePswStatus.connect(self._magnet.set_psw_status)
         self.sigPauseRamp.connect(self._magnet.pause_ramp)
         self.sigContinueRamp.connect(self._magnet.continue_ramp)
@@ -42,6 +46,14 @@ class MagnetLogic(LogicBase):
 
     def on_deactivate(self):
         pass
+
+
+    def _ramp_has_finished(self):
+        if self._rampForPixel:
+            self._start_pixelIntegrationTimer()
+        else:
+            self.sigRampFinished.emit()
+        return
 
 
     def set_up_scan(self, params, int_time):
@@ -183,6 +195,10 @@ class MagnetLogic(LogicBase):
             if self.debug:
                 print('aborting scan')
             return
+        # this if case is now obsolete.
+        # previously, sigRampFinished connected straigt to this function. 
+        # Now we connect to a different function that then calls thsi function if needed.
+        # TODO: get rid of if case?
         if self._rampForPixel: # only do sth if ramp was initiated for the pixel
             if self.thread() is not QtCore.QThread.currentThread():
                 if self.debug:
@@ -290,6 +306,35 @@ class MagnetLogic(LogicBase):
         self.sigRamp.emit(axes,False)
         # self._magnet.ramp(field_target=axes)
         return
+
+
+    def emit_magnet_values(self):
+        """Emits magnetic field in carthesian and spherical coordinates.
+        """
+        field_carthesian = self.get_field()
+        field_spherical = [0,0,0] # TODO: calculate it from carthesian
+        field_combined = field_carthesian + field_spherical
+        field_combined = np.array(field_combined)
+        self.sigGotMagnetValues.emit(field_combined)
+        return 
+    
+
+    def get_field(self):
+        """Returns the field in x,y and z direction"""
+        field = self._magnet.get_field()
+        return field
+
+
+    def emit_ramping_state(self):
+        ramping_state = self.get_ramping_state()
+        ramping_state = np.array(ramping_state)
+        self.sigGotRampingState.emit(ramping_state)
+        return
+
+
+    def get_ramping_state(self):
+        ramping_state = self._magnet.get_ramping_state()
+        return ramping_state
 
 
 
