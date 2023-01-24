@@ -325,12 +325,31 @@ class MagnetLogic(LogicBase):
         """Emits magnetic field in carthesian and spherical coordinates.
         """
         field_carthesian = self.get_field()
-        field_spherical = [0,0,0] # TODO: calculate it from carthesian
+        field_spherical = self.cart2spherical(field_carthesian)
+        # from radian to degree
+        field_spherical[1] = np.rad2deg(field_spherical[1])
+        field_spherical[2] = np.rad2deg(field_spherical[2])
         field_combined = field_carthesian + field_spherical
         field_combined = np.array(field_combined)
         self.sigGotMagnetValues.emit(field_combined)
         return 
     
+
+    def cart2spherical(self,carthesian):
+        x = carthesian[0]
+        y = carthesian[1]
+        z = carthesian[2]
+        r = np.sqrt(x**2 + y**2 + z**2)
+        if np.isclose(r,0):
+            theta = np.arccos(0)
+        else:
+            theta = np.arccos(z/r)
+        if np.isclose(x**2 + y**2, 0):
+            phi = 0
+        else:
+            phi = np.sign(y) * np.arccos(x/np.sqrt(x**2 + y**2))
+        return [r,theta,phi]
+
 
     def get_field(self):
         """Returns the field in x,y and z direction"""
