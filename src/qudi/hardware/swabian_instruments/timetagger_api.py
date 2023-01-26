@@ -53,7 +53,7 @@ class TT(Base):
 
     def on_activate(self):
         try:
-            self.tagger = createTimeTagger()
+            self.tagger = createTimeTagger('1740000JFB')
             self.log.info(f"Tagger initialization successful: {self.tagger.getSerial()}")
         except:
             self.log.error(f"\nCheck if the TimeTagger device is being used by another instance.")
