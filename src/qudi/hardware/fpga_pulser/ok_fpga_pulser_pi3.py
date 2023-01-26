@@ -24,6 +24,8 @@ import time
 import numpy as np
 from qudi.hardware.fpga_pulser.ok import *
 
+import qudi.hardware.fpga_pulser.ok as ok
+
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 from qudi.interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
@@ -75,7 +77,7 @@ class OkFpgaPulser(PulserInterface):
         self.__currently_loaded_waveform = ''
         self.fpga = ok.FrontPanel()
         self._connect_fpga()
-        #self.set_sample_rate(self.__sample_rate)
+        self.set_sample_rate()
 
     def on_deactivate(self):
         self._disconnect_fpga()
@@ -334,7 +336,7 @@ class OkFpgaPulser(PulserInterface):
         """
         return self.__sample_rate
 
-    def set_sample_rate(self, sample_rate):
+    def set_sample_rate(self):
         """ Set the sample rate of the pulse generator hardware.
 
         @param float sample_rate: The sampling rate to be set (in Hz)
@@ -348,17 +350,9 @@ class OkFpgaPulser(PulserInterface):
             self.log.error('Can`t change the sample rate while the FPGA is running.')
             return self.__sample_rate
 
-        # Round sample rate either to 500MHz or 950MHz since no other values are possible.
-        if sample_rate < 725e6:
-            self.__sample_rate = 500e6
-            bitfile_name = 'pulsegen_8chnl_500MHz_{0}.bit'.format(self._fpga_type.split('_')[1])
-        else:
-            self.__sample_rate = 950e6
-            bitfile_name = 'pulsegen_8chnl_950MHz_{0}.bit'.format(self._fpga_type.split('_')[1])
+        bitfile_path = self._path_to_bitfile
 
-        bitfile_path = os.path.join(self._path_to_bitfiles_dir, bitfile_name)
-
-        assert os.path.isfile(bitfile_path), f'Could not find bitfile {bitfile_name} in {bitfile_path}'
+        assert os.path.isfile(bitfile_path), f'Could not find bitfile in {bitfile_path}'
 
         self.fpga.ConfigureFPGA(bitfile_path)
         self.log.info('FPGA pulse generator configured with {0}'.format(bitfile_path))
@@ -733,7 +727,7 @@ class OkFpgaPulser(PulserInterface):
         # connect to FPGA by serial number
         self.fpga.OpenBySerial(self._fpga_serial)
         # upload configuration bitfile to FPGA
-        #self.set_sample_rate(self.__sample_rate)
+        self.set_sample_rate()
 
         # Check connection
         if not self.fpga.IsFrontPanelEnabled():
