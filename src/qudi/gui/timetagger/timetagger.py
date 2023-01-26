@@ -337,12 +337,12 @@ class TTGui(GuiBase):
                 save_type = st
                 break
         if self._mw.newPathPushButton.isChecked() and self._mw.newPathPushButton.isEnabled():
-            new_path = QtWidgets.QFileDialog.getExistingDirectory(self._mw, 'Select Folder')
-            if new_path:
-                self._save_folderpath = new_path
-                self._mw.currPathLabel.setText(self._save_folderpath)
-                self._mw.newPathPushButton.setChecked(False)
-                save = True
+            #new_path = QtWidgets.QFileDialog.getExistingDirectory(self._mw, 'Select Folder')
+            #if new_path:
+            #self._save_folderpath = new_path
+            self._mw.currPathLabel.setText(self._save_folderpath)
+            self._mw.newPathPushButton.setChecked(False)
+            save = True
         if self._mw.DailyPathPushButton.isChecked():
             self._save_folderpath = 'Default'
             self._mw.currPathLabel.setText(self._save_folderpath)
