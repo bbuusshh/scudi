@@ -576,7 +576,7 @@ class PLEScanGui(GuiBase):
         if 'frequency' in settings:
             self._mw.frequencyDoubleSpinBox.setValue(settings['frequency'][self.scan_axis])
         
-        #self._scanning_logic.reset_accumulated()
+        self._scanning_logic.reset_accumulated()
         self._mw.number_of_repeats_SpinBox.setValue(self._scanning_logic._number_of_repeats)
         
 
@@ -749,7 +749,9 @@ class PLEScanGui(GuiBase):
     def _update_accumulated_scan(self, accumulated_data, scan_data):
          if accumulated_data is not None:
             self._mw.matrix_widget.set_scan_data(accumulated_data, scan_data)
+            self._mw.ple_averaged_widget.set_scan_data(accumulated_data, scan_data)
             self._accumulated_data = accumulated_data
+           
 
     @QtCore.Slot(tuple)
     def save_scan_data(self, scan_axes=None):

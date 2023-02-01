@@ -27,12 +27,12 @@ import ctypes   # is a foreign function library for Python. It provides C
                 # compatible data types, and allows calling functions in DLLs
                 # or shared libraries. It can be used to wrap these libraries
                 # in pure Python.
-
+from qudi.hardware.wavemeter import high_finesse_api
 from qudi.interface.wavemeter_interface import WavemeterInterface
 from qudi.core.module import Base
 from qudi.core.configoption import ConfigOption
 from qudi.util.mutex import Mutex
-from qudi.hardware.wavemeter import high_finesse_api
+
 import numpy as np
 
 class HardwarePull(QtCore.QObject):
@@ -155,10 +155,11 @@ class HighFinesseWavemeter(WavemeterInterface):
         """
         if len(self._wavelength_buffer) < 1 :
             self._wavelength_buffer.append(wavelengths[self._default_channel]) 
-        if len(self._wavelength_buffer) < 500:
+        else:
             if (np.round((wavelengths[self._default_channel], 5) - np.round(self._wavelength_buffer[-1], 5)) > 0):
             
                 self._wavelength_buffer.append(wavelengths[self._default_channel]) 
+        self._wavelength_buffer = self._wavelength_buffer[:-1000]
         self._current_wavelengths = wavelengths
 
     def start_acquisition(self):
@@ -202,6 +203,12 @@ class HighFinesseWavemeter(WavemeterInterface):
         self._wavemeter.stop_measurements()
 
         return 0
+
+    def get_wavelength_buffer(self):
+        if len(self._wavelength_buffer) > 0:
+            return np.array(self._wavelength_buffer)
+        else:
+            return np.array([self.get_current_wavelength()])
 
     def get_current_wavelengths(self):
         """ This method returns the current wavelength.
