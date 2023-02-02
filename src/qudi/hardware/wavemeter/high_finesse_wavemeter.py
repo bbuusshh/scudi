@@ -93,6 +93,7 @@ class HighFinesseWavemeter(WavemeterInterface):
     _measurement_timing = ConfigOption('measurement_timing', default=0.2)
     _active_channels = ConfigOption('active_channels', default=[0])
     _default_channel = ConfigOption('default_channel', default=0)
+    _buffer_size = 3000
     # signals
     sig_handle_timer = QtCore.Signal(bool)
 
@@ -156,10 +157,11 @@ class HighFinesseWavemeter(WavemeterInterface):
         if len(self._wavelength_buffer) < 1 :
             self._wavelength_buffer.append(wavelengths[self._default_channel]) 
         else:
-            if (np.round((wavelengths[self._default_channel], 5) - np.round(self._wavelength_buffer[-1], 5)) > 0):
+            print(np.abs(np.round(wavelengths[self._default_channel], 5) - np.round(self._wavelength_buffer[-1], 5)))
+            if (np.abs(np.round(wavelengths[self._default_channel], 5) - np.round(self._wavelength_buffer[-1], 5))) > 0:
             
                 self._wavelength_buffer.append(wavelengths[self._default_channel]) 
-        self._wavelength_buffer = self._wavelength_buffer[:-1000]
+        self._wavelength_buffer = self._wavelength_buffer[-self._buffer_size:]
         self._current_wavelengths = wavelengths
 
     def start_acquisition(self):
