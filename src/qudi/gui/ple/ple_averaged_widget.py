@@ -82,11 +82,13 @@ class PLEAveragedDataWidget(QtWidgets.QWidget):
 
         self._scan_data = None
 
-    def set_scan_data(self, data: ScanData) -> None:
+    def set_scan_data(self,  accumulated_data, scan_data: ScanData) -> None:
         # Save reference for channel changes
-        update_range = (self._scan_data is None) or (self._scan_data.scan_range != data.scan_range) \
-                        or (self._scan_data.scan_resolution != data.scan_resolution)
-        self._scan_data = data
+        update_range = (self._scan_data is None) or (self._scan_data.scan_range != scan_data.scan_range) \
+                        or (self._scan_data.scan_resolution != scan_data.scan_resolution)
+        self._scan_data = scan_data
+        print("HELLo")
+        self._averaged_data = {channel: data.mean(axis=0)  for channel, data in accumulated_data.items()}
         # Set data
         self._update_scan_data(update_range=update_range)
     
@@ -113,7 +115,7 @@ class PLEAveragedDataWidget(QtWidgets.QWidget):
         if (self._scan_data is None) or (self._scan_data.data is None):
             self.data_curve.clear()
         else:
-            y_data = self._scan_data.accumulated_data[current_channel].mean(axis=0)
+            y_data = self._averaged_data[current_channel]
             if update_range:
                 x_data = np.linspace(*self._scan_data.scan_range[0],
                                      self._scan_data.scan_resolution[0])
