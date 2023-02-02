@@ -527,21 +527,22 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
 
     def _check_scan_end_reached(self):
         # not thread safe, call from thread_lock protected code only
-        return self.raw_data_container.is_full
+        return self._ni_finite_sampling_io()._scanner_ready
+        # return self.raw_data_container.is_full
 
     def _fetch_data_chunk(self):
         try:
             # self.log.debug(f'fetch chunk: {self._ni_finite_sampling_io().samples_in_buffer}, {self.is_scan_running}')
             # chunk_size = self._scan_data.scan_resolution[0] + self.__backwards_line_resolution
-            chunk_size = 10  # TODO Hardcode or go line by line as commented out above?
+            # chunk_size = 10  # TODO Hardcode or go line by line as commented out above?
             # Request a minimum of chunk_size samples per loop
-            try:
-                samples_dict = self._ni_finite_sampling_io().get_buffered_samples(chunk_size) \
-                    if self._ni_finite_sampling_io().samples_in_buffer < chunk_size\
-                    else self._ni_finite_sampling_io().get_buffered_samples()
-            except ValueError:  # ValueError is raised, when more samples are requested then pending or still to get
-                # after HW stopped
-                samples_dict = self._ni_finite_sampling_io().get_buffered_samples()
+            # try:
+            #     samples_dict = self._ni_finite_sampling_io().get_buffered_samples() \
+            #         if self._ni_finite_sampling_io().samples_in_buffer < chunk_size\
+            #         else self._ni_finite_sampling_io().get_buffered_samples()
+            # except ValueError:  # ValueError is raised, when more samples are requested then pending or still to get
+            #     # after HW stopped
+            samples_dict = self._ni_finite_sampling_io().get_buffered_samples()
 
             reverse_routing = {val.lower(): key for key, val in self._ni_channel_mapping.items()}
 
@@ -887,7 +888,7 @@ class RawDataContainer:
         self.number_of_scan_lines = number_of_scan_lines
         self.forward_line_resolution = forward_line_resolution
         self.backwards_line_resolution = backwards_line_resolution
-
+        self.frame_aquired = False
         self.frame_size = number_of_scan_lines * (forward_line_resolution + backwards_line_resolution)
         self._raw = {key: np.full(self.frame_size, np.nan) for key in channel_keys}
 
@@ -930,5 +931,5 @@ class RawDataContainer:
     @property
     def is_full(self):
         return self.number_of_non_nan_values == self.frame_size
-
+    
 

@@ -113,6 +113,7 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                                                    for channel_index in range(0, 4)},
                                           missing='warn')
 
+    _scanner_ready = False
     # Hardcoded data type
     __data_type = np.float64
 
@@ -196,7 +197,7 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         # Get digital input terminals from _input_channel_units of the Time Tagger
         # The input channels are assumed to be time tagger exclusively
-        digital_sources = tuple(src[2:] for src in self._input_channel_units if 'tt' in src) #!FIX check maybe regex out tt
+        digital_sources = tuple(src for src in self._input_channel_units if 'tt' in src) #!FIX check maybe regex out tt
 
         analog_sources = tuple(src for src in self._input_channel_units if 'ai' in src)
 
@@ -241,7 +242,7 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                                          set(digital_sources),
                                          set(analog_outputs))
         invalid_channels = set.difference(defined_channel_set, detected_channel_set)
-
+        print(defined_channel_set, detected_channel_set)
         if invalid_channels:
             raise ValueError(
                 f'The channels "{", ".join(invalid_channels)}", specified in the config, were not recognized.'
@@ -418,12 +419,13 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             return self._number_of_pending_samples
 
         if self._ai_task_handle is None and self._di_task_handles is not None:
-            return self._di_task_handles[0].in_stream.avail_samp_per_chan
+            # data = self._timetagger_cbm_tasks[0].getData()
+            return self.frame_size #self._di_task_handles[0].in_stream.avail_samp_per_chan
         elif self._ai_task_handle is not None and self._di_task_handles is None:
             return self._ai_task_handle.in_stream.avail_samp_per_chan
         else:
             return min(self._ai_task_handle.in_stream.avail_samp_per_chan,
-                       self._di_task_handles[0].in_stream.avail_samp_per_chan)
+                       self.frame_size)
 
     @property
     def frame_size(self):
@@ -540,11 +542,6 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                 self.module_state.unlock()
                 raise NiInitError('Sample clock initialization failed; all tasks terminated')
 
-            if self._init_digital_tasks() < 0:
-                self.terminate_all_tasks()
-                self.module_state.unlock()
-                raise NiInitError('Counter task initialization failed; all tasks terminated')
-
             if self._init_tt_cbm_task() < 0:
                 self.terminate_all_tasks() # add the treatment of the TT task termination
                 self.module_state.unlock()
@@ -658,7 +655,7 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             pre_stop = not self.is_running
 
             if not samples_to_read <= self._number_of_pending_samples:
-                raise ValueError(f"Requested {samples_to_read} samples, "
+                print(f"Requested {samples_to_read} samples, "
                                  f"but only {self._number_of_pending_samples} enough pending.")
 
             if samples_to_read > 0 and self.is_running:
@@ -692,20 +689,16 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                                                     in self.__unread_samples_buffer.items()}
                     return data
             else:
-                if self._di_readers:
-                    write_offset = 0
+                if self._timetagger_cbm_tasks:
                     di_data = np.zeros(len(self.__active_channels['di_channels']) * samples_to_read)
-                    for di_reader in self._di_readers:
-                        di_reader.read_many_sample_double(
-                            di_data[write_offset:],
-                            number_of_samples_per_channel=samples_to_read,
-                            timeout=self._rw_timeout)
-                        write_offset += samples_to_read
 
                     di_data = di_data.reshape(len(self.__active_channels['di_channels']), samples_to_read)
                     for num, di_channel in enumerate(self.__active_channels['di_channels']):
+                        data_cbm = self._timetagger_cbm_tasks[num].getData()
+                        di_data[num] = data_cbm
                         data[di_channel] = di_data[num] * self.sample_rate  # To go to c/s # TODO What if unit not c/s
-
+                        self._scanner_ready = self._timetagger_cbm_tasks[num].ready()
+                    print(data, )
                 if self._ai_reader is not None:
                     data_buffer = np.zeros(samples_to_read * len(self.__active_channels['ai_channels']))
                     # self.log.debug(f'Buff shape {data_buffer.shape} and len {len(data_buffer)}')
@@ -719,6 +712,7 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                         data[ai_channel] = data_buffer[num * samples_to_read:(num + 1) * samples_to_read]
 
                 self._number_of_pending_samples -= samples_to_read
+                
                 return data
 
     def get_frame(self, data=None):
@@ -828,137 +822,20 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                                                  self._device_name, self._physical_sample_clock_output))
         return 0
 
-    def _init_tt_cbm_tasks(self):
-        self._timetagger_cbm_tasks.append(
-            self._tt.count_between_markers(
-            click_channel = self._tt._combined_detectorChans.getChannel(), 
-            begin_channel = self._tt_ni_clock_input, 
-            n_values=self._line_length)) 
-
-    def _init_digital_tasks(self):
+    def _init_tt_cbm_task(self):
         """
-        Set up tasks for digital event counting.
-
+        Set up tasks for digital event counting with the TIMETAGGER
+        cbm stnads for count between markers
         @return int: error code (0:OK, -1:error)
         """
-        digital_channels = self.__active_channels['di_channels']
-        if not digital_channels:
-            return 0
-        if self._di_task_handles:
-            self.log.error('Digital counting tasks have already been generated. '
-                           'Setting up counter tasks has failed.')
-            self.terminate_all_tasks()
-            return -1
-
-        if self._clk_task_handle is None:
-            self.log.error(
-                'No sample clock task has been generated and no external clock source specified. '
-                'Unable to create digital counting tasks.')
-            self.terminate_all_tasks()
-            return -1
-
-        clock_channel = '/{0}InternalOutput'.format(self._clk_task_handle.channel_names[0])
-        # sample_freq = float(self._clk_task_handle.co_channels.all.co_pulse_freq)
-
-        # Set up digital counting tasks
-        for i, chnl in enumerate(digital_channels):
-            chnl_name = '/{0}/{1}'.format(self._device_name, chnl)
-            task_name = 'PeriodCounter__{0}_{1}'.format(chnl, id(self))
-            # Try to find available counter
-            for ctr in self.__all_counters:
-                ctr_name = '/{0}/{1}'.format(self._device_name, ctr)
-                try:
-                    task = ni.Task(task_name)
-                except ni.DaqError:
-                    self.log.error('Could not create task with name "{0}"'.format(task_name))
-                    self.terminate_all_tasks()
-                    return -1
-
-                try:
-                    task.ci_channels.add_ci_period_chan(
-                        ctr_name,
-                        min_val=min(self.constraints.input_channel_limits[chnl]),
-                        max_val=max(self.constraints.input_channel_limits[chnl]),
-                        units=ni.constants.TimeUnits.TICKS,
-                        edge=ni.constants.Edge.RISING)
-                    # NOTE: The following two direct calls to C-function wrappers are a
-                    # workaround due to a bug in some NIDAQmx.lib property getters. If one of
-                    # these getters is called, it will mess up the task timing.
-                    # This behaviour has been confirmed using pure C code.
-                    # nidaqmx will call these getters and so the C function is called directly.
-                    try:
-                        lib_importer.windll.DAQmxSetCIPeriodTerm(
-                            task._handle,
-                            ctypes.c_char_p(ctr_name.encode('ascii')),
-                            ctypes.c_char_p(clock_channel.encode('ascii')))
-                        lib_importer.windll.DAQmxSetCICtrTimebaseSrc(
-                            task._handle,
-                            ctypes.c_char_p(ctr_name.encode('ascii')),
-                            ctypes.c_char_p(chnl_name.encode('ascii')))
-                    except:
-                        lib_importer.cdll.DAQmxSetCIPeriodTerm(
-                            task._handle,
-                            ctypes.c_char_p(ctr_name.encode('ascii')),
-                            ctypes.c_char_p(clock_channel.encode('ascii')))
-                        lib_importer.cdll.DAQmxSetCICtrTimebaseSrc(
-                            task._handle,
-                            ctypes.c_char_p(ctr_name.encode('ascii')),
-                            ctypes.c_char_p(chnl_name.encode('ascii')))
-
-                    task.timing.cfg_implicit_timing(
-                        sample_mode=ni.constants.AcquisitionType.FINITE,
-                        samps_per_chan=self.frame_size)
-                except ni.DaqError:
-                    try:
-                        task.close()
-                        del task
-                    except NameError:
-                        pass
-                    self.terminate_all_tasks()
-                    self.log.exception('Something went wrong while configuring digital counter '
-                                       'task for channel "{0}".'.format(chnl))
-                    return -1
-
-                try:
-                    task.control(ni.constants.TaskMode.TASK_RESERVE)
-                except ni.DaqError:
-                    try:
-                        task.close()
-                    except ni.DaqError:
-                        self.log.exception('Unable to close task.')
-                    try:
-                        del task
-                    except NameError:
-                        self.log.exception('Some weird namespace voodoo happened here...')
-
-                    if ctr == self.__all_counters[-1]:
-                        self.log.exception('Unable to reserve resources for digital counting task '
-                                           'of channel "{0}". No available counter found!'
-                                           ''.format(chnl))
-                        self.terminate_all_tasks()
-                        return -1
-                    continue
-
-                try:
-                    self._di_readers.append(CounterReader(task.in_stream))
-                    self._di_readers[-1].verify_array_shape = False
-                except ni.DaqError:
-                    self.log.exception(
-                        'Something went wrong while setting up the digital counter reader for '
-                        'channel "{0}".'.format(chnl))
-                    self.terminate_all_tasks()
-                    try:
-                        task.close()
-                    except ni.DaqError:
-                        self.log.exception('Unable to close task.')
-                    try:
-                        del task
-                    except NameError:
-                        self.log.exception('Some weird namespace voodoo happened here...')
-                    return -1
-
-                self._di_task_handles.append(task)
-                break
+        channels_tt = [int(ch[2:]) for ch in self.__active_channels['di_channels']]
+        clock_tt = int(self._tt_ni_clock_input[2:])
+        self._timetagger_cbm_tasks = [self._tt.count_between_markers(click_channel = channel, 
+                                        begin_channel = clock_tt,
+                                        end_channel = -channel, 
+                                        n_values=self.frame_size) 
+                                        for channel in channels_tt]
+        print(channels_tt, clock_tt, self.frame_size)
         return 0
 
     def _init_analog_in_task(self):
@@ -1220,7 +1097,7 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         """
         input_channels = tuple(self._extract_terminal(src) for src in input_channels)
 
-        di_channels = tuple(channel for channel in input_channels if 'pfi' in channel)
+        di_channels = tuple(channel for channel in input_channels if ('pfi' in channel) or ("tt" in channel))
         ai_channels = tuple(channel for channel in input_channels if 'ai' in channel)
 
         assert (di_channels or ai_channels), f'No channels could be extracted from {*input_channels,}'
