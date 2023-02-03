@@ -149,6 +149,7 @@ class TT(Base):
                                 end_channel,
                                 n_values)     
 
+
     def time_differences(self, click_channel, start_channel, next_channel, binwidth,n_bins, n_histograms):
         return TimeDifferences(self.tagger, 
                             click_channel=click_channel,
