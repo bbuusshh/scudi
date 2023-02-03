@@ -529,7 +529,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         # not thread safe, call from thread_lock protected code only
         #FIx this shit
         
-        return self.raw_data_container.is_full
+        return self.raw_data_container.is_full and self._ni_finite_sampling_io()._scanner_ready
 
     def _fetch_data_chunk(self):
         try:
@@ -895,10 +895,14 @@ class RawDataContainer:
 
     def fill_container(self, samples_dict):
         # get index of first nan from one element of dict
-        first_nan_idx = 0#self.number_of_non_nan_values #FIX ME!!!!!
-        
+        #Checking if the whole frame coming at once from the time tagger or these are chuncks from the NI counter
+        if self.number_of_non_nan_values == self.frame_size:
+            first_nan_idx = 0
+        else:
+            first_nan_idx = self.number_of_non_nan_values
+
         for key, samples in samples_dict.items():
-            self._raw[key][first_nan_idx:(first_nan_idx + len(samples))] = samples
+            self._raw[key][first_nan_idx:first_nan_idx + len(samples)] = samples
 
     def forwards_data(self):
         reshaped_2d_dict = dict.fromkeys(self._raw)
@@ -932,6 +936,6 @@ class RawDataContainer:
 
     @property
     def is_full(self):
-        return (self.number_of_non_nan_values == self.frame_size) and (self._ni_finite_sampling_io()._scanner_ready)
+        return self.number_of_non_nan_values == self.frame_size
     
 
