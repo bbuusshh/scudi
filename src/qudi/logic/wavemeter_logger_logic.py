@@ -98,7 +98,7 @@ class WavemeterLoggerLogic(LogicBase):
           @param dict kwargs: optional parameters
         """
         super().__init__(config=config, **kwargs)
-        self.count_time = 0
+        
         self.counter = 0
         # locking for thread safety
         self._thread_lock = RecursiveMutex()
@@ -110,8 +110,10 @@ class WavemeterLoggerLogic(LogicBase):
 
         self._timetagger = self.timetagger()
         self._wavemeter = self.wavemeter()
-
-        self.determine_count_time()
+        self._wavemeter.start_acquisition()
+        self.count_time = self._wavemeter._measurement_timing
+        self.wavelengths = np.array(self._wavemeter.get_wavelength_buffer(), dtype = WAVELENGTH_DTYPE)
+        #self.determine_count_time()
         self.recalculate_histogram()
         self.configure_counter()
 
@@ -142,7 +144,7 @@ class WavemeterLoggerLogic(LogicBase):
 
     @QtCore.Slot()
     def update_data(self):
-        self.wavelengths, count_time = self._wavemeter.get_wavelengths() # calling for wavelengths with callback
+        self.wavelengths = self._wavemeter.get_wavelength_buffer() # calling for wavelengths with callback
         count_data = None
         self.wavelengths = np.array(self.wavelengths)
         wavelengths = self.wavelengths[self.wavelengths > 0]
@@ -174,6 +176,7 @@ class WavemeterLoggerLogic(LogicBase):
         self._wavemeter.empty_buffer()
 
     def determine_count_time(self):
+        #OBSOLETE
         #get average time for the wavemeter server to send signal to the client
         for i in range(self.average_times):
             self.wavelengths, count_time = self._wavemeter.get_wavelengths() # calling for wavelengths with callback

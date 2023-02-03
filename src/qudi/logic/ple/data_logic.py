@@ -220,12 +220,15 @@ class PleDataLogic(LogicBase):
 
         return index
 
-    def draw_1d_scan_figure(self, scan_data, channel):
+    def draw_1d_scan_figure(self, scan_data, channel, data_averaged = None):
         """ Create an XY plot of 1D scan data.
 
         @return fig: a matplotlib figure object to be saved to file.
         """
-        data = scan_data.data[channel]
+        if data_averaged is None:
+            data = scan_data.data[channel]
+        else:
+            data = data_averaged
         axis = scan_data.scan_axes[0]
         scanner_pos = self._scan_logic().scanner_target
 
@@ -346,6 +349,8 @@ class PleDataLogic(LogicBase):
                 for channel, data in accumulated_data.items():
                     # data
                     # nametag = '{0}_{1}_image_scan'.format(channel, scan_data.scan_axes[0])
+                    
+                    #save PLE maps:
                     nametag = self.create_tag_from_scan_data(scan_data, channel)
                     file_path, _, _ = ds.save_data(data,
                                                    metadata=parameters,
@@ -354,6 +359,17 @@ class PleDataLogic(LogicBase):
                                                    column_headers='Image (columns is X, rows is Y)')
 
                     figure = self.draw_2d_scan_figure(scan_data, accumulated_data, channel, cbar_range=color_range)
+                    ds.save_thumbnail(figure, file_path=file_path.rsplit('.', 1)[0])
+
+                    #Averaged PLEs:
+                    data_averaged = data.mean(axis=0)
+                    file_path, _, _ = ds.save_data(data_averaged,
+                                                   metadata=parameters,
+                                                   nametag=nametag + "_averaged" if tag == '' else f'_averaged_{nametag}_{tag}',
+                                                   timestamp=timestamp,
+                                                   column_headers='Image (columns is X, rows is Y)')
+
+                    figure = self.draw_1d_scan_figure(scan_data, channel, data_averaged=data_averaged)
                     ds.save_thumbnail(figure, file_path=file_path.rsplit('.', 1)[0])
                    
 
