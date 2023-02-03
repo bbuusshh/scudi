@@ -242,7 +242,6 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                                          set(digital_sources),
                                          set(analog_outputs))
         invalid_channels = set.difference(defined_channel_set, detected_channel_set)
-        print(defined_channel_set, detected_channel_set)
         if invalid_channels:
             raise ValueError(
                 f'The channels "{", ".join(invalid_channels)}", specified in the config, were not recognized.'
@@ -654,9 +653,9 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             samples_to_read = number_of_samples if number_of_samples is not None else self.samples_in_buffer
             pre_stop = not self.is_running
 
-            if not samples_to_read <= self._number_of_pending_samples:
-                print(f"Requested {samples_to_read} samples, "
-                                 f"but only {self._number_of_pending_samples} enough pending.")
+            # if not samples_to_read <= self._number_of_pending_samples:
+            #     print(f"Requested {samples_to_read} samples, "
+            #                      f"but only {self._number_of_pending_samples} enough pending.")
 
             if samples_to_read > 0 and self.is_running:
                 request_time = time.time()
@@ -698,7 +697,7 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                         di_data[num] = data_cbm
                         data[di_channel] = di_data[num] * self.sample_rate  # To go to c/s # TODO What if unit not c/s
                         self._scanner_ready = self._timetagger_cbm_tasks[num].ready()
-                    print(data, )
+                    
                 if self._ai_reader is not None:
                     data_buffer = np.zeros(samples_to_read * len(self.__active_channels['ai_channels']))
                     # self.log.debug(f'Buff shape {data_buffer.shape} and len {len(data_buffer)}')
@@ -832,10 +831,9 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         clock_tt = int(self._tt_ni_clock_input[2:])
         self._timetagger_cbm_tasks = [self._tt.count_between_markers(click_channel = channel, 
                                         begin_channel = clock_tt,
-                                        end_channel = -channel, 
+                                        end_channel = -clock_tt, 
                                         n_values=self.frame_size) 
                                         for channel in channels_tt]
-        print(channels_tt, clock_tt, self.frame_size)
         return 0
 
     def _init_analog_in_task(self):

@@ -527,6 +527,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
 
     def _check_scan_end_reached(self):
         # not thread safe, call from thread_lock protected code only
+        #FIx this shit
         return self._ni_finite_sampling_io()._scanner_ready
         # return self.raw_data_container.is_full
 
@@ -894,9 +895,10 @@ class RawDataContainer:
 
     def fill_container(self, samples_dict):
         # get index of first nan from one element of dict
-        first_nan_idx = self.number_of_non_nan_values
+        first_nan_idx = 0#self.number_of_non_nan_values #FIX ME!!!!!
+        
         for key, samples in samples_dict.items():
-            self._raw[key][first_nan_idx:first_nan_idx + len(samples)] = samples
+            self._raw[key][first_nan_idx:(first_nan_idx + len(samples))] = samples
 
     def forwards_data(self):
         reshaped_2d_dict = dict.fromkeys(self._raw)
