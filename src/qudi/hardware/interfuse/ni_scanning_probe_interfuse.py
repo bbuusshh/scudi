@@ -528,8 +528,8 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
     def _check_scan_end_reached(self):
         # not thread safe, call from thread_lock protected code only
         #FIx this shit
-        return self._ni_finite_sampling_io()._scanner_ready
-        # return self.raw_data_container.is_full
+        
+        return self.raw_data_container.is_full
 
     def _fetch_data_chunk(self):
         try:
@@ -932,6 +932,6 @@ class RawDataContainer:
 
     @property
     def is_full(self):
-        return self.number_of_non_nan_values == self.frame_size
+        return (self.number_of_non_nan_values == self.frame_size) and (self._ni_finite_sampling_io()._scanner_ready)
     
 
