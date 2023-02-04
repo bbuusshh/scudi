@@ -34,7 +34,7 @@ class PrincetonSpectrometerClient(SpectrometerInterface):
     def on_activate(self):
         self.host_ip, self.server_port = self._ip, self._port
         try:
-            self._integration_time = self.getExposure()
+            self.exposure_time = self._integration_time
         except:
             print("Prolly the scpectrometer is not attached")
         # self.tcp_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -58,11 +58,13 @@ class PrincetonSpectrometerClient(SpectrometerInterface):
         self.tcp_client.close()
 
     def record_spectrum(self):
+       
         wavelengths = self.send_request("get_wavelength", recv_bytes = 32768)
         specdata = np.empty((2, len(wavelengths)), dtype=np.double)
         specdata[0] = wavelengths + self._shift_wavelength
         specdata[1] = self.send_request("get_spectrum", recv_bytes = 32768)
         return specdata
+    
 
     def clearBuffer(self):
         pass
