@@ -302,7 +302,7 @@ class PLEScanGui(GuiBase):
 
         # Adjust optimizer settings
         if 'scan_sequence' in settings:
-            new_settings = self._optimize_logic().check_sanity_optimizer_settings(settings, self._optimizer_plot_dims)
+            new_settings = self._optimize_logic().check_sanity_optimizer_settings(settings)
             if settings['scan_sequence'] != new_settings['scan_sequence']:
                 new_seq = new_settings['scan_sequence']
                 self.log.warning(f"Tried to update gui with illegal optimizer sequence= {settings['scan_sequence']}."

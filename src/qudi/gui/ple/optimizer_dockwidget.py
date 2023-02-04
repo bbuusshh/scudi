@@ -30,6 +30,7 @@ import copy as cp
 from qudi.util.widgets.plotting.plot_widget import DataSelectionPlotWidget
 from qudi.util.widgets.plotting.plot_item import DataImageItem, XYPlotItem
 from qudi.util.colordefs import QudiPalette
+from qudi.util.colordefs import QudiPalettePale as palette
 from qudi.util.colordefs import ColorScaleRdBuRev as ColorScale
 
 class OptimizerDockWidget(QtWidgets.QDockWidget):
@@ -60,10 +61,10 @@ class OptimizerDockWidget(QtWidgets.QDockWidget):
         for i_col, n_dim in enumerate(plot_dims):
             if n_dim == 1:
                 plot_item = XYPlotItem(pen=mkPen(QudiPalette.c1, style=QtCore.Qt.DotLine),
-                                       symbol='o',
+                                       symbol='-',
                                        symbolPen=QudiPalette.c1,
                                        symbolBrush=QudiPalette.c1,
-                                       symbolSize=4)
+                                       symbolSize=1)
                 fit_plot_item = XYPlotItem(pen=mkPen(QudiPalette.c2))
                 plot1d_widget = DataSelectionPlotWidget()
                 plot1d_widget.set_selection_mutable(False)
