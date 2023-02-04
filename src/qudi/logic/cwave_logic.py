@@ -191,7 +191,7 @@ class CwaveLogic(LogicBase):
     
     def set_piezo_output(self, channel: PiezoChannel, value: float) -> None:
         # if (channel in [PiezoChannel.Opo, PiezoChannel.Shg]):
-        #     print("Hello")
+     
         #     self._cwavelaser.set_piezo_mode(channel, PiezoMode.Manual)
         
             

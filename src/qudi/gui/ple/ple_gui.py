@@ -159,14 +159,15 @@ class PLEScanGui(GuiBase):
         self._optimize_logic().sigOptimizeStateChanged.connect(
             self.optimize_state_updated, QtCore.Qt.QueuedConnection
         )
-        # self._mw.ple_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing) #set_scanner_target_position
+        self._mw.ple_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing) #set_scanner_target_position
+        self._mw.ple_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
         self._mw.ple_widget.selected_region.sigRegionChangeFinished.connect(self.region_value_changed) 
 
-        # self._mw.ple_averaged_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing_averaged_data)
+        self._mw.ple_averaged_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing_averaged_data)
         self._mw.ple_averaged_widget.selected_region.sigRegionChangeFinished.connect(self.region_value_changed_averaged_data) 
-
-        self._mw.ple_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
-        #self._mw.ple_averaged_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
+        self._mw.ple_averaged_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
+        
+        
         # x_range = settings['range'][self.scan_axis]
         # dec_places = decimal_places = np.abs(int(f'{x_range[0]:e}'.split('e')[-1])) + 3
         self._mw.startDoubleSpinBox.setSuffix(self.axis.unit)
@@ -465,6 +466,8 @@ class PLEScanGui(GuiBase):
         self._mw.number_of_repeats_SpinBox.editingFinished.connect(
             lambda: self._scanning_logic.update_number_of_repeats(self._mw.number_of_repeats_SpinBox.value())
         )
+        
+        self._mw.constDoubleSpinBox.valueChanged.connect(self.const_changed) 
 
         self._mw.constDoubleSpinBox.editingFinished.connect(
             self.set_scanner_target_position
@@ -500,27 +503,21 @@ class PLEScanGui(GuiBase):
 
     @QtCore.Slot()
     def sliders_values_are_changing_averaged_data(self):
-        region = self._mw.ple_averaged_widget.selected_region.getRegion()
-        self._mw.startDoubleSpinBox.setValue(region[0])
-        self._mw.stopDoubleSpinBox.setValue(region[1])
-
         value = self._mw.ple_averaged_widget.target_point.value()
-        #self._mw.constDoubleSpinBox.setValue(value)
-
-        # self._mw.ple_widget.target_point.setValue(value)
-
+        self._mw.constDoubleSpinBox.setValue(value)
+        self._mw.ple_widget.target_point.setValue(value)
 
     @QtCore.Slot()
     def sliders_values_are_changing(self):
-        region = self._mw.ple_widget.selected_region.getRegion()
-        self._mw.startDoubleSpinBox.setValue(region[0])
-        self._mw.stopDoubleSpinBox.setValue(region[1])
+        value = self._mw.ple_widget.target_point.value()
+        self._mw.constDoubleSpinBox.setValue(value)
+        self._mw.ple_averaged_widget.target_point.setValue(value)
 
-        # value = self._mw.ple_widget.target_point.value()
-        # self._mw.constDoubleSpinBox.setValue(value)
-
-        # self._mw.ple_averaged_widget.target_point.setValue(value)
-
+    @QtCore.Slot()
+    def const_changed(self):
+        value = self._mw.constDoubleSpinBox.value()
+        self._mw.ple_widget.target_point.setValue(value)
+        self._mw.ple_averaged_widget.target_point.setValue(value)
 
     @QtCore.Slot()
     def restore_scanner_settings(self):

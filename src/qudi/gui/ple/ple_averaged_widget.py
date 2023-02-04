@@ -87,7 +87,6 @@ class PLEAveragedDataWidget(QtWidgets.QWidget):
         update_range = (self._scan_data is None) or (self._scan_data.scan_range != scan_data.scan_range) \
                         or (self._scan_data.scan_resolution != scan_data.scan_resolution)
         self._scan_data = scan_data
-        print("HELLo")
         self._averaged_data = {channel: data.mean(axis=0)  for channel, data in accumulated_data.items()}
         # Set data
         self._update_scan_data(update_range=update_range)

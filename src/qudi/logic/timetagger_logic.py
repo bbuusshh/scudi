@@ -316,12 +316,10 @@ class TimeTaggerLogic(LogicBase):
             self.sig_fit_updated.emit('No Fit', None)
             return 'No Fit', None
 
-        
-
-        print("Yo")
+    
         x_data = self.corr_data[0]#[start:end]
         y_data = self.corr_data[1]#[start:end]
-        print("HELLO", x_data, y_data)
+        
         try:
             self._fit_method, self._fit_results = self._fit_container.fit_data(fit_method, x_data, y_data)
         except:
