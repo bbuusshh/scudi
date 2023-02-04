@@ -61,7 +61,7 @@ class OptimizerDockWidget(QtWidgets.QDockWidget):
         for i_col, n_dim in enumerate(plot_dims):
             if n_dim == 1:
                 plot_item = XYPlotItem(pen=mkPen(QudiPalette.c1, style=QtCore.Qt.DotLine),
-                                       symbol='-',
+                                       symbol='o',
                                        symbolPen=QudiPalette.c1,
                                        symbolBrush=QudiPalette.c1,
                                        symbolSize=1)
