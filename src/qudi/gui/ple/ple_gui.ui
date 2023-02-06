@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>380</width>
-    <height>710</height>
+    <height>954</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -149,13 +149,16 @@
             <string/>
            </property>
            <property name="decimals">
-            <number>2</number>
+            <number>6</number>
            </property>
            <property name="minimum">
             <double>-99.000000000000000</double>
            </property>
            <property name="maximum">
-            <double>100000000.000000000000000</double>
+            <double>99999999999.990005493164063</double>
+           </property>
+           <property name="singleStep">
+            <double>1.000000000000000</double>
            </property>
           </widget>
          </item>
