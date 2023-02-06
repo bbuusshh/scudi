@@ -486,20 +486,24 @@ class PLEScanGui(GuiBase):
     @QtCore.Slot()
     def region_value_changed_averaged_data(self):
         region = self._mw.ple_averaged_widget.selected_region.getRegion()
-        self.sigScanSettingsChanged.emit({'range': {self.scan_axis: region}})
+        
         self._mw.startDoubleSpinBox.setValue(region[0])
         self._mw.stopDoubleSpinBox.setValue(region[1])
         self._mw.ple_widget.selected_region.setRegion(region)
+
+        self.sigScanSettingsChanged.emit({'range': {self.scan_axis: region}})
 
 
     @QtCore.Slot()
     def region_value_changed(self):
         region = self._mw.ple_widget.selected_region.getRegion()
-        self.sigScanSettingsChanged.emit({'range': {self.scan_axis: region}})
+        
         self._mw.startDoubleSpinBox.setValue(region[0])
         self._mw.stopDoubleSpinBox.setValue(region[1])
         self._mw.ple_averaged_widget.selected_region.setRegion(region)
         self._mw.ple_widget.target_point.setValue(region[0])
+
+        self.sigScanSettingsChanged.emit({'range': {self.scan_axis: region}})
 
     @QtCore.Slot()
     def sliders_values_are_changing_averaged_data(self):
