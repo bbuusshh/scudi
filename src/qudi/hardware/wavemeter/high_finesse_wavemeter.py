@@ -157,9 +157,7 @@ class HighFinesseWavemeter(WavemeterInterface):
         if len(self._wavelength_buffer) < 1 :
             self._wavelength_buffer.append(wavelengths[self._default_channel]) 
         else:
-            print(np.abs(np.round(wavelengths[self._default_channel], 5) - np.round(self._wavelength_buffer[-1], 5)))
             if (np.abs(np.round(wavelengths[self._default_channel], 5) - np.round(self._wavelength_buffer[-1], 5))) > 0:
-            
                 self._wavelength_buffer.append(wavelengths[self._default_channel]) 
         self._wavelength_buffer = self._wavelength_buffer[-self._buffer_size:]
         self._current_wavelengths = wavelengths
