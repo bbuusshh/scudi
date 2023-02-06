@@ -40,6 +40,8 @@ from qudi.core.statusvariable import StatusVar
 
 from qudi.util.widgets.fitting import FitConfigurationDialog, FitWidget
 
+from qudi.util.delay import delay
+from time import sleep
 
 from qudi.util.datastorage import TextDataStorage
 from qudi.util.datafitting import FitContainer, FitConfigurationsModel
@@ -53,7 +55,10 @@ class PLEScannerLogic(ScanningProbeLogic):
 
     # declare connectors
     _scanner = Connector(name='scanner', interface='ScanningProbeInterface')
-    
+    _wavemeter = Connector(name='wavemeter', interface='HighFinesseWavemeter', optional = True) #FIX it to make more generatal and talk to the Wavemeter interfafce
+    _calibration_factor = 1 #calibrate the wavelength 
+    _wavelength_range = [0, 0]
+ 
     #! We should refactor it to the hardware scanner interface
     _scan_axis = ConfigOption(name='scan_axis', default='a')
     _channel = StatusVar(name='channel', default=None)
@@ -130,6 +135,8 @@ class PLEScannerLogic(ScanningProbeLogic):
         """ Initialisation performed during activation of the module.
         """
         # self._scanning_device = self.scanning_device()
+        if self._wavemeter():
+            self._wavemeter().start_acquisition()
         self._fit_config_model = FitConfigurationsModel(parent=self)
         self._fit_config_model.load_configs(self._fit_config)
         self._fit_container = FitContainer(parent=self, config_model=self._fit_config_model)
@@ -149,6 +156,8 @@ class PLEScannerLogic(ScanningProbeLogic):
         if not self._min_poll_interval:
             # defaults to maximum scan frequency of scanner
             self._min_poll_interval = 1/np.max([constr.axes[ax].frequency_range for ax in constr.axes])
+
+
 
         """
         if not isinstance(self._scan_ranges, dict):
@@ -187,6 +196,30 @@ class PLEScannerLogic(ScanningProbeLogic):
             self._scanner().stop_scan()
 
         return  
+
+    def calibrate_scan(self):
+        self.scan_ranges_wavemeter = [0, 0]
+        if self._wavemeter():
+            for i in range(5):
+                start, stop = self.run_calibration()
+                self.scan_ranges_wavemeter[1] = (self.scan_ranges_wavemeter[1] + stop)/2
+
+            #self._scan_ranges.update({"a": [i*1e3 for i in self.scan_ranges_wavemeter]}) #in GHzs
+        self._calibration_factor = 1e12 * self.scan_ranges_wavemeter[-1] / self._scan_ranges[self._scan_axis][-1] 
+
+    def run_calibration(self):
+        self.set_target_position({self._scan_axis: self.scan_ranges[self._scan_axis][0]}, move_blocking=True)
+        new_pos = self._scanner().get_target()
+        sleep(2) #in mu sec
+        self.wavelength_start = self._wavemeter().get_current_wavelength()
+       
+        self.set_target_position({self._scan_axis: self.scan_ranges[self._scan_axis][-1]}, move_blocking=True)
+        new_pos = self._scanner().get_target()
+        sleep(2) #in mu sec
+        self.wavelength_stop = self._wavemeter().get_current_wavelength()
+       
+        
+        return 0, self.wavelength_stop - self.wavelength_start
 
     @QtCore.Slot(str, str)
     def do_fit(self, fit_config, channel):
