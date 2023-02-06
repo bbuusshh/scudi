@@ -60,12 +60,9 @@ class OptimizerDockWidget(QtWidgets.QDockWidget):
         # fill list of all optimizer subplot widgets
         for i_col, n_dim in enumerate(plot_dims):
             if n_dim == 1:
-                plot_item = XYPlotItem(pen=mkPen(QudiPalette.c1, style=QtCore.Qt.DotLine),
-                                       symbol='o',
-                                       symbolPen=QudiPalette.c1,
-                                       symbolBrush=QudiPalette.c1,
-                                       symbolSize=1)
-                fit_plot_item = XYPlotItem(pen=mkPen(QudiPalette.c2))
+                plot_item = XYPlotItem(pen=palette.c1,
+                                       width=1)
+                fit_plot_item = XYPlotItem(pen=mkPen(palette.c2))
                 plot1d_widget = DataSelectionPlotWidget()
                 plot1d_widget.set_selection_mutable(False)
                 plot1d_widget.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)

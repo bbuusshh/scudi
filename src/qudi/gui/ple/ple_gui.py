@@ -613,6 +613,7 @@ class PLEScanGui(GuiBase):
         if not isinstance(pos_dict, dict):
             pos_dict = self._scanning_logic.scanner_target
         
+        #FIX update the crosshairs here
         # self._mw.ple_widget.target_point.blockSignals(True)
         # self._mw.constDoubleSpinBox.blockSignals(True)
 
@@ -710,6 +711,12 @@ class PLEScanGui(GuiBase):
                 _is_optimizer_valid_1d = True
                 self.optimizer_dockwidget.set_1d_position(next(iter(optimal_position.values())),
                                                           scan_axs)
+                
+                #FIX!! not general AT ALL
+                self._mw.ple_widget.target_point.setValue(optimal_position[self._scanning_logic._scan_axis])
+                self._mw.ple_averaged_widget.target_point.setValue(optimal_position[self._scanning_logic._scan_axis])
+                self._mw.constDoubleSpinBox.setValue(optimal_position[self._scanning_logic._scan_axis])
+
         if fit_data is not None and isinstance(optimal_position, dict):
             data = fit_data['fit_data']
             fit_res = fit_data['full_fit_res']

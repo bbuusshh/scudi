@@ -338,6 +338,17 @@ class PointOfInterest:
     @property
     def position(self):
         return self._position
+    
+    @property
+    def ple_position(self):
+        return self._ple_position
+
+    @ple_position.setter
+    def ple_position(self, pos):
+        if len(pos) != 3:
+            raise ValueError('POI position to set must be 1 float')
+        self._ple_position = pos
+        return
 
     @position.setter
     def position(self, pos):
@@ -347,7 +358,7 @@ class PointOfInterest:
         return
 
     def to_dict(self):
-        return {'name': self.name, 'position': tuple(self.position)}
+        return {'name': self.name, 'position': tuple(self.position), 'ple_position': tuple(self.ple_position)}
 
     @classmethod
     def from_dict(cls, dict_repr):
@@ -372,6 +383,8 @@ class PoiManagerLogic(LogicBase):
     _optimizelogic = Connector(name='optimize_logic', interface='ScanningOptimizeLogic')
     _scanninglogic = Connector(name='scanning_logic', interface='ScanningProbeLogic')
     _data_logic = Connector(name='data_logic', interface='ScanningDataLogic')
+    _ple_optimize_logic = Connector(name='ple_optimize_logic', interface='PLEOptimizeScannerLogic', optional=True)
+    _pulsed_logic = Connector(name='pulsed_logic', interface='PulsedMasterLogic', optional=True)
     #savelogic = Connector(interface='SaveLogic')
 
     # status vars
@@ -432,6 +445,8 @@ class PoiManagerLogic(LogicBase):
         # Connect callback for a finished refocus
         self._optimizelogic().sigOptimizeStateChanged.connect(
             self._optimisation_callback, QtCore.Qt.QueuedConnection)
+        self._ple_optimize_logic().sigOptimizeStateChanged.connect(
+            self._ple_optimisation_callback, QtCore.Qt.QueuedConnection)
         # Connect internal start/stop signals to decouple QTimer from other threads
         self.__sigStartPeriodicRefocus.connect(
             self.start_periodic_refocus, QtCore.Qt.QueuedConnection)
@@ -1052,6 +1067,34 @@ class PoiManagerLogic(LogicBase):
         return
 
     def _optimisation_callback(self, is_running, optimal_position=None, fit_data=None):
+        """
+        Callback function for a position optimisation.
+        If desired the relative shift of the optimised POI can be used to update the ROI position.
+        The scanner is moved to the optimised POI if desired.
+
+        @param optimal_pos:
+        @param fit_data:
+        """
+        with self._thread_lock:
+            # If the refocus was initiated by poimanager, update POI and ROI position
+            if self.__poi_optimization_running:
+                if is_running:
+                    self._position_update.update(optimal_position)
+                else:
+                    self.__poi_optimization_running = False
+                    poi_name = self._optimize_poi_name
+                    new_pos = np.array(list(self._position_update.values()))
+                    if poi_name in self.poi_names:
+                        if self._update_roi_position:
+                            self.move_roi_from_poi_position(name=poi_name, position=new_pos)
+                        else:
+                            self.set_poi_anchor_from_position(name=poi_name, position=new_pos)
+                        if self._move_scanner_after_optimization:
+                            self.move_scanner(position=self._position_update)
+                    self.sigOptimizeStateUpdated.emit(False)
+        return
+    
+    def _ple_optimisation_callback(self, is_running, optimal_position=None, fit_data=None):
         """
         Callback function for a position optimisation.
         If desired the relative shift of the optimised POI can be used to update the ROI position.

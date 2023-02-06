@@ -61,7 +61,7 @@ class PLEDataWidget(QtWidgets.QWidget):
 
         # Create an empty plot curve to be filled later, set its pen
         self.data_curve = self.plot_widget.plot()
-        self.data_curve.setPen(palette.c1)
+        self.data_curve.setPen(palette.c1, width=1)
 
         self.selected_region = pg.LinearRegionItem(
                                               brush=pg.mkBrush(122, 122, 122, 30),

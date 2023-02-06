@@ -1862,7 +1862,7 @@ class SequenceGeneratorLogic(LogicBase):
                         for chnl in pulse_function:
                             analog_samples[chnl][array_write_index:array_write_index + samples_to_add] = pulse_function[
                                                                                                              chnl].get_samples(
-                                time_arr) / (self.__analog_levels[0][chnl] / 2)
+                                time_arr) #/ (self.__analog_levels[0][chnl] / 2)
 
                         # Free memory
                         if pulse_function:
