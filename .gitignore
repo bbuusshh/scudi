@@ -9,6 +9,8 @@
 *.a
 *.pyc
 *.pyd
+*.bit
+ok.py
 *.pyo
 *.rej
 *~
@@ -35,5 +37,5 @@
 
 # configs
 **/config
-**/
+
 
