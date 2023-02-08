@@ -7,6 +7,7 @@ from qudi.core.module import Base
 
 
 class TT(Base):
+    _serial = ConfigOption('serial', False, missing='info')
     _hist = ConfigOption('hist', False, missing='warn')
     _corr = ConfigOption('corr', False, missing='warn')
     _combiner = ConfigOption('combiner', False, missing='warn')
@@ -53,7 +54,7 @@ class TT(Base):
 
     def on_activate(self):
         try:
-            self.tagger = createTimeTagger()
+            self.tagger = createTimeTagger(self._serial)
             self.log.info(f"Tagger initialization successful: {self.tagger.getSerial()}")
         except:
             self.log.error(f"\nCheck if the TimeTagger device is being used by another instance.")
