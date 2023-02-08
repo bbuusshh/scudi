@@ -149,7 +149,7 @@
             <string/>
            </property>
            <property name="decimals">
-            <number>6</number>
+            <number>3</number>
            </property>
            <property name="minimum">
             <double>-99.000000000000000</double>
@@ -177,7 +177,7 @@
             <string/>
            </property>
            <property name="decimals">
-            <number>2</number>
+            <number>3</number>
            </property>
            <property name="minimum">
             <double>-99.000000000000000</double>
