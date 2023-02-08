@@ -81,6 +81,7 @@ class NIXTTSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
         name='external_sample_clock_frequency', default=None, missing='nothing')
 
     _physical_sample_clock_output = ConfigOption(name='sample_clock_output', default=None)
+    _physical_counter_sample_clock_output = ConfigOption(name='counter_sample_clock_output', default=None)
 
     _adc_voltage_range = ConfigOption('adc_voltage_range', default=(-10, 10), missing='info')
     _max_channel_samples_buffer = ConfigOption(
@@ -205,7 +206,10 @@ class NIXTTSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
             self._physical_sample_clock_output = self._extract_terminal(self._physical_sample_clock_output)
             assert self._physical_sample_clock_output in self.__all_digital_terminals, \
                 f'Physical sample clock terminal specified in config is invalid'
-
+        if self._physical_counter_sample_clock_output is not None:
+            self._physical_counter_sample_clock_output = self._extract_terminal(self._physical_counter_sample_clock_output)
+            assert self._physical_counter_sample_clock_output in self.__all_digital_terminals, \
+                f'Physical sample clock terminal specified in config is invalid'
         # Create constraints object and perform sanity/type checking
         self._channel_units = self._digital_channel_units.copy()
         self._channel_units.update(self._analog_channel_units)
@@ -581,6 +585,11 @@ class NIXTTSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
 
         self._clk_task_handle = task
 
+        if self._physical_counter_sample_clock_output is not None:
+            clock_channel = '/{0}InternalOutput'.format(self._clk_task_handle.channel_names[0])
+            ni.system.System().connect_terms(source_terminal=clock_channel,
+                                             destination_terminal='/{0}/{1}'.format(
+                                                 self._device_name, self._physical_counter_sample_clock_output))
         if self._physical_sample_clock_output is not None:
             clock_channel = '/{0}InternalOutput'.format(self._clk_task_handle.channel_names[0])
             ni.system.System().connect_terms(source_terminal=clock_channel,

@@ -22,9 +22,10 @@ If not, see <https://www.gnu.org/licenses/>.
 import os
 import time
 import numpy as np
-from qudi.hardware.fpga_pulser.ok import *
+# from qudi.hardware.fpga_pulser.ok import *
 
 import qudi.hardware.fpga_pulser.ok as ok
+# import okfrontpanel as ok
 
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
@@ -59,8 +60,8 @@ class OkFpgaPulser(PulserInterface):
     _path_to_bitfile = ConfigOption('path_to_bitfile', missing='error')
     
 
-    __current_waveform = StatusVar(name='current_waveform', default=np.zeros(32, dtype='uint8'))
-    __current_waveform_name = StatusVar(name='current_waveform_name', default='')
+    _current_waveform = StatusVar(name='current_waveform', default=np.zeros(32, dtype='uint8'))
+    _current_waveform_name = StatusVar(name='current_waveform_name', default='')
     __sample_rate = StatusVar(name='sample_rate', default=950e6)
 
     def __init__(self, config, **kwargs):
@@ -82,11 +83,11 @@ class OkFpgaPulser(PulserInterface):
     def on_deactivate(self):
         self._disconnect_fpga()
 
-    @__current_waveform.representer
+    @_current_waveform.representer
     def _convert_current_waveform(self, waveform_bytearray):
         return np.frombuffer(waveform_bytearray, dtype='uint8')
 
-    @__current_waveform.constructor
+    @_current_waveform.constructor
     def _recover_current_waveform(self, waveform_nparray):
         return bytearray(waveform_nparray.tobytes())
 
@@ -209,15 +210,15 @@ class OkFpgaPulser(PulserInterface):
             return self.get_loaded_assets()[0]
 
         waveform = waveforms[0]
-        if waveform != self.__current_waveform_name:
+        if waveform != self._current_waveform_name:
             self.log.error('No waveform by the name "{0}" generated for FPGA pulser.\n'
                            'Only one waveform at a time can be held.'.format(waveform))
             return self.get_loaded_assets()[0]
 
         # calculate size of the two bytearrays to be transmitted. The biggest part is tranfered
         # in 1024 byte blocks and the rest is transfered in 32 byte blocks
-        big_bytesize = (len(self.__current_waveform) // 1024) * 1024
-        small_bytesize = len(self.__current_waveform) - big_bytesize
+        big_bytesize = (len(self._current_waveform) // 1024) * 1024
+        small_bytesize = len(self._current_waveform) - big_bytesize
 
         # try repeatedly to upload the samples to the FPGA RAM
         # stop if the upload was successful
@@ -231,12 +232,12 @@ class OkFpgaPulser(PulserInterface):
                 # enable sequence write mode in FPGA
                 self.write((255 << 24) + 2)
                 # write to FPGA DDR2-RAM
-                self.fpga.WriteToBlockPipeIn(0x80, 1024, self.__current_waveform[0:big_bytesize])
+                self.fpga.WriteToBlockPipeIn(0x80, 1024, self._current_waveform[0:big_bytesize])
             if small_bytesize != 0:
                 # enable sequence write mode in FPGA
                 self.write((8 << 24) + 2)
                 # write to FPGA DDR2-RAM
-                self.fpga.WriteToBlockPipeIn(0x80, 32, self.__current_waveform[big_bytesize:])
+                self.fpga.WriteToBlockPipeIn(0x80, 32, self._current_waveform[big_bytesize:])
 
             # check if upload was successful
             self.write(0x00)
@@ -307,11 +308,11 @@ class OkFpgaPulser(PulserInterface):
         """
         self.pulser_off()
         self.__currently_loaded_waveform = ''
-        self.__current_waveform_name = ''
+        self._current_waveform_name = ''
         # just for good measures, write and load a empty waveform
-        self.__current_waveform = bytearray(np.zeros(32))
+        self._current_waveform = bytearray(np.zeros(32))
         self.__samples_written = 32
-        self.load_waveform([self.__current_waveform_name])
+        self.load_waveform([self._current_waveform_name])
         return 0
 
     def get_status(self):
@@ -350,12 +351,10 @@ class OkFpgaPulser(PulserInterface):
             self.log.error('Can`t change the sample rate while the FPGA is running.')
             return self.__sample_rate
 
-        bitfile_path = self._path_to_bitfile
+        assert os.path.isfile(self._path_to_bitfile), f'Could not find bitfile in {self._path_to_bitfile}'
 
-        assert os.path.isfile(bitfile_path), f'Could not find bitfile in {bitfile_path}'
-
-        self.fpga.ConfigureFPGA(bitfile_path)
-        self.log.info('FPGA pulse generator configured with {0}'.format(bitfile_path))
+        self.fpga.ConfigureFPGA(self._path_to_bitfile)
+        self.log.info('FPGA pulse generator configured with {0}'.format(self._path_to_bitfile))
 
         if self.fpga.IsFrontPanel3Supported():
             self._fp3support = True
@@ -570,25 +569,25 @@ class OkFpgaPulser(PulserInterface):
                 self.log.warning('No samples handed over for waveform generation.')
                 return -1, list()
             else:
-                self.__current_waveform = bytearray(np.zeros(32))
+                self._current_waveform = bytearray(np.zeros(32))
                 self.__samples_written = 32
-                self.__current_waveform_name = ''
+                self._current_waveform_name = ''
                 return 0, list()
 
         # Initialize waveform array if this is the first chunk to write
         # Also append zero-timebins to waveform if the length is no integer multiple of 32
         if is_first_chunk:
             self.__samples_written = 0
-            self.__current_waveform_name = name
+            self._current_waveform_name = name
             if total_number_of_samples % 32 != 0:
                 number_of_zeros = 32 - (total_number_of_samples % 32)
-                self.__current_waveform = np.zeros(total_number_of_samples + number_of_zeros,
+                self._current_waveform = np.zeros(total_number_of_samples + number_of_zeros,
                                                    dtype='uint8')
                 self.log.warning('FPGA pulse sequence length is no integer multiple of 32 samples.'
                                  '\nAppending {0:d} zero-samples to the sequence.'
                                  ''.format(number_of_zeros))
             else:
-                self.__current_waveform = np.zeros(total_number_of_samples, dtype='uint8')
+                self._current_waveform = np.zeros(total_number_of_samples, dtype='uint8')
 
         # Determine which part of the waveform array should be written
         chunk_length = len(digital_samples[list(digital_samples)[0]])
@@ -603,16 +602,16 @@ class OkFpgaPulser(PulserInterface):
             # left shift 0/1 values to bit position corresponding to channel index
             np.left_shift(uint8_samples, chnl_ind, out=uint8_samples)
             # Add samples to waveform array
-            np.add(self.__current_waveform[self.__samples_written:write_end_index],
+            np.add(self._current_waveform[self.__samples_written:write_end_index],
                    uint8_samples,
-                   out=self.__current_waveform[self.__samples_written:write_end_index])
+                   out=self._current_waveform[self.__samples_written:write_end_index])
 
         # Convert numpy array to bytearray
-        self.__current_waveform = bytearray(self.__current_waveform.tobytes())
+        self._current_waveform = bytearray(self._current_waveform.tobytes())
 
         # increment the current write index
         self.__samples_written += chunk_length
-        return chunk_length, [self.__current_waveform_name]
+        return chunk_length, [self._current_waveform_name]
 
     def write_sequence(self, name, sequence_parameters):
         """
@@ -633,8 +632,8 @@ class OkFpgaPulser(PulserInterface):
         @return list: List of all uploaded waveform name strings in the device workspace.
         """
         waveform_names = list()
-        if self.__current_waveform_name != '' and self.__current_waveform_name is not None:
-            waveform_names = [self.__current_waveform_name]
+        if self._current_waveform_name != '' and self._current_waveform_name is not None:
+            waveform_names = [self._current_waveform_name]
         return waveform_names
 
     def get_sequence_names(self):
