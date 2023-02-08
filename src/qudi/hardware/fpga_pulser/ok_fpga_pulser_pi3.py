@@ -33,33 +33,14 @@ from qudi.interface.pulser_interface import PulserInterface, PulserConstraints, 
 
 
 class OkFpgaPulser(PulserInterface):
-    """ Methods to control Pulse Generator running on OK FPGA.
 
-    Chan   PIN
-    ----------
-    Ch1    A3
-    Ch2    C5
-    Ch3    D6
-    Ch4    B6
-    Ch5    C7
-    Ch6    B8
-    Ch7    D9
-    Ch8    C9
-
-    Example config for copy-paste:
-
-    fpga_pulser_ok:
-        module.Class: 'fpga_fastcounter.fast_pulser_qo.OkFpgaPulser'
-        options:
-            path_to_bitfiles_dir: 'C:\\User\\<MyUserName>\\<path\\to\\my\\bitfiles>'
-            fpga_serial: '143400058N'
-            fpga_type: 'XEM6310_LX150'
-
-    """
     _fpga_serial = ConfigOption(name='fpga_serial', missing='error')
     _path_to_bitfile = ConfigOption('path_to_bitfile', missing='error')
     
-
+    command_map = {'RUN':0,'LOAD':1,'RESET_READ':2,'RESET_SDRAM':3,'RESET_WRITE':4,'RETURN':5}
+    state_map = {0:'IDLE',1:'RESET_READ',2:'RESET_SDRAM',3:'RESET_WRITE',4:'LOAD_0',5:'LOAD_1',6:'LOAD_2',7:'READ_0',8:'READ_1',9:'READ_2'}
+    channel_map={'d_ch1':0,'d_ch2':1,'d_ch3':2,'d_ch4':3,'d_ch5':4,'d_ch6':5,'d_ch7':6,'d_ch8':7,'d_ch9':8,'d_ch10':9,'d_ch11':10,'d_ch12':11,'d_ch13':12,'d_ch14':13,'d_ch15':14,'d_ch16':15,'d_ch17':16,'d_ch18':17,'d_ch19':18,'d_ch20':19,'d_ch21':20,'d_ch22':21,'d_ch23':22,'d_ch24':23}
+    core='24x4'
     _current_waveform = StatusVar(name='current_waveform', default=np.zeros(32, dtype='uint8'))
     _current_waveform_name = StatusVar(name='current_waveform_name', default='')
     __sample_rate = StatusVar(name='sample_rate', default=950e6)
@@ -121,10 +102,10 @@ class OkFpgaPulser(PulserInterface):
         """
         constraints = PulserConstraints()
 
-        constraints.sample_rate.min = 500e6
-        constraints.sample_rate.max = 950e6
-        constraints.sample_rate.step = 450e6
-        constraints.sample_rate.default = 950e6
+        constraints.sample_rate.min = 1e9
+        constraints.sample_rate.max = 1e9
+        constraints.sample_rate.step = 1e9
+        constraints.sample_rate.default = 1e9
 
         constraints.a_ch_amplitude.min = 0.0
         constraints.a_ch_amplitude.max = 0.0
@@ -136,10 +117,10 @@ class OkFpgaPulser(PulserInterface):
         constraints.a_ch_offset.step = 0.0
         constraints.a_ch_offset.default = 0.0
 
-        constraints.d_ch_low.min = 0.0
-        constraints.d_ch_low.max = 0.0
-        constraints.d_ch_low.step = 0.0
-        constraints.d_ch_low.default = 0.0
+        constraints.d_ch_high.min = 3.3
+        constraints.d_ch_high.max = 3.3
+        constraints.d_ch_high.step = 0.0
+        constraints.d_ch_high.default = 3.3
 
         constraints.d_ch_high.min = 3.3
         constraints.d_ch_high.max = 3.3
@@ -167,6 +148,7 @@ class OkFpgaPulser(PulserInterface):
 
         @return int: error code (0:OK, -1:error)
         """
+        self.run(loops=-1, triggered= False)
         self.__current_status = 1
         return self.write(0x01)
 
@@ -175,15 +157,12 @@ class OkFpgaPulser(PulserInterface):
 
         @return int: error code (0:OK, -1:error)
         """
+        self.halt()
         self.__current_status = 0
         return self.write(0x00)
 
     def load_waveform(self, load_dict):
         """ Loads a waveform to the specified channel of the pulsing device.
-        For devices that have a workspace (i.e. AWG) this will load the waveform from the device
-        workspace into the channel.
-        For a device without mass memory this will make the waveform/pattern that has been
-        previously written with self.write_waveform ready to play.
 
         @param dict|list load_dict: a dictionary with keys being one of the available channel
                                     index and values being the name of the already written
@@ -194,9 +173,30 @@ class OkFpgaPulser(PulserInterface):
                                     association will be invoked from the channel
                                     suffix '_ch1', '_ch2' etc.
 
-        @return dict: Dictionary containing the actually loaded waveforms per channel.
+                                        {1: rabi_ch1, 2: rabi_ch2}
+                                    or
+                                        {1: rabi_ch2, 2: rabi_ch1}
+
+                                    If just a list of waveform names if given,
+                                    the channel association will be invoked from
+                                    the channel suffix '_ch1', '_ch2' etc. A
+                                    possible configuration can be e.g.
+
+                                        ['rabi_ch1', 'rabi_ch2', 'rabi_ch3']
+
+        @return dict: Dictionary containing the actually loaded waveforms per
+                      channel.
+
+        For devices that have a workspace (i.e. AWG) this will load the waveform
+        from the device workspace into the channel. For a device without mass
+        memory, this will make the waveform/pattern that has been previously
+        written with self.write_waveform ready to play.
+
+        Please note that the channel index used here is not to be confused with the number suffix
+        in the generic channel descriptors (i.e. 'd_ch1', 'a_ch1'). The channel index used here is
+        highly hardware specific and corresponds to a collection of digital and analog channels
+        being associated to a SINGLE wavfeorm asset.
         """
-        # Since only one waveform can be present at a time check if only a single name is given
         if isinstance(load_dict, list):
             waveforms = list(set(load_dict))
         elif isinstance(load_dict, dict):
@@ -206,61 +206,38 @@ class OkFpgaPulser(PulserInterface):
             return self.get_loaded_assets()[0]
 
         if len(waveforms) != 1:
-            self.log.error('FPGA pulser expects exactly one waveform name for load_waveform.')
+            self.log.error('pulser expects exactly one waveform name for load_waveform.')
             return self.get_loaded_assets()[0]
 
         waveform = waveforms[0]
-        if waveform != self._current_waveform_name:
-            self.log.error('No waveform by the name "{0}" generated for FPGA pulser.\n'
+        if waveform != self.__current_waveform_name:
+            self.log.error('No waveform by the name "{0}" generated for pulser.\n'
                            'Only one waveform at a time can be held.'.format(waveform))
             return self.get_loaded_assets()[0]
 
-        # calculate size of the two bytearrays to be transmitted. The biggest part is tranfered
-        # in 1024 byte blocks and the rest is transfered in 32 byte blocks
-        big_bytesize = (len(self._current_waveform) // 1024) * 1024
-        small_bytesize = len(self._current_waveform) - big_bytesize
+        self._seq = {0:[]}
+        self._lengths = {0:0}
+        for channel_number, pulse_pattern in self.__current_waveform.items():
+            print(channel_number, pulse_pattern)
 
-        # try repeatedly to upload the samples to the FPGA RAM
-        # stop if the upload was successful
-        loop_count = 0
-        while True:
-            loop_count += 1
-            # reset FPGA
-            self.reset()
-            # upload sequence
-            if big_bytesize != 0:
-                # enable sequence write mode in FPGA
-                self.write((255 << 24) + 2)
-                # write to FPGA DDR2-RAM
-                self.fpga.WriteToBlockPipeIn(0x80, 1024, self._current_waveform[0:big_bytesize])
-            if small_bytesize != 0:
-                # enable sequence write mode in FPGA
-                self.write((8 << 24) + 2)
-                # write to FPGA DDR2-RAM
-                self.fpga.WriteToBlockPipeIn(0x80, 32, self._current_waveform[big_bytesize:])
+            # channel_number = int(channel_number[-1])-1
+            if 'a_ch' in channel_number:
+                self.log.error('No analog channels on this pulser')
+            else:
+                for idx, pattern in enumerate(pulse_pattern):
+                    print(pattern)
+                    if pattern[1] == 1:
+                        self._lengths[idx] = pattern[0]
+                        try:
+                            self._seq[idx].append(channel_number)
+                        except:
+                            self._seq[idx] = []
+        
+        self._seq = [[chans, self._lengths[idx]] for idx, chans in self._seq.items() if len(chans) > 0]           
+        print(self._seq)
+        self.setSequence(self._seq)
 
-            # check if upload was successful
-            self.write(0x00)
-            # start the pulse sequence
-            self.__current_status = 1
-            self.write(0x01)
-            # wait for 600ms
-            time.sleep(0.6)
-            # get status flags from FPGA
-            flags = self.query()
-            self.__current_status = 0
-            self.write(0x00)
-            # check if the memory readout works.
-            if flags == 0:
-                self.log.info('Loading of waveform "{0}" to FPGA was successful.\n'
-                              'Upload attempts needed: {1}'.format(waveform, loop_count))
-                self.__currently_loaded_waveform = waveform
-                break
-            if loop_count == 10:
-                self.log.error('Unable to upload waveform to FPGA.\n'
-                               'Abort loading after 10 failed attempts.')
-                self.reset()
-                break
+        self.__currently_loaded_waveform = self.__current_waveform_name
         return self.get_loaded_assets()[0]
 
     def load_sequence(self, sequence_name):
@@ -308,11 +285,9 @@ class OkFpgaPulser(PulserInterface):
         """
         self.pulser_off()
         self.__currently_loaded_waveform = ''
-        self._current_waveform_name = ''
-        # just for good measures, write and load a empty waveform
-        self._current_waveform = bytearray(np.zeros(32))
-        self.__samples_written = 32
-        self.load_waveform([self._current_waveform_name])
+        self.__current_waveform_name = ''
+        self._seq = dict()
+        self.__current_waveform = dict()
         return 0
 
     def get_status(self):
@@ -337,7 +312,7 @@ class OkFpgaPulser(PulserInterface):
         """
         return self.__sample_rate
 
-    def set_sample_rate(self):
+    def set_sample_rate(self, sample_rate=None):
         """ Set the sample rate of the pulse generator hardware.
 
         @param float sample_rate: The sampling rate to be set (in Hz)
@@ -351,19 +326,44 @@ class OkFpgaPulser(PulserInterface):
             self.log.error('Can`t change the sample rate while the FPGA is running.')
             return self.__sample_rate
 
-        assert os.path.isfile(self._path_to_bitfile), f'Could not find bitfile in {self._path_to_bitfile}'
-
-        self.fpga.ConfigureFPGA(self._path_to_bitfile)
-        self.log.info('FPGA pulse generator configured with {0}'.format(self._path_to_bitfile))
-
-        if self.fpga.IsFrontPanel3Supported():
-            self._fp3support = True
+        assert self.core in ['12x8', '24x4']
+        if self.core == '12x8':
+            self.n_channels = 12
+            self.channel_width = 8
+            self.dt = 1.5*333./300.
+            self.set_frequency(300)
+            
+            self.flash_fpga()
+            if self.getInfo() != (12,8):
+                raise(RuntimeError, 'FPGA core does not match.')
+        elif self.core == '24x4':
+            self.n_channels = 24
+            self.channel_width = 4
+            self.dt = 2.
+            self.set_frequency(250)
+            
+            self.flash_fpga()
+            if self.getInfo() != (24,4):
+                raise(RuntimeError, 'FPGA core does not match.')
         else:
-            self._fp3support = False
-            self.log.warning('FrontPanel3 is not supported. '
-                             'Please check if the FPGA is directly connected by USB3.')
+            raise( ValueError, 'core must be "12x8" or "24x4"')
         self.__current_status = 0
         return self.__sample_rate
+
+    def set_frequency(self, vco):
+        PLL = ok.PLL22150()
+        self.fpga.GetPLL22150Configuration(PLL)
+        PLL.SetVCOParameters(vco,48)
+        PLL.SetOutputSource(0,5)
+        PLL.SetOutputEnable(0,True)
+        self.fpga.SetPLL22150Configuration(PLL)
+        self.PLL=PLL
+
+    def flash_fpga(self):
+        ret = self.fpga.ConfigureFPGA(str(self._path_to_bitfile))
+        if ( ret != 0):
+            raise (RuntimeError, 'failed to upload bit file to fpga. Error code %i'%ret)
+        
 
     def get_analog_level(self, amplitude=None, offset=None):
         """ Retrieve the analog amplitude and offset of the provided channels.
@@ -556,62 +556,33 @@ class OkFpgaPulser(PulserInterface):
         @return (int, list): Number of samples written (-1 indicates failed process) and list of
                              created waveform names
         """
-        if self.__current_status != 0:
-            self.log.error('FPGA is not idle, so the waveform can`t be written at this time.')
-            return -1, list()
-
-        if analog_samples:
-            self.log.error('FPGA pulse generator is purely digital and does not support waveform '
-                           'generation with analog samples.')
-            return -1, list()
-        if not digital_samples:
-            if total_number_of_samples > 0:
-                self.log.warning('No samples handed over for waveform generation.')
-                return -1, list()
-            else:
-                self._current_waveform = bytearray(np.zeros(32))
-                self.__samples_written = 32
-                self._current_waveform_name = ''
-                return 0, list()
-
-        # Initialize waveform array if this is the first chunk to write
-        # Also append zero-timebins to waveform if the length is no integer multiple of 32
-        if is_first_chunk:
+        if is_first_chunk:  
+            self.__current_waveform_name = name
             self.__samples_written = 0
-            self._current_waveform_name = name
-            if total_number_of_samples % 32 != 0:
-                number_of_zeros = 32 - (total_number_of_samples % 32)
-                self._current_waveform = np.zeros(total_number_of_samples + number_of_zeros,
-                                                   dtype='uint8')
-                self.log.warning('FPGA pulse sequence length is no integer multiple of 32 samples.'
-                                 '\nAppending {0:d} zero-samples to the sequence.'
-                                 ''.format(number_of_zeros))
-            else:
-                self._current_waveform = np.zeros(total_number_of_samples, dtype='uint8')
+            # initalise to a dict of lists that describe pulse pattern in swabian language
+            self.__current_waveform = {key:[] for key in {**analog_samples, **digital_samples}.keys()}
+        if analog_samples:
+            self.log.warning("No analog output")
+        if digital_samples:
+            print("Digisamples", digital_samples)
+            for channel_number, samples in digital_samples.items():
+                new_channel_indices = np.where(samples[:-1] != samples[1:])[0]
+                new_channel_indices = np.unique(new_channel_indices)
 
-        # Determine which part of the waveform array should be written
-        chunk_length = len(digital_samples[list(digital_samples)[0]])
-        write_end_index = self.__samples_written + chunk_length
+                # add in indices for the start and end of the sequence to simplify iteration
+                new_channel_indices = np.insert(new_channel_indices, 0, [-1])
+                new_channel_indices = np.insert(new_channel_indices, new_channel_indices.size, [samples.shape[0] - 1])
+                pulses = []
+                for new_channel_index in range(1, new_channel_indices.size):
+                    pulse = [new_channel_indices[new_channel_index] - new_channel_indices[new_channel_index - 1],
+                            samples[new_channel_indices[new_channel_index - 1] + 1].astype(np.byte)]
+                    pulses.append(pulse)
 
-        # Encode samples for each channel in bit mask and create waveform array
-        for chnl, samples in digital_samples.items():
-            # get channel index in range 0..7
-            chnl_ind = int(chnl.rsplit('ch', 1)[1]) - 1
-            # Represent bool values as np.uint8
-            uint8_samples = samples.view('uint8')
-            # left shift 0/1 values to bit position corresponding to channel index
-            np.left_shift(uint8_samples, chnl_ind, out=uint8_samples)
-            # Add samples to waveform array
-            np.add(self._current_waveform[self.__samples_written:write_end_index],
-                   uint8_samples,
-                   out=self._current_waveform[self.__samples_written:write_end_index])
+                # extend (as opposed to rewrite) for chunky business
+                #print(pulses)
+                self.__current_waveform[channel_number].extend(pulses)
 
-        # Convert numpy array to bytearray
-        self._current_waveform = bytearray(self._current_waveform.tobytes())
-
-        # increment the current write index
-        self.__samples_written += chunk_length
-        return chunk_length, [self._current_waveform_name]
+        return len(samples), [self.__current_waveform_name]
 
     def write_sequence(self, name, sequence_parameters):
         """
@@ -720,6 +691,7 @@ class OkFpgaPulser(PulserInterface):
         """
         self.write(0x04)
         self.write(0x00)
+        self.__currently_loaded_waveform = ''
         return 0
 
     def _connect_fpga(self):
@@ -748,3 +720,349 @@ class OkFpgaPulser(PulserInterface):
         self.__current_status = -1
         del self.fpga
         return self.__current_status
+
+    def getInfo(self):
+        """Returns the number of channels and channel width."""
+        self.fpga.UpdateWireOuts()
+        ret = self.fpga.GetWireOutValue(0x20)
+        return ret & 0xff, ret >> 8
+
+    def ctrlPulser(self,command):
+        self.fpga.ActivateTriggerIn(0x40,self.command_map[command])
+
+    def getState(self):
+        """
+        Return the state of the FPGA core.
+        
+        The state is returned as a string out of the following list.
+        
+        'IDLE'
+        'RESET_READ'
+        'RESET_SDRAM'
+        'RESET_WRITE'
+        'LOAD_0'
+        'LOAD_1'
+        'LOAD_2'
+        'READ_0'
+        'READ_1'
+        'READ_2'
+        """
+        self.fpga.UpdateWireOuts()
+        return self.state_map[self.fpga.GetWireOutValue(0x21)]
+
+    def checkState(self, wanted):
+        """Raises a 'RuntimeError' if the FPGA state is not the 'wanted' state."""
+        actual = self.getState()
+        if actual != wanted:
+            raise (RuntimeError("FPGA State Error. Expected '"+wanted+"' state but got '"+actual+"' state."))
+        
+    def enableTrigger(self):
+        self.fpga.SetWireInValue(0x00,0xFF,2)
+        self.fpga.UpdateWireIns()
+
+    def disableTrigger(self):
+        self.fpga.SetWireInValue(0x00,0x00,2)
+        self.fpga.UpdateWireIns()
+
+    def enableDecoder(self):
+        self.fpga.SetWireInValue(0x00,0x00,1)
+        self.fpga.UpdateWireIns()
+
+    def disableDecoder(self):
+        self.fpga.SetWireInValue(0x00,0xFF,1)
+        self.fpga.UpdateWireIns()
+
+    def enableInfiniteLoops(self):
+        self.fpga.SetWireInValue(0x00,0xFF,4)
+        self.fpga.UpdateWireIns()
+
+    def disableInfiniteLoops(self):
+        self.fpga.SetWireInValue(0x00,0x00,4)
+        self.fpga.UpdateWireIns()
+    def checkState(self, wanted):
+        """Raises a 'RuntimeError' if the FPGA state is not the 'wanted' state."""
+        actual = self.getState()
+        if actual != wanted:
+            raise(RuntimeError("FPGA State Error. Expected '"+wanted+"' state but got '"+actual+"' state."))
+        
+    def enableTrigger(self):
+        self.fpga.SetWireInValue(0x00,0xFF,2)
+        self.fpga.UpdateWireIns()
+
+    def disableTrigger(self):
+        self.fpga.SetWireInValue(0x00,0x00,2)
+        self.fpga.UpdateWireIns()
+
+    def enableDecoder(self):
+        self.fpga.SetWireInValue(0x00,0x00,1)
+        self.fpga.UpdateWireIns()
+
+    def disableDecoder(self):
+        self.fpga.SetWireInValue(0x00,0xFF,1)
+        self.fpga.UpdateWireIns()
+
+    def enableInfiniteLoops(self):
+        self.fpga.SetWireInValue(0x00,0xFF,4)
+        self.fpga.UpdateWireIns()
+
+    def disableInfiniteLoops(self):
+        self.fpga.SetWireInValue(0x00,0x00,4)
+        self.fpga.UpdateWireIns()
+
+    def run(self,loops=-1,triggered=False):
+        self.halt()
+        if loops > -1:
+            self.setLoopValue(loops)
+            self.disableInfiniteLoops()
+        else:
+            self.setLoopValue(0xffff)
+            self.enableInfiniteLoops()
+        if triggered:
+            self.enableTrigger()
+        else:
+            self.disableTrigger()
+        self.ctrlPulser('RESET_READ')
+        time.sleep(0.01)
+        self.ctrlPulser('RUN')
+        time.sleep(0.01)
+        self.enableDecoder()
+
+    def halt(self):
+        self.disableDecoder()
+        time.sleep(0.01)
+        self.ctrlPulser('RETURN')
+        self.checkState('IDLE')
+ 
+    def loadPages(self,buf):
+        if len(buf) % 1024 != 0:
+            raise (RuntimeError('Only full SDRAM pages supported. Pad your buffer with zeros such that its length is a multiple of 1024.'))
+        self.disableDecoder()
+        self.ctrlPulser('RESET_WRITE')
+        time.sleep(0.01)
+        self.ctrlPulser('LOAD')
+        self.checkState('LOAD_0')
+        bytes = self.fpga.WriteToBlockPipeIn(0x80,1024,buf)
+        time.sleep(0.01)
+        self.checkState('LOAD_0')
+        self.ctrlPulser('RETURN')
+        self.checkState('IDLE')
+        return bytes
+
+    def reset(self):
+        self.disableDecoder()
+        self.ctrlPulser('RESET_WRITE')
+        time.sleep(0.001)
+        self.ctrlPulser('RESET_READ')
+        time.sleep(0.001)
+        self.ctrlPulser('RESET_SDRAM')
+        time.sleep(0.01)
+
+    def setResetValue(self,bits):
+        self.fpga.SetWireInValue(0x01,bits,0xffff)
+        if self.core == '24x4':
+            self.fpga.SetWireInValue(0x02,bits>>16,0xffff)
+        self.fpga.UpdateWireIns()
+
+    def setLoopValue(self,loops):
+        self.fpga.SetWireInValue(0x03,int(loops),0xffff)
+        self.fpga.UpdateWireIns()
+
+    def checkUnderflow(self):
+        self.fpga.UpdateTriggerOuts()
+        return self.fpga.IsTriggered(0x60,1)
+
+    def createBitsFromChannels(self,channels):
+        """
+        Convert a list of channel names into an array of bools of length N_CHANNELS,
+        that specify the state (high or low) of each available channel.
+        """
+        bits = np.zeros(self.n_channels, dtype=bool)
+        for channel in channels:
+            bits[self.channel_map[channel]] = True
+        return bits
+
+    def setBits(self,integers,start,count,bits):
+        """Sets the bits in the range start:start+count in integers[i] to bits[i]."""
+        # ToDo: check bit order (depending on whether least significant or most significant bit is shifted out first from serializer)
+        for i in range(self.n_channels):
+            if bits[i]:
+                integers[i] = integers[i] | (2**count-1) << start
+                
+    def pack(self, mult, pattern):
+        # ToDo: check whether max repetitions is exceeded, split into several commands if necessary
+        # print mult, pattern
+        if self.core == '24x4':
+            pattern = [pattern[i] | pattern[i+1]<<4 for i in range(0,len(pattern),2)]
+        s = struct.pack('>I%iB'%len(pattern), mult, *pattern[::-1])
+        #s = s[4:]+s[2:4]+s[:2]
+        swap = ''
+        for i in range(len(s)):
+            swap += s[i-1 if i%2 else i+1]
+        return swap
+    
+    def convertSequenceToBinary(self,sequence,loops=-1,padding=[]):
+        """
+        Converts a pulse sequence (list of tuples (channels,time) )
+        into a series of pulser instructions (128 bit words),
+        and returns these in a binary buffer of length N*1024
+        representing N SDRAM pages.
+        
+        A pulser instruction has the following form
+        
+        12-channel core:
+        
+        end_marker (1 bit) | repetition (31 bit) | ch0 pattern (8bit), ..., ch11 pattern (8bit)'
+        
+        24-channel core:
+        
+        end_marker (1 bit) | repetition (31 bit) | ch0 pattern (4bit), ..., ch23 pattern (4bit)'
+
+        The pulse sequence is split into a suitable series of
+        such low level pulse commands taking into account the
+        minimal 8 bit (or 4 bit) pattern length.
+        
+        input:
+        
+            sequence    <list of tuples>; where each tuple is of the form (channels, time),
+                        where 'channels' is a list of strings corresponding to
+                        channel names and time is a float specifying the time in ns.
+                        
+            loops       <int>; run the sequence 'loops' times. If loops=-1 (or smaller),
+                        run the sequence with infinite repetitions,
+            padding     <list of channel names>; at the end of a sequence, in most cases
+                        some short pad pulses have to be added (to fill up a complete ram page).
+                        This creates a short dead time at the end of the sequence. 'padding'
+                        specifies which channels should be high during this dead time.
+                        By default, no channel is high.
+                        
+        returns:
+        
+            buf         binary buffer containing a series of SDRAM pages that represent the sequence
+        """
+        
+        dt = self.dt
+        N_CHANNELS, CHANNEL_WIDTH = self.n_channels, self.channel_width
+        ONES=2**CHANNEL_WIDTH-1
+        REP_MAX = 2**31
+        buf = ''
+        raw = []
+        # we start with an integer zero for each channel.
+        # In the following, we will start filling up the bits in each of these integers
+        blank = np.zeros(N_CHANNELS,dtype=int) # we will need this many times, so we create it once and copy from this
+        pattern = blank.copy()
+        index = 0
+        for channels, time in sequence:
+            ticks = int(round(time/dt)) # convert the time into an integer multiple of hardware time steps
+            if ticks is 0:
+                continue
+            bits = self.createBitsFromChannels(channels)
+            if index + ticks < CHANNEL_WIDTH: # if pattern does not fill current block, insert into current block and continue
+                self.setBits(pattern,index,ticks,bits)
+                index += ticks
+                continue
+            if index > 0: # else fill current block with pattern, reduce ticks accordingly, write block and start a new block 
+                self.setBits(pattern,index,CHANNEL_WIDTH-index,bits)
+                #buf += self.pack(0,pattern)
+                raw += [ (0,pattern) ]
+                ticks -= ( CHANNEL_WIDTH - index )
+                pattern = blank.copy()
+            # split possible remaining ticks into a command with repetitions and a single block for the remainder
+            repetitions = ticks / CHANNEL_WIDTH # number of full blocks
+            index = ticks % CHANNEL_WIDTH # remainder will make the beginning of a new block
+            if repetitions > 0:
+                if repetitions > REP_MAX:
+                    multiplier = repetitions / REP_MAX
+                    repetitions = repetitions % REP_MAX
+                    #buf += multiplier*self.pack(REP_MAX-1,ONES*bits)
+                    raw += multiplier*[ (REP_MAX-1,ONES*bits) ]
+                #buf += self.pack(repetitions-1,ONES*bits) # rep=0 means the block is executed once
+                raw += [ (repetitions-1,ONES*bits) ]                
+            if index > 0:
+                pattern = blank.copy()
+                self.setBits(pattern,0,index,bits)
+        pad_bits = self.createBitsFromChannels(padding)
+        if loops<0: # don't insert end marker so there is no loop count down
+            if index > 0: # fill up incomplete block with the padding bits
+                self.setBits(pattern,index,CHANNEL_WIDTH-index,pad_bits)
+                #buf += self.pack(0,pattern)
+                raw += [ (0,pattern) ]
+        else: # insert end marker
+            if index > 0: # fill up the incomplete block with pad bits, set the end marker
+                self.setBits(pattern,index,CHANNEL_WIDTH-index,pad_bits)
+                #buf += self.pack(1<<31,pattern)
+                raw += [ (1<<31,pattern) ]
+            else: # insert the end marker into the last command and append another end marker
+                repetitions, pattern = raw.pop()
+                raw += [ (1<<31 | repetitions, pattern) ]
+                #buf += self.pack(1<<31,ONES*pad_bits)
+                raw += [ (1<<31,ONES*pad_bits) ]
+            #buf += self.pack(1<<31,ONES*bits)
+            #buf += self.pack(1<<31,ONES*bits)
+        raw += [ (1<<31,ONES*pad_bits) ]
+        #print "buf has",len(buf)," bytes"
+        for instr in raw:
+            buf += self.pack(*instr)
+            
+        pad_instr = self.pack(1<<31,ONES*pad_bits)
+        while len(buf)%1024:
+            buf += pad_instr
+        #buf=buf+((1024-len(buf))%1024)*'\x00' # pad buffer with zeros so it matches SDRAM / FIFO page size
+        #print "buf has",len(buf)," bytes"
+        self.raw = raw
+        return buf
+
+    def setSequence(self,sequence,loops=-1,triggered=False,padding=[]):
+        """
+        Output a pulse sequence.
+        
+        Input:
+            sequence      <list of tuples (channels, time)> specifying the pulse sequence.
+                          'channels' is a list of strings specifying the channels that
+                          should be high and 'time' is a float specifying the time in ns.
+                          
+        Optional arguments:
+            loops         <int>; run the sequence 'loops' times. If loops<0, repeat
+                          the sequence indefinitely.
+            triggered     <bool>; defaults to False, specifies whether the execution
+                          should be delayed until an external trigger is received
+                          
+        Example generate Rabi sequence:
+        def generate_sequence(self):
+            tau = self.tau
+            laser = self.laser
+            wait = self.wait
+            sequence = []
+            for t in tau:
+                sequence.append((["microwave"], t))
+                sequence.append(([], 100))
+                sequence.append((["laser", "detect"], laser))
+                sequence.append(([], wait))
+                sequence.append((["sequence"], 100))
+
+
+        """
+        self.halt()
+        self.loadPages(self.convertSequenceToBinary(sequence,loops,padding))
+        self.run(loops, triggered)
+
+    def setContinuous(self, channels):
+        """
+        Set the outputs continuously high or low.
+        
+        Input:
+            channels    <int> or <list of channel names>;
+                        If 'channels' is an integer, each bit corresponds to a channel.
+                        A channel is set to low/high when the bit is 0/1, respectively.
+                        If 'channels' is a list of strings, the specified channels
+                        are set high, while all others are set low.
+        """
+        try:
+            iterator = iter(channels)
+        except:
+            self.setResetValue(channels)
+        else:
+            bits = 0
+            for channel in channels:
+                bits = bits | (1 << self.channel_map[channel]) 
+            self.setResetValue(bits)
+        self.halt()

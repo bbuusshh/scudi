@@ -2,10 +2,10 @@
 import os
 BITFILE_12X8 = os.path.join(os.path.dirname(__file__),'PulseGenerator12x8.bit') # the FPGA bitfile is assumed to be located in the same directory as the present file
 BITFILE_24X4 = os.path.join(os.path.dirname(__file__),'PulseGenerator24x4.bit') # the FPGA bitfile is assumed to be located in the same directory as the present file
-# from qudi.core.module import Base
+
 import time
 
-from qudi.hardware.fpga_pulser import ok
+import ok
 import numpy as np
 import struct
 
@@ -32,21 +32,21 @@ class PulseGenerator():
     
     def open_usb(self):
         if (self.xem.OpenBySerial(self.serial) != 0):
-            raise (RuntimeError, 'failed to open USB connection.')
+            raise RuntimeError, 'failed to open USB connection.'
         
     def set_frequency(self, vco):
         PLL = ok.PLL22150()
         self.xem.GetPLL22150Configuration(PLL)
         PLL.SetVCOParameters(vco,48)
         PLL.SetOutputSource(0,5)
-        PLL.SetOutputEnable(0,True)
+        PLL.SetOutputEnable(0,1)
         self.xem.SetPLL22150Configuration(PLL)
         self.PLL=PLL
         
     def flash_fpga(self, bitfile):
         ret = self.xem.ConfigureFPGA(str(bitfile))
         if ( ret != 0):
-            raise (RuntimeError, 'failed to upload bit file to fpga. Error code %i'%ret)
+            raise RuntimeError, 'failed to upload bit file to fpga. Error code %i'%ret
         
     def load_core(self, core):
         assert core in ['12x8', '24x4']
@@ -58,7 +58,7 @@ class PulseGenerator():
             self.set_frequency(300)
             self.flash_fpga(BITFILE_12X8)
             if self.getInfo() != (12,8):
-                raise (RuntimeError, 'FPGA core does not match.')
+                raise RuntimeError, 'FPGA core does not match.'
         elif core == '24x4':
             self.n_channels = 24
             self.channel_width = 4
@@ -66,9 +66,9 @@ class PulseGenerator():
             self.set_frequency(250)
             self.flash_fpga(BITFILE_24X4)
             if self.getInfo() != (24,4):
-                raise (RuntimeError, 'FPGA core does not match.')
+                raise RuntimeError, 'FPGA core does not match.'
         else:
-            raise (ValueError, 'core must be "12x8" or "24x4"')
+            raise ValueError, 'core must be "12x8" or "24x4"'
 
     def getInfo(self):
         """Returns the number of channels and channel width."""
@@ -103,7 +103,7 @@ class PulseGenerator():
         """Raises a 'RuntimeError' if the FPGA state is not the 'wanted' state."""
         actual = self.getState()
         if actual != wanted:
-            raise (RuntimeError("FPGA State Error. Expected '"+wanted+"' state but got '"+actual+"' state."))
+            raise RuntimeError("FPGA State Error. Expected '"+wanted+"' state but got '"+actual+"' state.")
         
     def enableTrigger(self):
         self.xem.SetWireInValue(0x00,0xFF,2)
