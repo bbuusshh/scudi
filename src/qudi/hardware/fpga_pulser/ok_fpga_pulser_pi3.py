@@ -26,7 +26,7 @@ import numpy as np
 
 import qudi.hardware.fpga_pulser.ok as ok
 # import okfrontpanel as ok
-
+import struct
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 from qudi.interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
@@ -161,84 +161,197 @@ class OkFpgaPulser(PulserInterface):
         self.__current_status = 0
         return self.write(0x00)
 
-    def load_waveform(self, load_dict):
-        """ Loads a waveform to the specified channel of the pulsing device.
+    # def load_waveform(self, load_dict):
+    #     """ Loads a waveform to the specified channel of the pulsing device.
 
-        @param dict|list load_dict: a dictionary with keys being one of the available channel
-                                    index and values being the name of the already written
-                                    waveform to load into the channel.
-                                    Examples:   {1: rabi_ch1, 2: rabi_ch2} or
-                                                {1: rabi_ch2, 2: rabi_ch1}
-                                    If just a list of waveform names if given, the channel
-                                    association will be invoked from the channel
-                                    suffix '_ch1', '_ch2' etc.
+    #     @param dict|list load_dict: a dictionary with keys being one of the available channel
+    #                                 index and values being the name of the already written
+    #                                 waveform to load into the channel.
+    #                                 Examples:   {1: rabi_ch1, 2: rabi_ch2} or
+    #                                             {1: rabi_ch2, 2: rabi_ch1}
+    #                                 If just a list of waveform names if given, the channel
+    #                                 association will be invoked from the channel
+    #                                 suffix '_ch1', '_ch2' etc.
 
-                                        {1: rabi_ch1, 2: rabi_ch2}
-                                    or
-                                        {1: rabi_ch2, 2: rabi_ch1}
+    #                                     {1: rabi_ch1, 2: rabi_ch2}
+    #                                 or
+    #                                     {1: rabi_ch2, 2: rabi_ch1}
 
-                                    If just a list of waveform names if given,
-                                    the channel association will be invoked from
-                                    the channel suffix '_ch1', '_ch2' etc. A
-                                    possible configuration can be e.g.
+    #                                 If just a list of waveform names if given,
+    #                                 the channel association will be invoked from
+    #                                 the channel suffix '_ch1', '_ch2' etc. A
+    #                                 possible configuration can be e.g.
 
-                                        ['rabi_ch1', 'rabi_ch2', 'rabi_ch3']
+    #                                     ['rabi_ch1', 'rabi_ch2', 'rabi_ch3']
 
-        @return dict: Dictionary containing the actually loaded waveforms per
-                      channel.
+    #     @return dict: Dictionary containing the actually loaded waveforms per
+    #                   channel.
 
-        For devices that have a workspace (i.e. AWG) this will load the waveform
-        from the device workspace into the channel. For a device without mass
-        memory, this will make the waveform/pattern that has been previously
-        written with self.write_waveform ready to play.
+    #     For devices that have a workspace (i.e. AWG) this will load the waveform
+    #     from the device workspace into the channel. For a device without mass
+    #     memory, this will make the waveform/pattern that has been previously
+    #     written with self.write_waveform ready to play.
 
-        Please note that the channel index used here is not to be confused with the number suffix
-        in the generic channel descriptors (i.e. 'd_ch1', 'a_ch1'). The channel index used here is
-        highly hardware specific and corresponds to a collection of digital and analog channels
-        being associated to a SINGLE wavfeorm asset.
-        """
-        if isinstance(load_dict, list):
-            waveforms = list(set(load_dict))
-        elif isinstance(load_dict, dict):
-            waveforms = list(set(load_dict.values()))
-        else:
-            self.log.error('Method load_waveform expects a list of waveform names or a dict.')
-            return self.get_loaded_assets()[0]
+    #     Please note that the channel index used here is not to be confused with the number suffix
+    #     in the generic channel descriptors (i.e. 'd_ch1', 'a_ch1'). The channel index used here is
+    #     highly hardware specific and corresponds to a collection of digital and analog channels
+    #     being associated to a SINGLE wavfeorm asset.
+    #     """
+    #     self.wave_form = self.__current_waveform
+    #     print("Waveform", self.__current_waveform)
+    #     if isinstance(load_dict, list):
+    #         waveforms = list(set(load_dict))
+    #     elif isinstance(load_dict, dict):
+    #         waveforms = list(set(load_dict.values()))
+    #     else:
+    #         self.log.error('Method load_waveform expects a list of waveform names or a dict.')
+    #         return self.get_loaded_assets()[0]
 
-        if len(waveforms) != 1:
-            self.log.error('pulser expects exactly one waveform name for load_waveform.')
-            return self.get_loaded_assets()[0]
+    #     if len(waveforms) != 1:
+    #         self.log.error('pulser expects exactly one waveform name for load_waveform.')
+    #         return self.get_loaded_assets()[0]
 
-        waveform = waveforms[0]
-        if waveform != self.__current_waveform_name:
-            self.log.error('No waveform by the name "{0}" generated for pulser.\n'
-                           'Only one waveform at a time can be held.'.format(waveform))
-            return self.get_loaded_assets()[0]
+    #     waveform = waveforms[0]
+    #     if waveform != self.__current_waveform_name:
+    #         self.log.error('No waveform by the name "{0}" generated for pulser.\n'
+    #                        'Only one waveform at a time can be held.'.format(waveform))
+    #         return self.get_loaded_assets()[0]
 
-        self._seq = {0:[]}
-        self._lengths = {0:0}
-        for channel_number, pulse_pattern in self.__current_waveform.items():
-            print(channel_number, pulse_pattern)
+    #     self._seq = {0:[]}
+    #     self._lengths = {0:0}
+    #     for channel_number, pulse_pattern in self.__current_waveform.items():
+    #         print(channel_number, pulse_pattern)
 
-            # channel_number = int(channel_number[-1])-1
-            if 'a_ch' in channel_number:
-                self.log.error('No analog channels on this pulser')
-            else:
-                for idx, pattern in enumerate(pulse_pattern):
-                    print(pattern)
-                    if pattern[1] == 1:
-                        self._lengths[idx] = pattern[0]
-                        try:
-                            self._seq[idx].append(channel_number)
-                        except:
-                            self._seq[idx] = []
+    #         # channel_number = int(channel_number[-1])-1
+    #         if 'a_ch' in channel_number:
+    #             self.log.error('No analog channels on this pulser')
+    #         else:
+    #             for idx, pattern in enumerate(pulse_pattern):
+    #                 print(pattern)
+    #                 if pattern[1] == 1:
+    #                     self._lengths[idx] = pattern[0]
+    #                     try:
+    #                         self._seq[idx].append(channel_number)
+    #                     except:
+    #                         self._seq[idx] = []
         
-        self._seq = [[chans, self._lengths[idx]] for idx, chans in self._seq.items() if len(chans) > 0]           
-        print(self._seq)
-        self.setSequence(self._seq)
+    #     self._seq = [(chans, self._lengths[idx]) for idx, chans in self._seq.items() if len(chans) > 0]           
+    #     print(self._seq)
+    #     self.setSequence(self._seq)
 
-        self.__currently_loaded_waveform = self.__current_waveform_name
-        return self.get_loaded_assets()[0]
+    #     self.__currently_loaded_waveform = self.__current_waveform_name
+    #     return self.get_loaded_assets()[0]
+
+    def load_waveform(self, load_dict):
+            """ Loads a waveform to the specified channel of the pulsing device.
+            For devices that have a workspace (i.e. AWG) this will load the waveform from the device
+            workspace into the channel.
+            For a device without mass memory this will make the waveform/pattern that has been
+            previously written with self.write_waveform ready to play.
+
+            @param dict|list load_dict: a dictionary with keys being one of the available channel
+                                        index and values being the name of the already written
+                                        waveform to load into the channel.
+                                        Examples:   {1: rabi_ch1, 2: rabi_ch2} or
+                                                    {1: rabi_ch2, 2: rabi_ch1}
+                                        If just a list of waveform names if given, the channel
+                                        association will be invoked from the channel
+                                        suffix '_ch1', '_ch2' etc.
+
+            @return dict: Dictionary containing the actually loaded waveforms per channel.
+            """
+            # Since only one waveform can be present at a time check if only a single name is given
+            if isinstance(load_dict, list):
+                waveforms = list(set(load_dict))
+            elif isinstance(load_dict, dict):
+                waveforms = list(set(load_dict.values()))
+            else:
+                self.log.error('Method load_waveform expects a list of waveform names or a dict.')
+                return self.get_loaded_assets()[0]
+
+            if len(waveforms) != 1:
+                self.log.error('FPGA pulser expects exactly one waveform name for load_waveform.')
+                return self.get_loaded_assets()[0]
+
+            waveform = waveforms[0]
+            if waveform != self.__current_waveform_name:
+                self.log.error('No waveform by the name "{0}" generated for FPGA pulser.\n'
+                            'Only one waveform at a time can be held.'.format(waveform))
+                return self.get_loaded_assets()[0]
+
+            # calculate size of the two bytearrays to be transmitted. The biggest part is tranfered
+            # in 1024 byte blocks and the rest is transfered in 32 byte blocks
+            big_bytesize = (len(self.__current_waveform) // 1024) * 1024
+            small_bytesize = len(self.__current_waveform) - big_bytesize
+
+            # try repeatedly to upload the samples to the FPGA RAM
+            # stop if the upload was successful
+            self.__current_waveform[0:big_bytesize]
+            loop_count = 0
+            # while True:
+            #     loop_count += 1
+                # reset FPGA
+            
+            # if len(big_bytesize.decode("utf-8")) % 1024 != 0:
+            #     raise (RuntimeError('Only full SDRAM pages supported. Pad your buffer with zeros such that its length is a multiple of 1024.'))
+            self.disableDecoder()
+            self.ctrlPulser('RESET_WRITE')
+            time.sleep(0.01)
+            self.ctrlPulser('LOAD')
+            self.checkState('LOAD_0')
+            
+            if big_bytesize != 0:
+                # enable sequence write mode in FPGA
+                self.write((255 << 24) + 2)
+                # write to FPGA DDR2-RAM
+                self.fpga.WriteToBlockPipeIn(0x80, 1024, self.__current_waveform[0:big_bytesize])
+            if small_bytesize != 0:
+                # enable sequence write mode in FPGA
+                self.write((8 << 24) + 2)
+                # write to FPGA DDR2-RAM
+                self.fpga.WriteToBlockPipeIn(0x80, 32, self.__current_waveform[big_bytesize:])
+            time.sleep(0.01)
+            
+            self.checkState('LOAD_0')
+            self.ctrlPulser('RETURN')
+            self.checkState('IDLE')
+                # # return bytes
+                # # self.reset()
+                # # # upload sequence
+                # # if big_bytesize != 0:
+                # #     # enable sequence write mode in FPGA
+                # #     self.write((255 << 24) + 2)
+                # #     # write to FPGA DDR2-RAM
+                # #     self.fpga.WriteToBlockPipeIn(0x80, 1024, self.__current_waveform[0:big_bytesize])
+                # # if small_bytesize != 0:
+                # #     # enable sequence write mode in FPGA
+                # #     self.write((8 << 24) + 2)
+                # #     # write to FPGA DDR2-RAM
+                # #     self.fpga.WriteToBlockPipeIn(0x80, 32, self.__current_waveform[big_bytesize:])
+
+                # # check if upload was successful
+                # self.write(0x00)
+                # # start the pulse sequence
+                # self.__current_status = 1
+                # self.write(0x01)
+                # # wait for 600ms
+                # time.sleep(0.6)
+                # # get status flags from FPGA
+                # flags = self.query()
+                # self.__current_status = 0
+                # self.write(0x00)
+                # # check if the memory readout works.
+                # if flags == 0:
+                #     self.log.info('Loading of waveform "{0}" to FPGA was successful.\n'
+                #                 'Upload attempts needed: {1}'.format(waveform, loop_count))
+                #     self.__currently_loaded_waveform = waveform
+                #     break
+                # if loop_count == 10:
+                #     self.log.error('Unable to upload waveform to FPGA.\n'
+                #                 'Abort loading after 10 failed attempts.')
+                #     self.reset()
+                #     break
+            return self.get_loaded_assets()[0]
 
     def load_sequence(self, sequence_name):
         """ Loads a sequence to the channels of the device in order to be ready for playback.
@@ -556,33 +669,56 @@ class OkFpgaPulser(PulserInterface):
         @return (int, list): Number of samples written (-1 indicates failed process) and list of
                              created waveform names
         """
-        if is_first_chunk:  
-            self.__current_waveform_name = name
-            self.__samples_written = 0
-            # initalise to a dict of lists that describe pulse pattern in swabian language
-            self.__current_waveform = {key:[] for key in {**analog_samples, **digital_samples}.keys()}
+
         if analog_samples:
             self.log.warning("No analog output")
-        if digital_samples:
-            print("Digisamples", digital_samples)
-            for channel_number, samples in digital_samples.items():
-                new_channel_indices = np.where(samples[:-1] != samples[1:])[0]
-                new_channel_indices = np.unique(new_channel_indices)
 
-                # add in indices for the start and end of the sequence to simplify iteration
-                new_channel_indices = np.insert(new_channel_indices, 0, [-1])
-                new_channel_indices = np.insert(new_channel_indices, new_channel_indices.size, [samples.shape[0] - 1])
-                pulses = []
-                for new_channel_index in range(1, new_channel_indices.size):
-                    pulse = [new_channel_indices[new_channel_index] - new_channel_indices[new_channel_index - 1],
-                            samples[new_channel_indices[new_channel_index - 1] + 1].astype(np.byte)]
-                    pulses.append(pulse)
+        if not digital_samples:
+            if total_number_of_samples > 0:
+                self.log.warning('No samples handed over for waveform generation.')
+                return -1, list()
+            else:
+                self.__current_waveform = bytearray(np.zeros(32))
+                self.__samples_written = 32
+                self.__current_waveform_name = ''
+                return 0, list()
 
-                # extend (as opposed to rewrite) for chunky business
-                #print(pulses)
-                self.__current_waveform[channel_number].extend(pulses)
+        if is_first_chunk:
+            self.__samples_written = 0
+            self.__current_waveform_name = name
+            if total_number_of_samples % 32 != 0:
+                number_of_zeros = 32 - (total_number_of_samples % 32)
+                self.__current_waveform = np.zeros(total_number_of_samples + number_of_zeros,
+                                                   dtype='uint8')
+                self.log.warning('FPGA pulse sequence length is no integer multiple of 32 samples.'
+                                 '\nAppending {0:d} zero-samples to the sequence.'
+                                 ''.format(number_of_zeros))
+            else:
+                self.__current_waveform = np.zeros(total_number_of_samples, dtype='uint8')
+        # Determine which part of the waveform array should be written
+        chunk_length = len(digital_samples[list(digital_samples)[0]])
+        write_end_index = self.__samples_written + chunk_length
 
-        return len(samples), [self.__current_waveform_name]
+
+        # Encode samples for each channel in bit mask and create waveform array
+        for chnl, samples in digital_samples.items():
+            # get channel index in range 0..7
+            chnl_ind = int(chnl.rsplit('ch', 1)[1]) - 1
+            # Represent bool values as np.uint8
+            uint8_samples = samples.view('uint8')
+            # left shift 0/1 values to bit position corresponding to channel index
+            np.left_shift(uint8_samples, chnl_ind, out=uint8_samples)
+            # Add samples to waveform array
+            np.add(self.__current_waveform[self.__samples_written:write_end_index],
+                   uint8_samples,
+                   out=self.__current_waveform[self.__samples_written:write_end_index])
+
+        # Convert numpy array to bytearray
+        self.__current_waveform = bytearray(self.__current_waveform.tobytes())
+        print(self.__current_waveform)
+        # increment the current write index
+        self.__samples_written += chunk_length
+        return chunk_length, [self.__current_waveform_name]
 
     def write_sequence(self, name, sequence_parameters):
         """
@@ -784,7 +920,7 @@ class OkFpgaPulser(PulserInterface):
         actual = self.getState()
         if actual != wanted:
             raise(RuntimeError("FPGA State Error. Expected '"+wanted+"' state but got '"+actual+"' state."))
-        
+        return actual
     def enableTrigger(self):
         self.fpga.SetWireInValue(0x00,0xFF,2)
         self.fpga.UpdateWireIns()
@@ -841,7 +977,8 @@ class OkFpgaPulser(PulserInterface):
         time.sleep(0.01)
         self.ctrlPulser('LOAD')
         self.checkState('LOAD_0')
-        bytes = self.fpga.WriteToBlockPipeIn(0x80,1024,buf)
+        
+        bytes = self.fpga.WriteToBlockPipeIn(0x80,1024, buf)
         time.sleep(0.01)
         self.checkState('LOAD_0')
         self.ctrlPulser('RETURN')
@@ -888,17 +1025,20 @@ class OkFpgaPulser(PulserInterface):
             if bits[i]:
                 integers[i] = integers[i] | (2**count-1) << start
                 
-    def pack(self, mult, pattern):
+    def pack_bits(self, mult, pattern):
         # ToDo: check whether max repetitions is exceeded, split into several commands if necessary
         # print mult, pattern
+        print(mult, pattern)
         if self.core == '24x4':
             pattern = [pattern[i] | pattern[i+1]<<4 for i in range(0,len(pattern),2)]
-        s = struct.pack('>I%iB'%len(pattern), mult, *pattern[::-1])
+        
+        s = struct.pack('>I%iB'%len(pattern), 1, *pattern[::-1])
         #s = s[4:]+s[2:4]+s[:2]
-        swap = ''
+        swap = b''
         for i in range(len(s)):
-            swap += s[i-1 if i%2 else i+1]
-        return swap
+        
+            swap +=s[i - 1 : i if i%2 else i+1]
+        return swap.decode("utf-8")
     
     def convertSequenceToBinary(self,sequence,loops=-1,padding=[]):
         """
@@ -1001,9 +1141,8 @@ class OkFpgaPulser(PulserInterface):
         raw += [ (1<<31,ONES*pad_bits) ]
         #print "buf has",len(buf)," bytes"
         for instr in raw:
-            buf += self.pack(*instr)
-            
-        pad_instr = self.pack(1<<31,ONES*pad_bits)
+            buf += self.pack_bits(*instr)
+        pad_instr = self.pack_bits(1<<31,ONES*pad_bits)
         while len(buf)%1024:
             buf += pad_instr
         #buf=buf+((1024-len(buf))%1024)*'\x00' # pad buffer with zeros so it matches SDRAM / FIFO page size
