@@ -311,10 +311,11 @@ class OkFpgaPulser(PulserInterface):
                 # write to FPGA DDR2-RAM
                 self.fpga.WriteToBlockPipeIn(0x80, 32, self.__current_waveform[big_bytesize:])
             time.sleep(0.01)
-            
+
             self.checkState('LOAD_0')
             self.ctrlPulser('RETURN')
             self.checkState('IDLE')
+            # self.__current_status = 1
                 # # return bytes
                 # # self.reset()
                 # # # upload sequence
@@ -337,19 +338,19 @@ class OkFpgaPulser(PulserInterface):
                 # # wait for 600ms
                 # time.sleep(0.6)
                 # # get status flags from FPGA
-                # flags = self.query()
-                # self.__current_status = 0
-                # self.write(0x00)
-                # # check if the memory readout works.
-                # if flags == 0:
-                #     self.log.info('Loading of waveform "{0}" to FPGA was successful.\n'
-                #                 'Upload attempts needed: {1}'.format(waveform, loop_count))
-                #     self.__currently_loaded_waveform = waveform
-                #     break
-                # if loop_count == 10:
-                #     self.log.error('Unable to upload waveform to FPGA.\n'
-                #                 'Abort loading after 10 failed attempts.')
-                #     self.reset()
+            # flags = self.query()
+            # self.__current_status = 0
+            #     # self.write(0x00)
+            #     # # check if the memory readout works.
+            # if flags == 0:
+            #     self.log.info('Loading of waveform "{0}" to FPGA was successful.\n'
+            #                 'Upload attempts needed: {1}'.format(waveform, loop_count))
+            self.__currently_loaded_waveform = waveform
+                # break
+            # if loop_count == 10:
+            #     self.log.error('Unable to upload waveform to FPGA.\n'
+            #                 'Abort loading after 10 failed attempts.')
+            #     self.reset()
                 #     break
             return self.get_loaded_assets()[0]
 
