@@ -716,7 +716,7 @@ class OkFpgaPulser(PulserInterface):
 
         # Convert numpy array to bytearray
         self.__current_waveform = bytearray(self.__current_waveform.tobytes())
-        print(self.__current_waveform)
+        
         # increment the current write index
         self.__samples_written += chunk_length
         return chunk_length, [self.__current_waveform_name]
@@ -1029,7 +1029,7 @@ class OkFpgaPulser(PulserInterface):
     def pack_bits(self, mult, pattern):
         # ToDo: check whether max repetitions is exceeded, split into several commands if necessary
         # print mult, pattern
-        print(mult, pattern)
+       
         if self.core == '24x4':
             pattern = [pattern[i] | pattern[i+1]<<4 for i in range(0,len(pattern),2)]
         
