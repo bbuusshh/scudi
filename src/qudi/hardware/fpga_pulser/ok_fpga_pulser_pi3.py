@@ -288,34 +288,38 @@ class OkFpgaPulser(PulserInterface):
             # stop if the upload was successful
             self.__current_waveform[0:big_bytesize]
             loop_count = 0
-            # while True:
-            #     loop_count += 1
+            while True:
+                loop_count += 1
                 # reset FPGA
             
-            # if len(big_bytesize.decode("utf-8")) % 1024 != 0:
-            #     raise (RuntimeError('Only full SDRAM pages supported. Pad your buffer with zeros such that its length is a multiple of 1024.'))
-            self.disableDecoder()
-            self.ctrlPulser('RESET_WRITE')
-            time.sleep(0.01)
-            self.ctrlPulser('LOAD')
-            self.checkState('LOAD_0')
-            
-            if big_bytesize != 0:
-                # enable sequence write mode in FPGA
-                self.write((255 << 24) + 2)
-                # write to FPGA DDR2-RAM
-                self.fpga.WriteToBlockPipeIn(0x80, 1024, self.__current_waveform[0:big_bytesize])
-            if small_bytesize != 0:
-                # enable sequence write mode in FPGA
-                self.write((8 << 24) + 2)
-                # write to FPGA DDR2-RAM
-                self.fpga.WriteToBlockPipeIn(0x80, 32, self.__current_waveform[big_bytesize:])
-            time.sleep(0.01)
+                # if len(big_bytesize.decode("utf-8")) % 1024 != 0:
+                #     raise (RuntimeError('Only full SDRAM pages supported. Pad your buffer with zeros such that its length is a multiple of 1024.'))
+                # self.reset()
+                self.write(0x04)
+                self.write(0x00)
+                time.sleep(0.01)
+                # self.ctrlPulser('LOAD')
+                # self.checkState('LOAD_0')
+                self.ctrlPulser('LOAD')
+                self.checkState('LOAD_0')
+                if big_bytesize != 0:
+                    # enable sequence write mode in FPGA
+                    self.write((255 << 24) + 2)
+                    # write to FPGA DDR2-RAM
+                    self.fpga.WriteToBlockPipeIn(0x80, 1024, self.__current_waveform[0:big_bytesize])
+                if small_bytesize != 0:
+                    # enable sequence write mode in FPGA
+                    self.write((8 << 24) + 2)
+                    # write to FPGA DDR2-RAM
+                    self.fpga.WriteToBlockPipeIn(0x80, 32, self.__current_waveform[big_bytesize:])
+                time.sleep(0.01)
 
-            self.checkState('LOAD_0')
-            self.ctrlPulser('RETURN')
-            self.checkState('IDLE')
-            # self.__current_status = 1
+                self.checkState('LOAD_0')
+                self.ctrlPulser('RETURN')
+                self.checkState('IDLE')
+                self.__current_status = 0
+                if loop_count == 10:
+                    break
                 # # return bytes
                 # # self.reset()
                 # # # upload sequence
@@ -971,20 +975,20 @@ class OkFpgaPulser(PulserInterface):
         self.checkState('IDLE')
  
     def loadPages(self,buf):
-        if len(buf) % 1024 != 0:
-            raise (RuntimeError('Only full SDRAM pages supported. Pad your buffer with zeros such that its length is a multiple of 1024.'))
-        self.disableDecoder()
-        self.ctrlPulser('RESET_WRITE')
-        time.sleep(0.01)
-        self.ctrlPulser('LOAD')
-        self.checkState('LOAD_0')
+        # if len(buf) % 1024 != 0:
+        #     raise (RuntimeError('Only full SDRAM pages supported. Pad your buffer with zeros such that its length is a multiple of 1024.'))
+        # self.disableDecoder()
+        # self.ctrlPulser('RESET_WRITE')
+        # time.sleep(0.01)
+        # self.ctrlPulser('LOAD')
+        # self.checkState('LOAD_0')
         
-        bytes = self.fpga.WriteToBlockPipeIn(0x80,1024, buf)
-        time.sleep(0.01)
-        self.checkState('LOAD_0')
-        self.ctrlPulser('RETURN')
-        self.checkState('IDLE')
-        return bytes
+        self.fpga.WriteToBlockPipeIn(0x80,1024, buf)
+        # time.sleep(0.01)
+        # self.checkState('LOAD_0')
+        # self.ctrlPulser('RETURN')
+        # self.checkState('IDLE')
+        return 
 
     def reset(self):
         self.disableDecoder()
@@ -1026,48 +1030,53 @@ class OkFpgaPulser(PulserInterface):
             if bits[i]:
                 integers[i] = integers[i] | (2**count-1) << start
                 
-    def pack_bits(self, mult, pattern):
+    def pack(self, mult, pattern):
         # ToDo: check whether max repetitions is exceeded, split into several commands if necessary
         # print mult, pattern
-       
+
         if self.core == '24x4':
-            pattern = [pattern[i] | pattern[i+1]<<4 for i in range(0,len(pattern),2)]
+            pattern = [pattern[i] | pattern[i + 1] << 4 for i in range(0, len(pattern), 2)]
         
-        s = struct.pack('>I%iB'%len(pattern), 1, *pattern[::-1])
-        #s = s[4:]+s[2:4]+s[:2]
-        swap = b''
+        s = struct.pack(">I%iB" % len(pattern), int(mult), *pattern[::-1])
+     
+        swap = []
         for i in range(len(s)):
+            # swap += s[i: i+1 if i % 2 else i + 1]
+            if i % 2:
+                swap.append(s[i - 1: i])
+            else:
+                swap.append(s[i + 1: i + 2])
+               
         
-            swap +=s[i - 1 : i if i%2 else i+1]
-        return swap.decode("utf-8")
+        return b"".join(swap)
     
-    def convertSequenceToBinary(self,sequence,loops=-1,padding=[]):
+    def convertSequenceToBinary(self, sequence, loops=-1, padding=[]):
         """
         Converts a pulse sequence (list of tuples (channels,time) )
         into a series of pulser instructions (128 bit words),
         and returns these in a binary buffer of length N*1024
         representing N SDRAM pages.
-        
+
         A pulser instruction has the following form
-        
+
         12-channel core:
-        
+
         end_marker (1 bit) | repetition (31 bit) | ch0 pattern (8bit), ..., ch11 pattern (8bit)'
-        
+
         24-channel core:
-        
+
         end_marker (1 bit) | repetition (31 bit) | ch0 pattern (4bit), ..., ch23 pattern (4bit)'
 
         The pulse sequence is split into a suitable series of
         such low level pulse commands taking into account the
         minimal 8 bit (or 4 bit) pattern length.
-        
+
         input:
-        
+
             sequence    <list of tuples>; where each tuple is of the form (channels, time),
                         where 'channels' is a list of strings corresponding to
                         channel names and time is a float specifying the time in ns.
-                        
+
             loops       <int>; run the sequence 'loops' times. If loops=-1 (or smaller),
                         run the sequence with infinite repetitions,
             padding     <list of channel names>; at the end of a sequence, in most cases
@@ -1075,81 +1084,87 @@ class OkFpgaPulser(PulserInterface):
                         This creates a short dead time at the end of the sequence. 'padding'
                         specifies which channels should be high during this dead time.
                         By default, no channel is high.
-                        
+
         returns:
-        
+
             buf         binary buffer containing a series of SDRAM pages that represent the sequence
         """
-        
+
         dt = self.dt
         N_CHANNELS, CHANNEL_WIDTH = self.n_channels, self.channel_width
-        ONES=2**CHANNEL_WIDTH-1
-        REP_MAX = 2**31
-        buf = ''
+        ONES = 2 ** CHANNEL_WIDTH - 1
+        REP_MAX = 2 ** 31
+        buf =b""
         raw = []
         # we start with an integer zero for each channel.
         # In the following, we will start filling up the bits in each of these integers
-        blank = np.zeros(N_CHANNELS,dtype=int) # we will need this many times, so we create it once and copy from this
+        blank = np.zeros(N_CHANNELS, dtype=int)  # we will need this many times, so we create it once and copy from this
         pattern = blank.copy()
         index = 0
         for channels, time in sequence:
-            ticks = int(round(time/dt)) # convert the time into an integer multiple of hardware time steps
+            ticks = int(round(time / dt))  # convert the time into an integer multiple of hardware time steps
             if ticks is 0:
                 continue
             bits = self.createBitsFromChannels(channels)
-            if index + ticks < CHANNEL_WIDTH: # if pattern does not fill current block, insert into current block and continue
-                self.setBits(pattern,index,ticks,bits)
+            if (
+                index + ticks < CHANNEL_WIDTH
+            ):  # if pattern does not fill current block, insert into current block and continue
+                self.setBits(pattern, index, ticks, bits)
                 index += ticks
                 continue
-            if index > 0: # else fill current block with pattern, reduce ticks accordingly, write block and start a new block 
-                self.setBits(pattern,index,CHANNEL_WIDTH-index,bits)
-                #buf += self.pack(0,pattern)
-                raw += [ (0,pattern) ]
-                ticks -= ( CHANNEL_WIDTH - index )
+            if (
+                index > 0
+            ):  # else fill current block with pattern, reduce ticks accordingly, write block and start a new block
+                self.setBits(pattern, index, CHANNEL_WIDTH - index, bits)
+                # buf += self.pack(0,pattern)
+                raw += [(0, pattern)]
+                ticks -= CHANNEL_WIDTH - index
                 pattern = blank.copy()
             # split possible remaining ticks into a command with repetitions and a single block for the remainder
-            repetitions = ticks / CHANNEL_WIDTH # number of full blocks
-            index = ticks % CHANNEL_WIDTH # remainder will make the beginning of a new block
+            repetitions = ticks / CHANNEL_WIDTH  # number of full blocks
+            index = ticks % CHANNEL_WIDTH  # remainder will make the beginning of a new block
             if repetitions > 0:
                 if repetitions > REP_MAX:
                     multiplier = repetitions / REP_MAX
                     repetitions = repetitions % REP_MAX
-                    #buf += multiplier*self.pack(REP_MAX-1,ONES*bits)
-                    raw += multiplier*[ (REP_MAX-1,ONES*bits) ]
-                #buf += self.pack(repetitions-1,ONES*bits) # rep=0 means the block is executed once
-                raw += [ (repetitions-1,ONES*bits) ]                
+                    # buf += multiplier*self.pack(REP_MAX-1,ONES*bits)
+                    raw += multiplier * [(REP_MAX - 1, ONES * bits)]
+                # buf += self.pack(repetitions-1,ONES*bits) # rep=0 means the block is executed once
+                raw += [(repetitions - 1, ONES * bits)]
             if index > 0:
                 pattern = blank.copy()
-                self.setBits(pattern,0,index,bits)
+                self.setBits(pattern, 0, index, bits)
         pad_bits = self.createBitsFromChannels(padding)
-        if loops<0: # don't insert end marker so there is no loop count down
-            if index > 0: # fill up incomplete block with the padding bits
-                self.setBits(pattern,index,CHANNEL_WIDTH-index,pad_bits)
-                #buf += self.pack(0,pattern)
-                raw += [ (0,pattern) ]
-        else: # insert end marker
-            if index > 0: # fill up the incomplete block with pad bits, set the end marker
-                self.setBits(pattern,index,CHANNEL_WIDTH-index,pad_bits)
-                #buf += self.pack(1<<31,pattern)
-                raw += [ (1<<31,pattern) ]
-            else: # insert the end marker into the last command and append another end marker
+        if loops < 0:  # don't insert end marker so there is no loop count down
+            if index > 0:  # fill up incomplete block with the padding bits
+                self.setBits(pattern, index, CHANNEL_WIDTH - index, pad_bits)
+                # buf += self.pack(0,pattern)
+                raw += [(0, pattern)]
+        else:  # insert end marker
+            if index > 0:  # fill up the incomplete block with pad bits, set the end marker
+                self.setBits(pattern, index, CHANNEL_WIDTH - index, pad_bits)
+                # buf += self.pack(1<<31,pattern)
+                raw += [(1 << 31, pattern)]
+            else:  # insert the end marker into the last command and append another end marker
                 repetitions, pattern = raw.pop()
-                raw += [ (1<<31 | repetitions, pattern) ]
-                #buf += self.pack(1<<31,ONES*pad_bits)
-                raw += [ (1<<31,ONES*pad_bits) ]
-            #buf += self.pack(1<<31,ONES*bits)
-            #buf += self.pack(1<<31,ONES*bits)
-        raw += [ (1<<31,ONES*pad_bits) ]
-        #print "buf has",len(buf)," bytes"
+                raw += [(1 << 31 | repetitions, pattern)]
+                # buf += self.pack(1<<31,ONES*pad_bits)
+                raw += [(1 << 31, ONES * pad_bits)]
+            # buf += self.pack(1<<31,ONES*bits)
+            # buf += self.pack(1<<31,ONES*bits)
+        raw += [(1 << 31, ONES * pad_bits)]
+        # print "buf has",len(buf)," bytes"
         for instr in raw:
-            buf += self.pack_bits(*instr)
-        pad_instr = self.pack_bits(1<<31,ONES*pad_bits)
-        while len(buf)%1024:
+            buf += self.pack(*instr)
+
+        pad_instr = self.pack(1 << 31, ONES * pad_bits)
+        while len(buf) % 1024:
             buf += pad_instr
-        #buf=buf+((1024-len(buf))%1024)*'\x00' # pad buffer with zeros so it matches SDRAM / FIFO page size
-        #print "buf has",len(buf)," bytes"
+        # buf=buf+((1024-len(buf))%1024)*'\x00' # pad buffer with zeros so it matches SDRAM / FIFO page size
+        # print "buf has",len(buf)," bytes"
         self.raw = raw
-        return buf
+    
+        return bytearray(buf)
 
     def setSequence(self,sequence,loops=-1,triggered=False,padding=[]):
         """
