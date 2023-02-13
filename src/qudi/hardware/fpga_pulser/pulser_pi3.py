@@ -190,7 +190,7 @@ class PulseStreamer(PulserInterface):
 
         constraints.sample_rate.min = 1e9
         constraints.sample_rate.max = 1e9
-        constraints.sample_rate.step = 0
+        constraints.sample_rate.step = 1e9
         constraints.sample_rate.default = 1e9
 
         constraints.d_ch_low.min = 0.0

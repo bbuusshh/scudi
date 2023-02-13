@@ -55,7 +55,7 @@ class TimeTaggerFastCounter(FastCounterInterface):
         """ Connect and configure the access to the FPGA.
         """
         self._tagger = self.timetagger()#tt.createTimeTagger()
-        self._tagger.tagger.reset()
+        # self._tagger.tagger.reset()
 
         self._number_of_gates = int(100)
         self._bin_width = 1

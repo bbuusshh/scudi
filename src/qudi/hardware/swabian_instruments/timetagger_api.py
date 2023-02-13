@@ -66,7 +66,6 @@ class TT(Base):
         # set specified in the params.yaml channels params
         for channel, params in self._channels_params.items():
             channel = int(channel)
-            print(channel)
             if 'delay' in params.keys():
                 self.delay_channel(delay=params['delay'], channel = channel)
             if 'triggerLevel' in params.keys():
