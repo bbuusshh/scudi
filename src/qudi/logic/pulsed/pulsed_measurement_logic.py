@@ -1446,8 +1446,9 @@ class PulsedMeasurementLogic(LogicBase):
             data_dir = self.module_default_data_dir
             file_name = None
         else:
-            data_dir, file_name = os.path.split(file_path)
-
+            data_dir, tag = os.path.split(file_path)
+        file_name = None
+        # print(file_name, data_dir)
         # If save_figure is not explicitly given, use module default
         if save_figure is None:
             save_figure = self._save_thumbnails

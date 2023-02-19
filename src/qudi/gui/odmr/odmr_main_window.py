@@ -115,7 +115,7 @@ class OdmrMainWindow(QtWidgets.QMainWindow):
         toolbar.addAction(self.action_toggle_measurement)
         toolbar.addAction(self.action_resume_measurement)
         toolbar.addSeparator()
-        # toolbar.addAction(self.action_save_measurement)
+        toolbar.addAction(self.action_save_measurement)
         # toolbar.addWidget(self.save_nametag_lineedit)
         toolbar.addSeparator()
         tool_button = QtWidgets.QToolButton(objectName='QToolButton')
