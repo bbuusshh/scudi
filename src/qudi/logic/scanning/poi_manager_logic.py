@@ -445,8 +445,8 @@ class PoiManagerLogic(LogicBase):
         # Connect callback for a finished refocus
         self._optimizelogic().sigOptimizeStateChanged.connect(
             self._optimisation_callback, QtCore.Qt.QueuedConnection)
-        self._ple_optimize_logic().sigOptimizeStateChanged.connect(
-            self._ple_optimisation_callback, QtCore.Qt.QueuedConnection)
+        # self._ple_optimize_logic().sigOptimizeStateChanged.connect(
+        #     self._ple_optimisation_callback, QtCore.Qt.QueuedConnection)
         # Connect internal start/stop signals to decouple QTimer from other threads
         self.__sigStartPeriodicRefocus.connect(
             self.start_periodic_refocus, QtCore.Qt.QueuedConnection)

@@ -334,12 +334,15 @@ class NIXTTSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
             clock_fall_tt = int(self._tt_falling_edge_clock_input[2:])
         else:
             clock_fall_tt = - clock_tt
-        self._timetagger_cbm_tasks = [self._tt.count_between_markers(click_channel = channel, 
-                                        begin_channel = clock_tt,
-                                        end_channel = clock_fall_tt, 
-                                        n_values=self.frame_size) 
-                                        for channel in channels_tt]
+        self._timetagger_cbm_tasks = [
+                self._tt.count_between_markers(click_channel = channel, 
+                begin_channel = clock_tt,
+                end_channel = clock_fall_tt, 
+                n_values=self.frame_size) 
+                for channel in channels_tt
+                                    ]
         return 0
+
     def start_buffered_acquisition(self):
         """ Will start the acquisition of a data frame in a non-blocking way.
         Must return immediately and not wait for the data acquisition to finish.
@@ -470,9 +473,9 @@ class NIXTTSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
                     data_cbm = self._timetagger_cbm_tasks[num].getData()
                     di_data[num] = data_cbm
                     data[di_channel] = di_data[num] * self.sample_rate  # To go to c/s # TODO What if unit not c/s
-                    self._scanner_ready = self._timetagger_cbm_tasks[num].ready()
+                self._scanner_ready = self._timetagger_cbm_tasks[-1].ready()
                     # print(self._scanner_ready)
-            # Read analog channels
+            # Read analog channelss
             # if self._ai_reader is not None:
             #     data_buffer = np.zeros(number_of_samples * len(self.__active_channels['ai_channels']))
             #     read_samples = self._ai_reader.read_many_sample(
@@ -515,7 +518,7 @@ class NIXTTSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
             data = self.get_buffered_samples(self._frame_size)
             while not self._scanner_ready:
                 data = self.get_buffered_samples(self._frame_size)
-                
+            data = self.get_buffered_samples(self._frame_size)
             self.stop_buffered_acquisition()
             if buffered_frame_size is not None:
                 self._frame_size = buffered_frame_size
@@ -552,7 +555,7 @@ class NIXTTSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
                     idle_state=ni.constants.Level.LOW)
                 task.timing.cfg_implicit_timing(
                     sample_mode=ni.constants.AcquisitionType.CONTINUOUS,
-                    samps_per_chan=self._frame_size + 1)
+                    samps_per_chan=self._frame_size - 1)
             except ni.DaqError:
                 self.log.exception('Error while configuring sample clock task.')
                 try:
