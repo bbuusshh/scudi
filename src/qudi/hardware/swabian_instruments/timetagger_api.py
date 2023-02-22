@@ -7,12 +7,12 @@ from qudi.core.module import Base
 
 
 class TT(Base):
-    _serial = ConfigOption('serial', False, missing='info')
-    _hist = ConfigOption('hist', False, missing='warn')
-    _corr = ConfigOption('corr', False, missing='warn')
-    _counter = ConfigOption('counter', False, missing='warn')
-    _combiner = ConfigOption('combiner', False, missing='warn')
-    _channels_params = ConfigOption('channels_params', False, missing='warn')
+    _serial = ConfigOption('serial', None, missing='info')
+    _hist = ConfigOption('hist', dict(), missing='warn')
+    _corr = ConfigOption('corr', dict(), missing='warn')
+    _counter = ConfigOption('counter', dict(), missing='warn')
+    _combiner = ConfigOption('combiner', dict(), missing='warn')
+    _channels_params = ConfigOption('channels_params', dict(), missing='info')
     
 
     """
@@ -43,7 +43,7 @@ class TT(Base):
         test_channels: [] #[1,2,3,4,5,6,7]#[1,2, 4, -4]
 
         channels_params:
-            six: # cwave internal scanner
+            6: # cwave internal scanner
                 delay: 0
                 trigger_level: 3
         """
@@ -54,13 +54,18 @@ class TT(Base):
 
     def on_activate(self):
         try:
-            self.tagger = createTimeTagger(self._serial)
+            if self._serial is not None
+                self.tagger = createTimeTagger(self._serial)
+            else:
+                self.tagger = createTimeTagger()
             self.log.info(f"Tagger initialization successful: {self.tagger.getSerial()}")
+
+            
         except:
             self.log.error(f"\nCheck if the TimeTagger device is being used by another instance.")
             Exception(f"\nCheck if the TimeTagger device is being used by another instance.")
-
-        # self._combined_channels = self.combiner(self._combiner["channels"])
+             
+        
         self._constraints = {'hist':self._hist, 'corr':self._corr, 'counter': self._counter}
 
         # set specified in the params.yaml channels params
@@ -70,6 +75,9 @@ class TT(Base):
                 self.delay_channel(delay=params['delay'], channel = channel)
             if 'triggerLevel' in params.keys():
                 self.tagger.setTriggerLevel(channel, params['triggerLevel'])
+
+        self._combined_channels = self.combiner(self._combiner["channels"])
+        
 
     def on_deactivate(self):
         pass
