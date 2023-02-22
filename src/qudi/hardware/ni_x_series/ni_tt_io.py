@@ -840,7 +840,7 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         self._timetagger_cbm_tasks = [self._tt.count_between_markers(click_channel = channel, 
                                         begin_channel = clock_tt,
                                         end_channel = clock_fall_tt, 
-                                        n_values=self.frame_size) if channel !=0 else self._tt.count_between_markers(
+                                        n_values=self.frame_size) if channel != 111 else self._tt.count_between_markers(
                                                         click_channel = self._tt._combined_channels.getChannel(), 
                                                         begin_channel = clock_tt,
                                                         end_channel = clock_fall_tt, 
