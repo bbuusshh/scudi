@@ -582,17 +582,16 @@ class NIXTTSeriesInStreamer(DataInStreamInterface):
             return -1
 
         self._init_buffer()
-        try:
+    
+        channels_tt = [int(ch[2:]) if '111' not in ch else self._tt._combined_channels.getChannel() for ch in self.__active_channels['di_channels'] ] 
+        # clock_tt = int(self._tt_ni_clock_input[2:])
+        
+        bin_width = int(1/self.__sample_rate*1e12)
+        n_values = int(self.__buffer_size*1e12/bin_width)
 
-            channels_tt = [int(ch[2:]) for ch in self.__active_channels['di_channels'] if "tt" in ch]
-            # clock_tt = int(self._tt_ni_clock_input[2:])
-            
-            bin_width = int(1/self.__sample_rate*1e12)
-            n_values = int(self.__buffer_size*1e12/bin_width)
-
-            self.tt_counter = self._tagger().counter(channels = channels_tt,
-                                                    bin_width = bin_width,
-                                                    n_values = n_values)
+        self.tt_counter = self._tagger().counter(channels = channels_tt,
+                                                bin_width = bin_width,
+                                                n_values = n_values)
 
         try:
             self._clk_task_handle.start()

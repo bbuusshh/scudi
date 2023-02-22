@@ -54,7 +54,7 @@ class TT(Base):
 
     def on_activate(self):
         try:
-            if self._serial is not None
+            if self._serial is not None:
                 self.tagger = createTimeTagger(self._serial)
             else:
                 self.tagger = createTimeTagger()
