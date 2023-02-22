@@ -102,6 +102,9 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
     _tt_ni_clock_input = ConfigOption(name = "tt_ni_clock_input",
                                                 default=None)
+    
+    _tt_falling_edge_clock_input = ConfigOption(name = "tt_falling_edge_clock_input",
+                                                default=None)
 
     _adc_voltage_ranges = ConfigOption(name='adc_voltage_ranges',
                                        default={'ai{}'.format(channel_index): [-10, 10]
@@ -827,11 +830,16 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         cbm stnads for count between markers
         @return int: error code (0:OK, -1:error)
         """
-        channels_tt = [int(ch[2:]) for ch in self.__active_channels['di_channels']]
+        channels_tt = [int(ch[2:]) for ch in self.__active_channels['di_channels'] if "tt" in ch]
         clock_tt = int(self._tt_ni_clock_input[2:])
+        #Workaround for the old time tagger version at the praktikum
+        if self._tt_falling_edge_clock_input:
+            clock_fall_tt = int(self._tt_falling_edge_clock_input[2:])
+        else:
+            clock_fall_tt = - clock_tt
         self._timetagger_cbm_tasks = [self._tt.count_between_markers(click_channel = channel, 
                                         begin_channel = clock_tt,
-                                        end_channel = -clock_tt, 
+                                        end_channel = clock_fall_tt, 
                                         n_values=self.frame_size) 
                                         for channel in channels_tt]
         return 0

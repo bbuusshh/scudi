@@ -8,6 +8,9 @@
 *.so.[0-9]*
 *.a
 *.pyc
+*.pyd
+*.bit
+ok.py
 *.pyo
 *.rej
 *~
@@ -34,4 +37,5 @@
 
 # configs
 **/config
+
 

@@ -7,10 +7,13 @@ from qudi.core.module import Base
 
 
 class TT(Base):
+    _serial = ConfigOption('serial', False, missing='info')
     _hist = ConfigOption('hist', False, missing='warn')
     _corr = ConfigOption('corr', False, missing='warn')
-    _combiner = ConfigOption('combiner', False, missing='warn')
     _counter = ConfigOption('counter', False, missing='warn')
+    _combiner = ConfigOption('combiner', False, missing='warn')
+    _channels_params = ConfigOption('channels_params', False, missing='warn')
+    
 
     """
     Example config.
@@ -48,12 +51,10 @@ class TT(Base):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.sample_rate = 50
-        chan_alphabet = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight']
-        self.channel_codes = dict(zip(chan_alphabet, list(range(1,9,1))))
 
     def on_activate(self):
         try:
-            self.tagger = createTimeTagger()
+            self.tagger = createTimeTagger(self._serial)
             self.log.info(f"Tagger initialization successful: {self.tagger.getSerial()}")
         except:
             self.log.error(f"\nCheck if the TimeTagger device is being used by another instance.")
@@ -62,13 +63,13 @@ class TT(Base):
         # self._combined_channels = self.combiner(self._combiner["channels"])
         self._constraints = {'hist':self._hist, 'corr':self._corr, 'counter': self._counter}
 
-        # # set specified in the params.yaml channels params
-        # for channel, params in self._channels_params.items():
-        #     channel = self.channel_codes[channel]
-        #     if 'delay' in params.keys():
-        #         self.delay_channel(delay=params['delay'], channel = channel)
-        #     if 'triggerLevel' in params.keys():
-        #         self.tagger.setTriggerLevel(channel, params['triggerLevel'])
+        # set specified in the params.yaml channels params
+        for channel, params in self._channels_params.items():
+            channel = int(channel)
+            if 'delay' in params.keys():
+                self.delay_channel(delay=params['delay'], channel = channel)
+            if 'triggerLevel' in params.keys():
+                self.tagger.setTriggerLevel(channel, params['triggerLevel'])
 
     def on_deactivate(self):
         pass

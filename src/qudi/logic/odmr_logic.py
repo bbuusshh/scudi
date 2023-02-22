@@ -731,9 +731,12 @@ class OdmrLogic(LogicBase):
         # Join everything in one big array
         return np.column_stack(joined_data)
 
-    @QtCore.Slot(str)
-    def save_odmr_data(self, tag=None):
+    @QtCore.Slot(str, str)
+    def save_odmr_data(self, tag = None, folder_path = None):
+
         """ Saves the current ODMR data to a file."""
+        if folder_path is None:
+           folder_path = self.module_default_data_dir
         with self._threadlock:
             # Create and configure storage helper instance
             timestamp = datetime.datetime.now()
@@ -741,7 +744,7 @@ class OdmrLogic(LogicBase):
             tag = tag + '_' if tag else ''
 
             # Save raw data in a separate file per data channel
-            data_storage = TextDataStorage(root_dir=self.module_default_data_dir,
+            data_storage = TextDataStorage(root_dir=folder_path,
                                            column_formats='.15e')
             for channel, range_data in self._raw_data.items():
                 metadata['Channel Name'] = channel
