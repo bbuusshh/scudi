@@ -583,7 +583,7 @@ class NIXTTSeriesInStreamer(DataInStreamInterface):
 
         self._init_buffer()
     
-        channels_tt = [int(ch[2:]) if '111' not in ch else self._tt._combined_channels.getChannel() for ch in self.__active_channels['di_channels'] ] 
+        channels_tt = [int(ch[2:]) if "111" not in ch else self._tt._combined_channels.getChannel() for ch in self.__active_channels['di_channels'] ] 
         # clock_tt = int(self._tt_ni_clock_input[2:])
         
         bin_width = int(1/self.__sample_rate*1e12)
