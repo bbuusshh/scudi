@@ -33,10 +33,11 @@ import time
 class ControllerInterfuseLogic(LogicBase):
     sigGuiParamsUpdated = QtCore.Signal(object,  QtCore.Qt.QueuedConnection)
     sigTimingPlotUpdated = QtCore.Signal(object,  QtCore.Qt.QueuedConnection)
-    _switchlogic = Connector(name='switchlogic', interface="SwitchLogic", optional=True) 
-    _switch_name = ConfigOption(name='switcher_name', default=None, optional=True)
-    _power_controller = ConfigOption(name='power_controller', default=None)
-    _laser_controller = ConfigOption(name='laser_controller', default=None)
+    _switch_name = ConfigOption(name='switcher_name', default=None)
+    _switchlogic = Connector(name='switchlogic', interface="SwitchLogic", optional=True)
+    _power_controller = Connector(name='power_controller', interface="PowerControllerLogic", optional=True)
+    _power_channel = ConfigOption(name='power_channel', default=0)
+    _laser_controller = Connector(name='laser_controller', interface="LaserControllerLogic", optional=True)
 
 
     default_params = {
@@ -49,13 +50,22 @@ class ControllerInterfuseLogic(LogicBase):
         
     
     def on_activate(self):
-        # self.pulsed = self._pulsed()
+        self._power_controller = self._power_controller()
         # self.switch = self._switchlogic()
-       pass
+        if self._power_controller:
+            self.parameters['power'] = self._power_controller._current_positions[self._power_channel]
+            self._power_controller.sig_set_power.connect(self.update_power, QtCore.Qt.QueuedConnection)
         
     def on_deactivate(self):
         pass
     
     @QtCore.Slot(dict)
     def params_updated(self, params):
-        self.parameters['power'].update(params['power'])
+        self.parameters['power'] = params['power']
+        print(params['power'])
+        self._power_controller.sig_set_power.emit(params['power'], self._power_channel, False)
+    
+    @QtCore.Slot(float, int, bool)
+    def update_power(self, power, channel, calibrated):
+        self.parameters['power'] = power
+        self.sigGuiParamsUpdated.emit(self.parameters)

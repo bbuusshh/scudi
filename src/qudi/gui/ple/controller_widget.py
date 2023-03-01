@@ -15,8 +15,8 @@ class ControllerWidget(QtWidgets.QWidget):
         super(ControllerWidget, self).__init__(*args, **kwargs)
         uic.loadUi(ui_file, self)
 
-        self.power_SpinBox.setDecimals(3)
-        self.power_SpinBox.setSuffix('s')
+        self.power_SpinBox.setDecimals(2)
+        self.power_SpinBox.setSuffix('a.u.')
 
         self.power_SpinBox.editingFinished.connect(self.update_params)
 

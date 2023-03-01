@@ -135,6 +135,7 @@ class PowerControllerLogic(LogicBase):
         if self.module_state() != 'idle' and self.module_state() != 'deactivated':
             pass
     
+    # def constraints!
 
 
     @QtCore.Slot(int)

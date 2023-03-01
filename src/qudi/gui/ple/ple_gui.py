@@ -202,8 +202,8 @@ class PLEScanGui(GuiBase):
             self._controller_logic = self._controller_logic()
             
             self._mw.add_dock_widget('Controller')
-            self._mw.ControllerWidget.sig_controller_params_updated.connect(self._controller_logic.params_updated, QtCore.Qt.QueuedConnection)
-            self._controller_logic.sigGuiParamsUpdated.connect(self._mw.ControllerWidget.update_gui, QtCore.Qt.QueuedConnection)
+            self._mw.Controller_widget.sig_controller_params_updated.connect(self._controller_logic.params_updated, QtCore.Qt.QueuedConnection)
+            self._controller_logic.sigGuiParamsUpdated.connect(self._mw.Controller_widget.update_gui, QtCore.Qt.QueuedConnection)
             self._controller_logic.sigGuiParamsUpdated.emit(self._controller_logic.parameters)
         
 
