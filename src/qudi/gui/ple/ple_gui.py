@@ -84,7 +84,7 @@ class PLEScanGui(GuiBase):
     # sigToggleScan = QtCore.Signal(bool, tuple, object)
     sigOptimizerSettingsChanged = QtCore.Signal(dict)
     sigToggleOptimize = QtCore.Signal(bool)
-    sigSaveScan = QtCore.Signal(object, object, object, object, object)
+    sigSaveScan = QtCore.Signal(object, object, object, object, object, object)
     sigSaveFinished = QtCore.Signal()
     sigShowSaveDialog = QtCore.Signal(bool)
 
@@ -205,7 +205,7 @@ class PLEScanGui(GuiBase):
             self._mw.Controller_widget.sig_controller_params_updated.connect(self._controller_logic.params_updated, QtCore.Qt.QueuedConnection)
             self._controller_logic.sigGuiParamsUpdated.connect(self._mw.Controller_widget.update_gui, QtCore.Qt.QueuedConnection)
             self._controller_logic.sigGuiParamsUpdated.emit(self._controller_logic.parameters)
-        
+
 
 
         self.scanner_target_updated()
@@ -802,7 +802,8 @@ class PLEScanGui(GuiBase):
             # else:
             #     scan_axes = [scan_axes]
             cbar_range = self._mw.matrix_widget.image_widget.levels
-            self.sigSaveScan.emit(scans[0], self._accumulated_data, cbar_range, name_tag, self._save_folderpath)
+            meta_params = self._mw.Controller_widget.params if self._controller_logic else dict()
+            self.sigSaveScan.emit(scans[0], self._accumulated_data, cbar_range, name_tag, self._save_folderpath, meta_params)
 
         finally:
             pass

@@ -7,7 +7,7 @@ import pyqtgraph as pg
 
 class ControllerWidget(QtWidgets.QWidget):
     sig_controller_params_updated = QtCore.Signal(dict)
-    
+    params = {}
 
     def __init__(self, name, *args, **kwargs):
         this_dir = os.path.dirname(__file__)
@@ -24,12 +24,13 @@ class ControllerWidget(QtWidgets.QWidget):
         self.set_constraints()
 
     def update_params(self):
-        params = {
+        self.params = {
         "power": self.power_SpinBox.value()
         }
-        self.sig_controller_params_updated.emit(params)
+        self.sig_controller_params_updated.emit(self.params)
     
     def update_gui(self, params):
+        self.params.update(params)
         self.power_SpinBox.setValue(params['power'])
 
     def set_constraints(self, constraints=None):
