@@ -67,6 +67,7 @@ class PLEScanGui(GuiBase):
     _data_logic = Connector(name='data_logic', interface='PleDataLogic')
     _microwave_logic = Connector(name='microwave', interface= 'OdmrLogic', optional=True)
     _repump_logic = Connector(name='repump', interface= 'RepumpInterfuseLogic', optional=True)
+    _controller_logic = Connector(name='controller', interface= 'ControllerInterfuseLogic', optional=True)
 
     # status vars
     _window_state = StatusVar(name='window_state', default=None)
@@ -196,6 +197,14 @@ class PLEScanGui(GuiBase):
             self._mw.Pulsed_widget.sig_prescan_repump.connect(self.setup_repump_before_scan)
             self._repump_logic.sigGuiParamsUpdated.emit(self._repump_logic.parameters)
 
+        if self._controller_logic() is not None:
+            self._controller_logic = self._controller_logic()
+            
+            self._mw.add_dock_widget('Controller')
+            self._mw.ControllerWidget.sig_controller_params_updated.connect(self._controller_logic.params_updated, QtCore.Qt.QueuedConnection)
+            self._controller_logic.sigGuiParamsUpdated.connect(self._mw.ControllerWidget.update_gui, QtCore.Qt.QueuedConnection)
+            self._controller_logic.sigGuiParamsUpdated.emit(self._controller_logic.parameters)
+        
 
 
         self.scanner_target_updated()
