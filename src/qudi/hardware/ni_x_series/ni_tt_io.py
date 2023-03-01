@@ -230,10 +230,7 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         # Check if all input channels fit in the device
         #!TODO FIX with the TimeTagger can be more inputs
-        if len(digital_sources) > 3:
-            raise ValueError(
-                'Too many digital channels specified. Maximum number of digital channels is 3.'
-            )
+
         if len(analog_sources) > 16:
             raise ValueError(
                 'Too many analog channels specified. Maximum number of analog channels is 16.'
