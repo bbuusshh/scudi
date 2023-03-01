@@ -8,6 +8,7 @@ from qudi.util.widgets.fitting import FitWidget
 import importlib
 from qudi.interface.scanning_probe_interface import ScanData, ScannerAxis, ScannerChannel
 from qudi.gui.ple.ple_repump_widget import PleMicrowaveWidget, PlePulsedWidget
+from qudi.gui.ple.controller_widget import ControllerWidget
 from typing import Tuple, Union, Sequence
 from typing import Optional, List
 try:
@@ -55,9 +56,10 @@ class PLEScanMainWindow(QtWidgets.QMainWindow):
 
         if name == 'Microwave':
             setattr(self, f"{name}_widget", PleMicrowaveWidget())
-        else:
+        elif name == "Pulsed":
             setattr(self, f"{name}_widget", PlePulsedWidget(name))
-        
+        elif name == "Controller":
+            setattr(self, f"{name}_widget", ControllerWidget(name))
         setattr(self, f"{name}_dockWidget", QtWidgets.QDockWidget())
         dockWidget = getattr(self, f"{name}_dockWidget")
         dockWidget.setObjectName(name)
