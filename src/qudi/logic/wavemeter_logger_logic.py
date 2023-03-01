@@ -93,9 +93,6 @@ class WavemeterLoggerLogic(LogicBase):
     
     def __init__(self, config, **kwargs):
         """ Create WavemeterLoggerLogic object with connectors.
-
-          @param dict config: module configuration
-          @param dict kwargs: optional parameters
         """
         super().__init__(config=config, **kwargs)
         

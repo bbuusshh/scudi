@@ -283,7 +283,7 @@ class PleDataLogic(LogicBase):
                         arrowprops={'facecolor': '#17becf', 'shrink': 0.05})
         return fig
 
-    def save_scan(self, scan_data, accumulated_data, color_range=None, tag='', root_dir=None):
+    def save_scan(self, scan_data, accumulated_data, color_range=None, tag='', root_dir=None, control_parameters = dict()):
         with self._thread_lock:
             if self.module_state() != 'idle':
                 self.log.error('Unable to save 2D scan. Saving still in progress...')
@@ -327,6 +327,7 @@ class PleDataLogic(LogicBase):
                             parameters[f"{new_ax} axis unit"] = ax_unit
 
                 # Save data and thumbnail to file
+                parameters.update(control_parameters)
                 for channel, data in scan_data.data.items():
                     # data
                     # nametag = '{0}_{1}{2}_image_scan'.format(channel, *scan_data.scan_axes)
