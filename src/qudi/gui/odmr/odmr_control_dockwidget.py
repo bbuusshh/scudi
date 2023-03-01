@@ -210,6 +210,7 @@ class OdmrScanControlDockWidget(AdvancedDockWidget):
         self.average_scans_spinbox = QtWidgets.QSpinBox()
         self.average_scans_spinbox.setMinimumWidth(self._min_spinbox_width)
         self.average_scans_spinbox.setMinimum(0)
+        self.average_scans_spinbox.setMaximum(1000000)
         self.average_scans_spinbox.valueChanged.connect(self.sigAveragedScansChanged)
         layout.addWidget(self.average_scans_spinbox, 0, 3)
         layout.addWidget(self.runtime_spinbox, 0, 1)
