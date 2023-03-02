@@ -193,8 +193,10 @@ class PLEScanGui(GuiBase):
             self._scanning_logic.sigRepeatScan.connect(self. _repump_logic.repump_before_scan)
             
             self._mw.add_dock_widget('Pulsed')
-            self._mw.Pulsed_widget.sig_pulser_params_updated.connect(self._repump_logic.pulser_updated, QtCore.Qt.QueuedConnection)
-            self._repump_logic.sigGuiParamsUpdated.connect(self._mw.Pulsed_widget.update_gui, QtCore.Qt.QueuedConnection)
+            self._mw.Pulsed_widget.sig_pulser_params_updated.connect(self._repump_logic.pulser_updated, 
+                                                                     QtCore.Qt.QueuedConnection)
+            self._repump_logic.sigGuiParamsUpdated.connect(self._mw.Pulsed_widget.update_gui, 
+                                                           QtCore.Qt.QueuedConnection)
             self._mw.Pulsed_widget.sig_prescan_repump.connect(self.setup_repump_before_scan)
             self._repump_logic.sigGuiParamsUpdated.emit(self._repump_logic.parameters)
 
@@ -202,10 +204,13 @@ class PLEScanGui(GuiBase):
             self._controller_logic = self._controller_logic()
             
             self._mw.add_dock_widget('Controller')
-            self._mw.Controller_widget.sig_controller_params_updated.connect(self._controller_logic.params_updated, QtCore.Qt.QueuedConnection)
-            self._controller_logic.sigGuiParamsUpdated.connect(self._mw.Controller_widget.update_gui, QtCore.Qt.QueuedConnection)
+            self._mw.Controller_widget.sig_controller_params_updated.connect(self._controller_logic.params_updated, 
+                                                                             QtCore.Qt.QueuedConnection)
+            self._controller_logic.sigGuiParamsUpdated.connect(self._mw.Controller_widget.update_gui, 
+                                                               QtCore.Qt.QueuedConnection)
             self._controller_logic.sigGuiParamsUpdated.emit(self._controller_logic.parameters)
-
+            self._mw.Controller_widget.moveMotor_pushButton.clicked(self._controller_logic.move_motor, 
+                                                                    QtCore.Qt.QueuedConnection)
 
 
         self.scanner_target_updated()

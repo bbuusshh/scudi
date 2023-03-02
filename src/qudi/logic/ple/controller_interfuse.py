@@ -55,16 +55,32 @@ class ControllerInterfuseLogic(LogicBase):
         if self._power_controller:
             self.parameters['power'] = self._power_controller._current_positions[self._power_channel]
             self._power_controller.sig_set_power.connect(self.update_power, QtCore.Qt.QueuedConnection)
-        
+
+        if self._laser_controller:
+            self.parameters['eta_voltage'] = self._laser_controller.etalon_voltage
+            self.parameters["motor_direction"] = self._laser_controller.motor_direction
+            # self._power_controller.sig_set_power.connect(self.update_power, QtCore.Qt.QueuedConnection)
+
     def on_deactivate(self):
         pass
     
     @QtCore.Slot(dict)
     def params_updated(self, params):
-        self.parameters['power'] = params['power']
-        print(params['power'])
+       
+        if params == self.parameters:
+            # "nothing_new"
+            return 
+
         self._power_controller.sig_set_power.emit(params['power'], self._power_channel, False)
-    
+        self._laser_controller.etalon_voltage = params['eta_voltage']
+        self._laser_controller.motor_direction = params['motor_direction']
+
+        self.parameters.update(params)
+
+    @QtCore.Slot()
+    def move_motor(self):
+        self._laser_controller.move_motor_pulse()
+
     @QtCore.Slot(float, int, bool)
     def update_power(self, power, channel, calibrated):
         self.parameters['power'] = power
