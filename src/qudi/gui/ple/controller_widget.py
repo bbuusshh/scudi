@@ -19,19 +19,25 @@ class ControllerWidget(QtWidgets.QWidget):
         self.power_SpinBox.setSuffix('a.u.')
 
         self.power_SpinBox.editingFinished.connect(self.update_params)
-
+        self.etalon_SpinBox.editingFinished.connect(self.update_params)
+        self.blue_radioButton.toggled.connect(self.update_params)
+        self.red_radioButton.toggled.connect(self.update_params)
 
         self.set_constraints()
 
     def update_params(self):
         self.params = {
-        "power": self.power_SpinBox.value()
+        "power": self.power_SpinBox.value(),
+        "eta_voltage": self.etalon_SpinBox.value(),
+        "motor_direction" : 1 if self.blue_radioButton.isChecked() else -1
         }
         self.sig_controller_params_updated.emit(self.params)
     
     def update_gui(self, params):
         self.params.update(params)
         self.power_SpinBox.setValue(params['power'])
+        self.etalon_SpinBox.setValue(params['eta_voltage'])
+        self.blue_radioButton.setChecked( True if params['motor_direction'] > 0 else False)
 
     def set_constraints(self, constraints=None):
         # #TODO get pulse streamer constraints
