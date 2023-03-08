@@ -14,15 +14,18 @@ class iBeamSmart(Base):
     #TODO: add documentation here
     """
     """
+    port = ConfigOption(name='port', missing='error')
+
     channel = 2
-    def __init__(self, port='COM3'):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         """ Initalize the verdieLaser object.
             
             It will grab the first available I/O serial port, as is
             consistent with the PySerial modules.
         """
         # configure the port
-        self.port = port
+        pass
 
 
     def on_activate(self):
@@ -42,7 +45,7 @@ class iBeamSmart(Base):
             self.port.open()
             self.portOK = True
         except:
-            print("The Verdi port did not open")
+            print("The iBeam smart port did not open")
             print("Please check the connection")
             self.port.close()
             #traceback.print_exc()  # print the exception
@@ -56,6 +59,8 @@ class iBeamSmart(Base):
                 
             # clear input buffer so ready to talk to laser
             self.port.flushInput()
+        
+        self.portOpen()
 
     def on_deactivate(self):
         """ Deactivate module.
@@ -94,7 +99,7 @@ class iBeamSmart(Base):
             self.port.open()
             self.portOK = True
         except:
-            print("The Verdi port did not open")
+            print("The iBeam smart port did not ope4n")
             print("Please check the connection")
             self.port.close()
             #traceback.print_exc()  # print the exception
