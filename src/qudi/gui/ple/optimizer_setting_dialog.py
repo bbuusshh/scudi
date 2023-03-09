@@ -247,7 +247,7 @@ class OptimizerAxesWidget(QtWidgets.QWidget):
 
     @property
     def range(self):
-        return {ax: widgets['range_spinbox'].value() for ax, widgets in self.axes_widgets.items()}
+        return {ax: int(widgets['range_spinbox'].value()) for ax, widgets in self.axes_widgets.items()}
 
     @property
     def frequency(self):
@@ -272,7 +272,7 @@ class OptimizerAxesWidget(QtWidgets.QWidget):
             spinbox.blockSignals(False)
 
     def get_range(self, axis):
-        return self.axes_widgets[axis]['range_spinbox'].value()
+        return int(self.axes_widgets[axis]['range_spinbox'].value())
 
     @QtCore.Slot(dict)
     @QtCore.Slot(object, str)

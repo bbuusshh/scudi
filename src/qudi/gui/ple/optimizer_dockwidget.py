@@ -217,10 +217,10 @@ class OptimizerDockWidget(QtWidgets.QDockWidget):
             return out_str
 
         axis_str = _dict_2_str(self._last_optimal_pos, True) + "= "
-        pos_str = _dict_2_str(self._last_optimal_pos)
-        sigma_str = _dict_2_str(self._last_optimal_sigma)
+        pos_str = _dict_2_str(self._last_optimal_pos/1e6)
+        sigma_str = _dict_2_str(self._last_optimal_sigma/1e3)
         self.pos_ax_label.setText(axis_str)
-        self.result_label.setText(pos_str + " µm,  σ= " + sigma_str + " µm")
+        self.result_label.setText(pos_str + " GHz,  σ= " + sigma_str + " MHz")
 
     def set_image(self, image, axs, extent=None):
 
