@@ -208,7 +208,7 @@ class OptimizerDockWidget(QtWidgets.QDockWidget):
                     out_str += f"{key}, "
                 else:
                     if val:
-                        val = val / 1e6 #in MHz
+                        #val = val #in MHz
                         out_str += f"{val:.3f}, "
                     else:
                         out_str += "?, "
