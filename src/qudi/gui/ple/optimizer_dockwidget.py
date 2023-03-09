@@ -208,6 +208,7 @@ class OptimizerDockWidget(QtWidgets.QDockWidget):
                     out_str += f"{key}, "
                 else:
                     if val:
+                        val = val / 1e6 #in MHz
                         out_str += f"{val:.3f}, "
                     else:
                         out_str += "?, "
@@ -217,10 +218,10 @@ class OptimizerDockWidget(QtWidgets.QDockWidget):
             return out_str
 
         axis_str = _dict_2_str(self._last_optimal_pos, True) + "= "
-        pos_str = _dict_2_str(self._last_optimal_pos/1e6)
-        sigma_str = _dict_2_str(self._last_optimal_sigma/1e3)
+        pos_str = _dict_2_str(self._last_optimal_pos)
+        sigma_str = _dict_2_str(self._last_optimal_sigma)
         self.pos_ax_label.setText(axis_str)
-        self.result_label.setText(pos_str + " GHz,  σ= " + sigma_str + " MHz")
+        self.result_label.setText(pos_str + " MHz,  σ= " + sigma_str + " MHz")
 
     def set_image(self, image, axs, extent=None):
 
