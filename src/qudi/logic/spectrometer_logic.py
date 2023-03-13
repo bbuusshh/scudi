@@ -146,75 +146,75 @@ class SpectrometerLogic(LogicBase):
         self._sig_get_spectrum.emit(self._constant_acquisition, self._differential_spectrum, reset)
 
     def get_spectrum(self, constant_acquisition=None, differential_spectrum=None, reset=True):
-        with self._threadlock:
-            if self.module_state() != 'idle':
-                self.log.error('Can not start spectrometer aquisition. Measurement is already running.')
-                self.sig_data_updated.emit()
-                return
-            
-            self.module_state.lock()
+        #with self._threadlock:
+        #    if self.module_state() != 'idle':
+        #        self.log.error('Can not start spectrometer aquisition. Measurement is already running.')
+        #        self.sig_data_updated.emit()
+        #        return
+        #    
+        #    self.module_state.lock()
 
-            if constant_acquisition is not None:
-                self.constant_acquisition = bool(constant_acquisition)
-            if differential_spectrum is not None:
-                self.differential_spectrum = bool(differential_spectrum)
-            self._stop_acquisition = False
+        if constant_acquisition is not None:
+            self.constant_acquisition = bool(constant_acquisition)
+        if differential_spectrum is not None:
+            self.differential_spectrum = bool(differential_spectrum)
+        self._stop_acquisition = False
 
-            if reset:
-                self._spectrum = [None, None]
-                self._wavelength = None
-                self._repetitions_spectrum = 0
+        if reset:
+            self._spectrum = [None, None]
+            self._wavelength = None
+            self._repetitions_spectrum = 0
 
-            self._acquisition_running = True
-            self.sig_state_updated.emit()
+        self._acquisition_running = True
+        self.sig_state_updated.emit()
 
-            if self.differential_spectrum_available and self._differential_spectrum:
-                self.modulation_device().modulation_on()
+        if self.differential_spectrum_available and self._differential_spectrum:
+            self.modulation_device().modulation_on()
 
-            if self.flip_mirror() and self.do_flip:
-                #key = self.flip_mirror().available_states.keys()[0]
-                #state = self.flip_mirror().get_state(key)
-                self.spectrometer().clearBuffer()
-                self.flip_mirror().set_state(self.flip_mirror().switch_names[0], 'On')
-            # get data from the spectrometer
-            data = np.array(self.spectrometer().record_spectrum())
-            with self._lock:
-                if self._spectrum[0] is None:
-                    self._spectrum[0] = data[1, :]
-                else:
-                    self._spectrum[0] += data[1, :]
-
-                self._wavelength = data[0, :]
-                self._repetitions_spectrum += 1
-
-            if self.differential_spectrum_available and self._differential_spectrum:
-                self.modulation_device().modulation_off()
-                data = np.array(netobtain(self.spectrometer().record_spectrum()))
-                
-                with self._lock:
-                    if self._spectrum[1] is None:
-                        self._spectrum[1] = data[1, :]
-                    else:
-                        self._spectrum[1] += data[1, :]
+        if self.flip_mirror() and self.do_flip:
+            #key = self.flip_mirror().available_states.keys()[0]
+            #state = self.flip_mirror().get_state(key)
+            self.spectrometer().clearBuffer()
+            self.flip_mirror().set_state(self.flip_mirror().switch_names[0], 'On')
+        # get data from the spectrometer
+        data = np.array(self.spectrometer().record_spectrum())
+        with self._lock:
+            if self._spectrum[0] is None:
+                self._spectrum[0] = data[1, :]
             else:
-                with self._lock:
-                    self._spectrum[1] = None
-            self.sig_data_updated.emit()
+                self._spectrum[0] += data[1, :]
 
-            if self._constant_acquisition and not self._stop_acquisition \
-                    and (not self.max_repetitions or self._repetitions_spectrum < self.max_repetitions):
-                return self.run_get_spectrum(reset=True)
-            self._acquisition_running = False
-            self.fit_region = self._fit_region
-            self.sig_state_updated.emit()
+            self._wavelength = data[0, :]
+            self._repetitions_spectrum += 1
+
+        if self.differential_spectrum_available and self._differential_spectrum:
+            self.modulation_device().modulation_off()
+            data = np.array(netobtain(self.spectrometer().record_spectrum()))
             
-            if self.flip_mirror() and self.do_flip:
-                
-                self.flip_mirror().set_state(self.flip_mirror().switch_names[0], 'Off')
+            with self._lock:
+                if self._spectrum[1] is None:
+                    self._spectrum[1] = data[1, :]
+                else:
+                    self._spectrum[1] += data[1, :]
+        else:
+            with self._lock:
+                self._spectrum[1] = None
+        self.sig_data_updated.emit()
 
-            self.sigSpectrumDone.emit()
-            self.module_state.unlock()
-            return self.spectrum
+        if self._constant_acquisition and not self._stop_acquisition \
+                and (not self.max_repetitions or self._repetitions_spectrum < self.max_repetitions):
+            return self.run_get_spectrum(reset=True)
+        self._acquisition_running = False
+        self.fit_region = self._fit_region
+        self.sig_state_updated.emit()
+        
+        if self.flip_mirror() and self.do_flip:
+            
+            self.flip_mirror().set_state(self.flip_mirror().switch_names[0], 'Off')
+
+        self.sigSpectrumDone.emit()
+        #self.module_state.unlock()
+        return self.spectrum
 
     def run_get_background(self, constant_acquisition=None, reset=True):
         if constant_acquisition is not None:

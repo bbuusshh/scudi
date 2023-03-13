@@ -259,26 +259,26 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
                                    'possible range is: {1}'
                                    ''.format(ax, axis_constr.frequency_range))
                     return True, self.scan_settings
-            with self._thread_lock_data:
-                try:
-                    self._scan_data = ScanData(
-                        channels=tuple(self._constraints.channels.values()),
-                        scan_axes=tuple(self._constraints.axes[ax] for ax in axes),
-                        scan_range=ranges,
-                        scan_resolution=tuple(resolution),
-                        scan_frequency=frequency,
-                        position_feedback_axes=None
-                    )
-                    self.raw_data_container = RawDataContainer(self._scan_data.channels,
-                                                               resolution[
-                                                                   1] if self._scan_data.scan_dimension == 2 else 1,
-                                                               resolution[0],
-                                                               self.__backwards_line_resolution)
-                    # self.log.debug(f"New scanData created: {self._scan_data.data}")
+        with self._thread_lock_data:
+            try:
+                self._scan_data = ScanData(
+                    channels=tuple(self._constraints.channels.values()),
+                    scan_axes=tuple(self._constraints.axes[ax] for ax in axes),
+                    scan_range=ranges,
+                    scan_resolution=tuple(resolution),
+                    scan_frequency=frequency,
+                    position_feedback_axes=None
+                )
+                self.raw_data_container = RawDataContainer(self._scan_data.channels,
+                                                            resolution[
+                                                                1] if self._scan_data.scan_dimension == 2 else 1,
+                                                            resolution[0],
+                                                            self.__backwards_line_resolution)
+                # self.log.debug(f"New scanData created: {self._scan_data.data}")
 
-                except:
-                    self.log.exception("")
-                    return True, self.scan_settings
+            except:
+                self.log.exception("")
+                return True, self.scan_settings
 
             try:
                 self._ni_finite_sampling_io().set_sample_rate(frequency)

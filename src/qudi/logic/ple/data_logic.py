@@ -338,6 +338,9 @@ class PleDataLogic(LogicBase):
                                                    timestamp=timestamp,
                                                    column_headers='Image (columns is X, rows is Y)')
                     # thumbnail
+                    self.last_saved_files_paths.update(
+                        {f"scan_ch_{channel}": file_path},
+                    )
                     if len(scan_data.scan_axes) == 1:
                         figure = self.draw_1d_scan_figure(scan_data, channel)
                         ds.save_thumbnail(figure, file_path=file_path.rsplit('.', 1)[0])
@@ -361,7 +364,10 @@ class PleDataLogic(LogicBase):
 
                     figure = self.draw_2d_scan_figure(scan_data, accumulated_data, channel, cbar_range=color_range)
                     ds.save_thumbnail(figure, file_path=file_path.rsplit('.', 1)[0])
-
+                    
+                    self.last_saved_files_paths.update(
+                        {f"cummulative_ch_{channel}": file_path},
+                    )
                     #Averaged PLEs:
                     data_averaged = data.mean(axis=0)
                     file_path, _, _ = ds.save_data(data_averaged,
@@ -372,8 +378,10 @@ class PleDataLogic(LogicBase):
 
                     figure = self.draw_1d_scan_figure(scan_data, channel, data_averaged=data_averaged)
                     ds.save_thumbnail(figure, file_path=file_path.rsplit('.', 1)[0])
-                   
-
+                    self.last_saved_files_paths.update(
+                        {"averaged_ch_{channel}": file_path},
+                    )
+                    self.last_saved_files_paths["parameters"] = parameters
             finally:
                 self.module_state.unlock()
                 self.sigSaveStateChanged.emit(False)

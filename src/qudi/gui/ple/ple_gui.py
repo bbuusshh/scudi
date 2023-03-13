@@ -99,13 +99,16 @@ class PLEScanGui(GuiBase):
         """
         self._save_window_geometry(self._mw)
         self.save_view()
-        self._mw.close()
+        
         self.sigScannerTargetChanged.disconnect()
-        self._optimize_logic().sigOptimizeStateChanged.disconnect(self.optimize_state_updated)
+        #self._optimize_logic().sigOptimizeStateChanged.disconnect(self.optimize_state_updated)
         self.sigScanSettingsChanged.disconnect()
         self.sigOptimizerSettingsChanged.disconnect()
-        self._scanning_logic.sigToggleScan.disconnect()
+        #self._scanning_logic.sigToggleScan.disconnect()
         self.sigToggleOptimize.disconnect()
+
+        self._mw.close()
+
         return 0
 
     def on_activate(self):
@@ -451,7 +454,7 @@ class PLEScanGui(GuiBase):
         """
         """
         #! TODO: uncomment by implemebnting
-        self._toggle_enable_actions(not enabled, exclude_action=self._mw.action_optimize_position)
+        #self._toggle_enable_actions(not enabled, exclude_action=self._mw.action_optimize_position)
         # self._toggle_enable_scan_buttons(not enabled)
         # self._toggle_enable_scan_crosshairs(not enabled)
         self.sigToggleOptimize.emit(enabled)
@@ -459,7 +462,7 @@ class PLEScanGui(GuiBase):
 
 
     def _init_ui_connectors(self):
-        new_scan_range = lambda: self.sigScanSettingsChanged.emit({'range': {self.scan_axis: (self._mw.startDoubleSpinBox.value(), self._mw.stopDoubleSpinBox.value())}})
+        new_scan_range = lambda: self.sigScanSettingsChanged.emit({'range': {self.scan_axis: (int(self._mw.startDoubleSpinBox.value()), int(self._mw.stopDoubleSpinBox.value()))}})
         self._mw.startDoubleSpinBox.editingFinished.connect(new_scan_range)
         self._mw.stopDoubleSpinBox.editingFinished.connect(new_scan_range)
         self._mw.frequencyDoubleSpinBox.editingFinished.connect(
@@ -496,10 +499,12 @@ class PLEScanGui(GuiBase):
     def region_value_changed_averaged_data(self):
         region = self._mw.ple_averaged_widget.selected_region.getRegion()
         
+
         self._mw.startDoubleSpinBox.setValue(region[0])
         self._mw.stopDoubleSpinBox.setValue(region[1])
         self._mw.ple_widget.selected_region.setRegion(region)
 
+        region = (int(region[0]), int(region[1]))
         self.sigScanSettingsChanged.emit({'range': {self.scan_axis: region}})
 
 
@@ -507,11 +512,13 @@ class PLEScanGui(GuiBase):
     def region_value_changed(self):
         region = self._mw.ple_widget.selected_region.getRegion()
         
+
         self._mw.startDoubleSpinBox.setValue(region[0])
         self._mw.stopDoubleSpinBox.setValue(region[1])
         self._mw.ple_averaged_widget.selected_region.setRegion(region)
         self._mw.ple_widget.target_point.setValue(region[0])
 
+        region = (int(region[0]), int(region[1]))
         self.sigScanSettingsChanged.emit({'range': {self.scan_axis: region}})
 
     @QtCore.Slot()
@@ -604,7 +611,7 @@ class PLEScanGui(GuiBase):
         
         # target = self._mw.ple_widget.target_point.value()
         
-        target_pos = {self._scanning_logic._scan_axis: target}
+        target_pos = {self._scanning_logic._scan_axis: int(target)}
         
         # self.scanner_target_updated(pos_dict=target_pos, caller_id=None)
 
