@@ -114,6 +114,7 @@ class SpectrometerLogic(LogicBase):
         self._acquisition_running = False
         self._fit_results = None
         self._fit_method = ''
+        self.last_saved_path = None
         
 
 
@@ -410,7 +411,7 @@ class SpectrometerLogic(LogicBase):
                                        nametag=file_label,
                                        timestamp=timestamp,
                                        column_dtypes=[float] * len(header))
-
+        self.last_saved_path = file_path
         # save the figure into a file
         figure, ax1 = plt.subplots()
         

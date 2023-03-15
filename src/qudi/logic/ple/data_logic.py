@@ -78,6 +78,7 @@ class PleDataLogic(LogicBase):
 
         self._curr_history_index = 0
         self._curr_data_per_scan = dict()
+        self.last_saved_files_paths = dict()
         self._logic_id = None
         return
 

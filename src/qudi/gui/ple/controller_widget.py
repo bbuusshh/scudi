@@ -17,15 +17,22 @@ class ControllerWidget(QtWidgets.QWidget):
 
         self.power_SpinBox.setDecimals(2)
         self.power_SpinBox.setSuffix('a.u.')
-
         self.power_SpinBox.editingFinished.connect(self.update_params)
 
+        self.ni_radioButton.toggled.connect(self.update_params)
+        self.wm_radioButton.toggled.connect(self.update_params)
+
+        self.lock_wm_checkBox.toggled.connect(self.update_params)
 
         self.set_constraints()
 
+        #self._init_tracking_clock()
+
     def update_params(self):
         self.params = {
-        "power": self.power_SpinBox.value()
+        "power": self.power_SpinBox.value(),
+        "scan_mode": "ni" if self.ni_radioButton.isChecked() else "wm",
+        "lock_wm": self.lock_wm_checkBox.isChecked()
         }
         self.sig_controller_params_updated.emit(self.params)
     
@@ -62,3 +69,7 @@ class ControllerWidget(QtWidgets.QWidget):
         # self.PowerDoubleSpinBox.setDecimals(1)
         # self.PowerDoubleSpinBox.setSuffix(' ')#'μW')
         pass
+
+#   def _init_tracking_clock(self):
+
+

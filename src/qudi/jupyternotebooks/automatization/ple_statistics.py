@@ -1,9 +1,10 @@
 import time
 import numpy as np
-
+import os
 class PleAuto:
     def __init__(self, ple_gui, 
-                 ple_optimize_logic, 
+                 ple_optimize_logic,
+                 laser_scanner_logic, 
                  poi_manager_logic, 
                  scanning_optimize_logic, 
                  spectrometer, 
@@ -14,6 +15,7 @@ class PleAuto:
         self.ple_gui = ple_gui
         self.ple_optimize_logic = ple_optimize_logic
         self.poi_manager_logic = poi_manager_logic
+        self.laser_scanner_logic = laser_scanner_logic
         self.scanning_optimize_logic = scanning_optimize_logic
         self.spectrometer = spectrometer
         self.spectrometerlogic = spectrometerlogic
@@ -89,37 +91,39 @@ class PleAuto:
                 time.sleep(1)
         time.sleep(1)
 
+
+    def go_to_ple_target(self, target):
+        #target = self.ple_gui.fit_result[1].params["center"].value
+        self.ple_gui._mw.ple_widget.target_point.setValue(0)
+        time.sleep(2)
+        self.ple_gui._mw.ple_widget.target_point.setValue(target)
+        self.ple_gui._mw.ple_widget.target_point.sigPositionChangeFinished.emit(target)
+        time.sleep(2)
+
+    def one_pulse_repump(self, color='blue'):
+        if color == "blue":
+            self.cobolt.set_laser_modulated_power(power = 20)
+            self.cobolt.enable_modulated()
+            time.sleep(0.2)
+            self.cobolt.disable_modulated()
+        else:
+            self.ibeam_smart.enable()
+            time.sleep(0.2)
+            self.ibeam_smart.disable()
+
+    def save_ple(self, tag, poi_name=None, folder_name = None):
+        if folder_name:
+            self.ple_gui._save_folderpath = folder_name
+        self.ple_gui.save_path_widget.saveTagLineEdit.setText(
+            f"{poi_name}_{tag}"
+            )
+        self.ple_gui._mw.actionSave.triggered.emit()
+    
+    
     def save_spectrum(self, name_tag, folder_path=None):
         if folder_path:
             self.spectrometer._save_folderpath = folder_path
         self.spectrometer.save_widget.saveTagLineEdit.setText(name_tag)
         # hit save
-        self.spectrometer.sigSaveSpectrum.emit()
-
-
-def go_to_ple_target(self, target):
-    #target = self.ple_gui.fit_result[1].params["center"].value
-    self.ple_gui._mw.ple_widget.target_point.setValue(0)
-    time.sleep(2)
-    self.ple_gui._mw.ple_widget.target_point.setValue(target)
-    self.ple_gui._mw.ple_widget.target_point.sigPositionChangeFinished.emit(target)
-    time.sleep(2)
-
-def one_pulse_repump(self, color='blue'):
-    if color == "blue":
-        self.cobolt.set_laser_modulated_power(power = 20)
-        self.cobolt.enable_modulated()
-        time.sleep(0.2)
-        self.cobolt.disable_modulated()
-    else:
-        self.ibeam_smart.enable()
-        time.sleep(0.2)
-        self.ibeam_smart.disable()
-
-def save_ple(self, tag, poi_name=None, folder_name = None):
-    if folder_name:
-        self.ple_gui._save_folderpath = folder_name
-    self.ple_gui.save_path_widget.saveTagLineEdit.setText(
-        f"{poi_name}_{tag}"
-        )
-    self.ple_gui._mw.actionSave.triggered.emit()
+        self.spectrometer._mw.action_save_spectrum.triggered.emit()
+        return self.spectrometerlogic.last_saved_path

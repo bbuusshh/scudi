@@ -61,6 +61,7 @@ class SpectrometerGui(GuiBase):
         self._fsd = None
         self._start_acquisition_timestamp = 0
         self._progress_timer = None
+        self.fit_results = None
 
     def on_activate(self):
         """ Definition and initialisation of the GUI.
@@ -271,6 +272,7 @@ class SpectrometerGui(GuiBase):
     def update_fit(self, fit_method, fit_results):
         """ Update the drawn fit curve.
         """
+        self.fit_results = fit_results
         if fit_method != 'No Fit' and fit_results is not None:
             # redraw the fit curve in the GUI plot.
             self._mw.data_widget.fit_curve.setData(x=fit_results.high_res_best_fit[0],
