@@ -175,6 +175,6 @@ class iBeamSmart(Base):
                 power = 0.01
             elif power >= 100000:
                 power = 100000
-            self.port.write("ch pow %s mic%s" % (power, EOL)).encode()
+            self.port.write(f"ch pow {power} mic {EOL}".encode())
       
     
