@@ -52,9 +52,10 @@ class PleAuto:
         time.sleep(1)
     def set_resonant_power(self, power):
         self.ple_gui._mw.Controller_widget.power_SpinBox.setValue(int(power))
-        time.sleep(0.1)
+        time.sleep(0.5)
         self.ple_gui._mw.Controller_widget.power_SpinBox.editingFinished.emit()
-        time.sleep(2)
+        time.sleep(3)
+
 
     def do_ple_scan(self, lines = 1, in_range = None, frequency=None, resolution=None):
         """
