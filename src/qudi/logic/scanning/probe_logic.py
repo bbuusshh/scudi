@@ -57,7 +57,7 @@ class ScanningProbeLogic(LogicBase):
     _scan_ranges = StatusVar(name='scan_ranges', default=None)
     _scan_resolution = StatusVar(name='scan_resolution', default=None)
     _scan_frequency = StatusVar(name='scan_frequency', default=None)
-
+    _backwards_line_resolution = ConfigOption(name='_backwards_line_resolution', default=50)
     # config options
     _min_poll_interval = ConfigOption(name='min_poll_interval', default=None)
 
@@ -99,7 +99,7 @@ class ScanningProbeLogic(LogicBase):
             self._scan_ranges = new_settings['range']
             self._scan_resolution = new_settings['resolution']
             self._scan_frequency = new_settings['frequency']
-            self._scan_backward_resolution = new_settings['backward_resolution']
+
         if not self._min_poll_interval:
             # defaults to maximum scan frequency of scanner
             self._min_poll_interval = 1/np.max([constr.axes[ax].frequency_range for ax in constr.axes])
@@ -174,12 +174,6 @@ class ScanningProbeLogic(LogicBase):
             return cp.copy(self._scan_frequency)
 
     @property
-    def scan_backward_resolution(self):
-        with self._thread_lock:
-            return cp.copy(self._scan_backward_resolution)    
-    
-
-    @property
     def scan_saved_to_history(self):
         with self._thread_lock:
             return self._scan_saved_to_hist
@@ -200,10 +194,12 @@ class ScanningProbeLogic(LogicBase):
                 self.set_scan_resolution(settings['resolution'])
             if 'frequency' in settings:
                 self.set_scan_frequency(settings['frequency'])
-            if 'backward_resolution' in settings:
-                self.set_backward_resolution(settings['backward_resolution'])
             if 'shift' in settings:
                 self.set_scan_shift(settings['shift'])
+            if "backwards_line_resolution" in settings:
+                self._scanner()._backwards_line_resolution = settings['backwards_line_resolution']
+            else:
+                self._scanner()._backwards_line_resolution = self._backwards_line_resolution
             if 'save_to_history' in settings:
                 self._scan_saved_to_hist = settings['save_to_history']
 
@@ -316,17 +312,7 @@ class ScanningProbeLogic(LogicBase):
             new_freq = {ax: self._scan_frequency[ax] for ax in frequency}
             self.sigScanSettingsChanged.emit({'frequency': new_freq})
             return new_freq
-    def set_backward_resolution(self, backward_resolution):
-        with self._thread_lock:
-            if self.module_state() != 'idle':
-                self.log.warning('Scan is running. Unable to change scan backward resolution.')
-                new_backward_resolution = self.backward_resolution
-                self.sigScanSettingsChanged.emit({'backward_resolution': new_backward_resolution})
-                return new_backward_resolution
 
-            self.sigScanSettingsChanged.emit({'backward_resolution': new_backward_resolution})
-            return new_backward_resolution
-        
     def set_target_position(self, pos_dict, caller_id=None, move_blocking=False):
         with self._thread_lock:
             if self.module_state() != 'idle':
@@ -386,10 +372,6 @@ class ScanningProbeLogic(LogicBase):
         if self._scan_frequency[scan_axes[0]] != new:
             self._scan_frequency[scan_axes[0]] = new
             self.sigScanSettingsChanged.emit({'frequency': {scan_axes[0]: new}})
-        
-        # Update scan frequency if needed
-        
-        self.sigScanSettingsChanged.emit({'backward_resolution': int(settings['backward_resolution'])})
 
     def start_scan(self, scan_axes, caller_id=None):
         # get position of the scanner at the start of the scan. This is useful for the poimanager.
@@ -408,9 +390,7 @@ class ScanningProbeLogic(LogicBase):
             settings = {'axes': scan_axes,
                         'range': tuple(self._scan_ranges[ax] for ax in scan_axes),
                         'resolution': tuple(self._scan_resolution[ax] for ax in scan_axes),
-                        'frequency': self._scan_frequency[scan_axes[0]],
-                        "backward_resolution": self._scan_backward_resolution}
-            
+                        'frequency': self._scan_frequency[scan_axes[0]]}
             fail, new_settings = self._scanner().configure_scan(settings)
             if fail:
                 self.module_state.unlock()

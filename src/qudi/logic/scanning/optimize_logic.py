@@ -62,6 +62,8 @@ class ScanningOptimizeLogic(LogicBase):
     _scan_range = StatusVar(name='scan_range', default=None)
     _scan_resolution = StatusVar(name='scan_resolution', default=None)
 
+    _backwards_line_resolution = ConfigOption(name='backwards_line_resolution', default=20)
+    
     # signals
     sigOptimizeStateChanged = QtCore.Signal(bool, dict, object)
     sigOptimizeSettingsChanged = QtCore.Signal(dict)
@@ -264,9 +266,9 @@ class ScanningOptimizeLogic(LogicBase):
                     self.scan_sequence = settings['scan_sequence']
                     settings_update['scan_sequence'] = self.scan_sequence
                     
-                    # self._optimizer_dim = [len(i) for i in self.scan_sequence]
-                    
-
+                # self._optimizer_dim = [len(i) for i in self.scan_sequence]
+          
+                
             self.sigOptimizeSettingsChanged.emit(settings_update)
             return settings_update
 
@@ -323,7 +325,8 @@ class ScanningOptimizeLogic(LogicBase):
                 self.module_state.lock()
 
             # optimizer scans are never saved
-            self._scan_logic().set_scan_settings({'save_to_history': False})
+            self._scan_logic().set_scan_settings({'save_to_history': False, 
+                                                  'backwards_line_resolution': self._backwards_line_resolution})
 
             self._sequence_index = 0
             self._optimal_position = dict()

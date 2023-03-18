@@ -232,7 +232,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         )
         resolution = scan_settings.get('resolution', self._current_scan_resolution)
         frequency = float(scan_settings.get('frequency', self._current_scan_frequency))
-        self.backwards_line_resolution = int(scan_settings.get('backward_resolution', self._backwards_line_resolution))
+        self._backwards_line_resolution = int(scan_settings.get('backward_resolution', self._backwards_line_resolution))
 
         if not set(axes).issubset(self._position_ranges):
             self.log.error('Unknown axes names encountered. Valid axes are: {0}'
@@ -254,7 +254,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
                 self.log.error('Scan resolution out of bounds for axis "{0}". Maximum possible '
                                'range is: {1}'.format(ax, axis_constr.resolution_range))
                 return True, self.scan_settings
-            if self.backwards_line_resolution < axis_constr.min_resolution or self.backwards_line_resolution > axis_constr.max_resolution:
+            if self._backwards_line_resolution < axis_constr.min_resolution or self._backwards_line_resolution > axis_constr.max_resolution:
                 self.log.error('Backward scan resolution out of bounds for axis "{0}". Maximum possible '
                                'range is: {1}'.format(ax, axis_constr.resolution_range))
                 return True, self.scan_settings
