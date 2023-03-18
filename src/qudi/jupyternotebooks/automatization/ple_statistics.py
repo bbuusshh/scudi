@@ -22,39 +22,40 @@ class PleAuto:
         self.cobolt = cobolt
         self.ibeam_smart = ibeam_smart
         return
-    def go_to_poi(self, poi_cur, ref_poi="ref"):
+    def go_to_poi(self, poi_cur, ref_poi="ref", opt_times = 1):
         self.poi_manager_logic.go_to_poi(ref_poi)
         time.sleep(2)
         self.poi_manager_logic.go_to_poi(poi_cur)
-        time.sleep(2)
+        time.sleep(0.5)
         self.poi_manager_logic.go_to_poi(poi_cur)
-        time.sleep(2)
-        for i in range(2):
+        time.sleep(0.5)
+        for i in range(opt_times):
             self.scanning_optimize_logic.start_optimize()
             while self.scanning_optimize_logic.module_state()=='locked':
                 time.sleep(1)
         time.sleep(1)
 
-    def optimize_ple(self):
-        for i in range(2):
+    def optimize_ple(self, opt_times = 1):
+        for i in range(opt_times):
             self.ple_gui.sigToggleOptimize.emit(True)
             while self.ple_optimize_logic.module_state()=='locked':
                 time.sleep(1)
 
-    def optimize_all(self):
+    def optimize_all(self, opt_times = 1):
         #assume the resonant is on
         self.optimize_ple()
         time.sleep(1)
-        for i in range(2):
+        for i in range(opt_times):
             self.scanning_optimize_logic.start_optimize()
             while self.scanning_optimize_logic.module_state()=='locked':
                 time.sleep(1)
         time.sleep(1)
     def set_resonant_power(self, power):
-        self.ple_gui._mw.Controller_widget.power_SpinBox.setValue(power)
-        time.sleep(0.1)
+        self.ple_gui._mw.Controller_widget.power_SpinBox.setValue(int(power))
+        time.sleep(0.5)
         self.ple_gui._mw.Controller_widget.power_SpinBox.editingFinished.emit()
-        time.sleep(2)
+        time.sleep(3)
+
 
     def do_ple_scan(self, lines = 1, in_range = None, frequency=None, resolution=None):
         """
