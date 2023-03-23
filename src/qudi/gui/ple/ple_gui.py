@@ -97,6 +97,9 @@ class PLEScanGui(GuiBase):
         """ Reverse steps of activation
         @return int: error code (0:OK, -1:error)
         """
+
+        self._fit_config_dialog.close()
+        # self._fsd = None
         self._save_window_geometry(self._mw)
         self.save_view()
         
@@ -412,6 +415,7 @@ class PLEScanGui(GuiBase):
         self._fit_dockwidget = PleFitDockWidget(parent=self._mw, fit_container=self._scanning_logic._fit_container)
         self._fit_config_dialog = FitConfigurationDialog(parent=self._mw,
                                                          fit_config_model=self._scanning_logic._fit_config_model)
+        self._mw.action_show_fit_settings.triggered.connect(self._fit_config_dialog.show)
         self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._fit_dockwidget)
         self.sigDoFit.connect(self._scanning_logic.do_fit, QtCore.Qt.QueuedConnection)
         self._scanning_logic.sigFitUpdated.connect(self._update_fit_result, QtCore.Qt.QueuedConnection)

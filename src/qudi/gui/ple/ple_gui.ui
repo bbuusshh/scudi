@@ -62,6 +62,7 @@
     </property>
     <addaction name="action_ple_settings"/>
     <addaction name="action_optimizer_settings"/>
+    <addaction name="action_show_fit_settings"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Options"/>
@@ -660,6 +661,11 @@
   <action name="action_optimizer_settings">
    <property name="text">
     <string>Optimizer</string>
+   </property>
+  </action>
+  <action name="action_show_fit_settings">
+   <property name="text">
+    <string>Fit configuration</string>
    </property>
   </action>
   <zorder>scan_control_DockWidget</zorder>
