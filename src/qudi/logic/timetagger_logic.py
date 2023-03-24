@@ -283,10 +283,10 @@ class TimeTaggerLogic(LogicBase):
         if max_abs_value.scale:
             ax.plot(time_data,
                     data.transpose() / max_abs_value.scale_val,
-                    linestyle=':',
-                    linewidth=0.5)
+                    linestyle='-',
+                    linewidth=1)
         else:
-            ax.plot(time_data, data.transpose(), linestyle=':', linewidth=0.5)
+            ax.plot(time_data, data.transpose(), linestyle='-', linewidth=1)
         ax.set_xlabel('Time (s)')
         ax.set_ylabel('Signal ({0}{1})'.format(max_abs_value.scale, y_unit))
         return fig

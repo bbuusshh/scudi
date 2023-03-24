@@ -741,6 +741,12 @@ class OdmrLogic(LogicBase):
             # Create and configure storage helper instance
             timestamp = datetime.datetime.now()
             metadata = self._get_metadata()
+
+            for channel in self._data_scanner().constraints.channel_names:
+                metadata.update({f"fit_params_channel_{channel}": self._fit_results[channel].result_str})
+                
+
+
             tag = tag + '_' if tag else ''
 
             # Save raw data in a separate file per data channel
@@ -829,8 +835,62 @@ class OdmrLogic(LogicBase):
         # Include fit curve if there is one
         if fit_result is not None:
             ax_signal.plot(fit_x, fit_y, marker='None')
+
+
+            # add then the fit result to the plot:
+
+            # Parameters for the text plot:
+            # The position of the text annotation is controlled with the
+            # relative offset in x direction and the relative length factor
+            # rel_len_fac of the longest entry in one column
+            rel_offset = 0.02
+            rel_len_fac = 0.011
+            entries_per_col = 24
+
+            result_str = fit_result.result_str
+
+            # do reverse processing to get each entry in a list
+            entry_list = result_str.split('\n')
+            # slice the entry_list in entries_per_col
+            chunks = [entry_list[x:x + entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
+
+            is_first_column = True  # first entry should contain header or \n
+
+            for column in chunks:
+
+                max_length = max(column, key=len)  # get the longest entry
+                column_text = ''
+
+                for entry in column:
+                    column_text += entry + '\n'
+
+                column_text = column_text[:-1]  # remove the last new line
+
+                heading = ''
+                if is_first_column:
+                    heading = 'Fit results:'
+
+                column_text = heading + '\n' + column_text
+
+                ax_signal.text(1.00 + rel_offset, 0.99, column_text,
+                         verticalalignment='top',
+                         horizontalalignment='left',
+                         transform=ax_signal.transAxes,
+                         fontsize=12)
+
+                # the rel_offset in position of the text is a linear function
+                # which depends on the longest entry in the column
+                rel_offset += rel_len_fac * len(max_length)
+
+                is_first_column = False
+
+                
         ax_signal.set_ylabel(f'{channel} ({signal_unit_prefix}{unit})')
         ax_signal.set_xlim(min(freq_data), max(freq_data))
+
+
+
+
 
         # plot raw data
         raw_data_plot = ax_raw.imshow(raw_data.transpose(),
