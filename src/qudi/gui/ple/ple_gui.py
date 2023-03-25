@@ -814,7 +814,13 @@ class PLEScanGui(GuiBase):
             #     scan_axes = [scan_axes]
             cbar_range = self._mw.matrix_widget.image_widget.levels
             meta_params = self._mw.Controller_widget.params if self._controller_logic else dict()
-            self.sigSaveScan.emit(scans[0], self._accumulated_data, cbar_range, name_tag, self._save_folderpath, meta_params)
+            self.sigSaveScan.emit(scans[0], 
+                                  self._accumulated_data, 
+                                  self._scanning_logic._fit_container.last_fit,
+                                  cbar_range, 
+                                  name_tag, 
+                                  self._save_folderpath, 
+                                  meta_params)
 
         finally:
             pass

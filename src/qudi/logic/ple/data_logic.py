@@ -39,6 +39,7 @@ from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 from qudi.util.datastorage import ImageFormat, NpyDataStorage, TextDataStorage
 from qudi.util.units import ScaledFloat
+from qudi.util.datafitting import FitContainer
 from qudi.util.colordefs import ColorScaleRdBuRev as ColorScale
 
 from qudi.interface.scanning_probe_interface import ScanData
@@ -80,6 +81,7 @@ class PleDataLogic(LogicBase):
         self._curr_data_per_scan = dict()
         self.last_saved_files_paths = dict()
         self._logic_id = None
+        self.fit_result = None
         return
 
     def on_activate(self):
@@ -253,6 +255,12 @@ class PleDataLogic(LogicBase):
         xy_plot = ax.plot(x_axis/si_factor_x,
                           data/si_factor_data)
 
+        if self.fit_result is not None:
+            ax.plot(x_axis/si_factor_x, 
+                    self.fit_result[1].best_fit/si_factor_data, 
+                    marker='None')
+            self.add_fit_params_to_figure(ax, self.fit_result[1])
+
         # Axes labels
         if scan_data.axes_units[axis]:
             x_label = axis + f' position ({si_prefix_x}{scan_data.axes_units[axis]})'
@@ -284,7 +292,7 @@ class PleDataLogic(LogicBase):
                         arrowprops={'facecolor': '#17becf', 'shrink': 0.05})
         return fig
 
-    def save_scan(self, scan_data, accumulated_data, color_range=None, tag='', root_dir=None, control_parameters = dict()):
+    def save_scan(self, scan_data, accumulated_data, fit_result=None, color_range=None, tag='', root_dir=None, control_parameters = dict()):
         with self._thread_lock:
             if self.module_state() != 'idle':
                 self.log.error('Unable to save 2D scan. Saving still in progress...')
@@ -316,6 +324,12 @@ class PleDataLogic(LogicBase):
                 parameters["pixel frequency"] = scan_data.scan_frequency
                 parameters[f"scanner target at start"] = scan_data.scanner_target_at_start
                 parameters['measurement start'] = str(scan_data._timestamp)
+                
+                self.fit_result = fit_result
+                if fit_result is not None:
+                    fit_params_meta = {key: value for key, value in dict(self.fit_result[1].params).items()}
+                    fit_params_meta["Fit function name"] = self.fit_result[0]
+                    parameters.update(fit_params_meta)
 
                 # add meta data for axes in full target, but not scan axes
                 if scan_data.scanner_target_at_start:
@@ -510,3 +524,55 @@ class PleDataLogic(LogicBase):
 
         return metainfo_str
 
+
+
+    def add_fit_params_to_figure(self, ax, fit_result):
+        """
+        ax -- the 1D subplot with the fit
+        fit_result -- the fit results from the fit container (the lmfit object)
+        """
+        # add then the fit result to the plot:
+
+        # Parameters for the text plot:
+        # The position of the text annotation is controlled with the
+        # relative offset in x direction and the relative length factor
+        # rel_len_fac of the longest entry in one column
+        rel_offset = 0.02
+        rel_len_fac = 0.011
+        entries_per_col = 24
+        result_str = self._fit_container.formatted_result(fit_result)
+
+        # do reverse processing to get each entry in a list
+        entry_list = result_str.split('\n')
+        # slice the entry_list in entries_per_col
+        chunks = [entry_list[x:x + entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
+
+        is_first_column = True  # first entry should contain header or \n
+
+        for column in chunks:
+
+            max_length = max(column, key=len)  # get the longest entry
+            column_text = ''
+
+            for entry in column:
+                column_text += entry + '\n'
+
+            column_text = column_text[:-1]  # remove the last new line
+
+            heading = ''
+            if is_first_column:
+                heading = 'Fit results:'
+
+            column_text = heading + '\n' + column_text
+
+            ax.text(1.00 + rel_offset, 0.99, column_text,
+                        verticalalignment='top',
+                        horizontalalignment='left',
+                        transform=ax.transAxes,
+                        fontsize=12)
+
+            # the rel_offset in position of the text is a linear function
+            # which depends on the longest entry in the column
+            rel_offset += rel_len_fac * len(max_length)
+
+            is_first_column = False

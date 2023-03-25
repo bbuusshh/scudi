@@ -246,7 +246,7 @@ class PLEScannerLogic(ScanningProbeLogic):
             self._fit_results[self._channel] = (fit_config, fit_result)
         else:
             self._fit_results[self._channel] = None
-        print(self._fit_results[self._channel])
+        
         self.sigFitUpdated.emit(self._fit_results[self._channel], self._channel)
 
     @_fit_config.representer
