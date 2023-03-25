@@ -259,7 +259,7 @@ class PleDataLogic(LogicBase):
             ax.plot(x_axis/si_factor_x, 
                     self.fit_result[1].best_fit/si_factor_data, 
                     marker='None')
-            self.add_fit_params_to_figure(ax, self.fit_result[1])
+            self.add_fit_params_to_figure(ax, FitContainer.formatted_result(self.fit_result[1]))
 
         # Axes labels
         if scan_data.axes_units[axis]:

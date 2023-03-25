@@ -84,7 +84,7 @@ class PLEScanGui(GuiBase):
     # sigToggleScan = QtCore.Signal(bool, tuple, object)
     sigOptimizerSettingsChanged = QtCore.Signal(dict)
     sigToggleOptimize = QtCore.Signal(bool)
-    sigSaveScan = QtCore.Signal(object, object, object, object, object, object)
+    sigSaveScan = QtCore.Signal(object, object, object, object, object, object, object)
     sigSaveFinished = QtCore.Signal()
     sigShowSaveDialog = QtCore.Signal(bool)
 
@@ -813,7 +813,11 @@ class PLEScanGui(GuiBase):
             # else:
             #     scan_axes = [scan_axes]
             cbar_range = self._mw.matrix_widget.image_widget.levels
-            meta_params = self._mw.Controller_widget.params if self._controller_logic else dict()
+            if self._controller_logic() is not None:
+                meta_params = self._mw.Controller_widget.params
+            else:
+                meta_params = dict()
+
             self.sigSaveScan.emit(scans[0], 
                                   self._accumulated_data, 
                                   self._scanning_logic._fit_container.last_fit,
