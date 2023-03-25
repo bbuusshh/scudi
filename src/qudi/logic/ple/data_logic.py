@@ -337,7 +337,7 @@ class PleDataLogic(LogicBase):
                     fit_params_meta = {key: value for key, value in dict(fit_result[1].params).items()}
                     fit_params_meta["Fit function name"] = fit_result[0]
                     parameters.update(fit_params_meta)
-                print(fit_params_meta)
+               
                 # add meta data for axes in full target, but not scan axes
                 if scan_data.scanner_target_at_start:
                     for new_ax in scan_data.scanner_target_at_start.keys():
