@@ -687,6 +687,22 @@ class OdmrLogic(LogicBase):
             self._fit_results[channel][range_index] = None
         self.sigFitUpdated.emit(self._fit_results[channel][range_index], channel, range_index)
 
+# try:
+#             config, result = container.fit_data(fit_config, data[0], data[1])
+#             if result:
+#                 result.result_str = container.formatted_result(result)
+#             if use_alternative_data:
+#                 self._fit_result_alt = result
+#             else:
+#                 self._fit_result = result
+
+#         except:
+#             config, result = '', None
+#             self.log.exception('Something went wrong while trying to perform data fit.')
+
+#         self.sigFitUpdated.emit(config, result, use_alternative_data)
+
+
     def _get_metadata(self):
         return {'Microwave CW Power (dBm)': self._cw_power,
                 'Microwave Scan Power (dBm)': self._scan_power,
@@ -742,10 +758,14 @@ class OdmrLogic(LogicBase):
             timestamp = datetime.datetime.now()
             metadata = self._get_metadata()
 
+            
             for channel in self._data_scanner().constraints.channel_names:
-                metadata.update({f"fit_params_channel_{channel}": self._fit_results[channel].result_str})
-                
-
+                for fit_info in self._fit_results[channel]:
+                    if fit_info is None:
+                        continue
+                    fit_params_meta = {key: value for key, value in dict(fit_info[1].params).items()}
+                    fit_params_meta["Fit function name"] = fit_info[0]
+                    metadata.update(fit_params_meta)
 
             tag = tag + '_' if tag else ''
 
@@ -831,59 +851,11 @@ class OdmrLogic(LogicBase):
         fig, (ax_signal, ax_raw) = plt.subplots(nrows=2, ncols=1)
 
         # plot signal data
-        ax_signal.plot(freq_data, signal_data, linestyle=':', linewidth=0.5, marker='o')
+        ax_signal.plot(freq_data, signal_data, linestyle='-', linewidth=0.5, marker='o')
         # Include fit curve if there is one
         if fit_result is not None:
             ax_signal.plot(fit_x, fit_y, marker='None')
-
-
-            # add then the fit result to the plot:
-
-            # Parameters for the text plot:
-            # The position of the text annotation is controlled with the
-            # relative offset in x direction and the relative length factor
-            # rel_len_fac of the longest entry in one column
-            rel_offset = 0.02
-            rel_len_fac = 0.011
-            entries_per_col = 24
-
-            result_str = fit_result.result_str
-
-            # do reverse processing to get each entry in a list
-            entry_list = result_str.split('\n')
-            # slice the entry_list in entries_per_col
-            chunks = [entry_list[x:x + entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
-
-            is_first_column = True  # first entry should contain header or \n
-
-            for column in chunks:
-
-                max_length = max(column, key=len)  # get the longest entry
-                column_text = ''
-
-                for entry in column:
-                    column_text += entry + '\n'
-
-                column_text = column_text[:-1]  # remove the last new line
-
-                heading = ''
-                if is_first_column:
-                    heading = 'Fit results:'
-
-                column_text = heading + '\n' + column_text
-
-                ax_signal.text(1.00 + rel_offset, 0.99, column_text,
-                         verticalalignment='top',
-                         horizontalalignment='left',
-                         transform=ax_signal.transAxes,
-                         fontsize=12)
-
-                # the rel_offset in position of the text is a linear function
-                # which depends on the longest entry in the column
-                rel_offset += rel_len_fac * len(max_length)
-
-                is_first_column = False
-
+            self.add_fit_params_to_figure(ax_signal, fit_result[1])
                 
         ax_signal.set_ylabel(f'{channel} ({signal_unit_prefix}{unit})')
         ax_signal.set_xlim(min(freq_data), max(freq_data))
@@ -910,7 +882,8 @@ class OdmrLogic(LogicBase):
         # Adjust subplots to make room for colorbar
         fig.subplots_adjust(right=0.8)
         # Add colorbar axis to figure
-        colorbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
+        l, b, w, h = 0.85, 0.1, 0.02, 0.37
+        colorbar_ax = fig.add_axes([l, b, w, h])
         # Draw colorbar
         colorbar = fig.colorbar(raw_data_plot, cax=colorbar_ax)
         colorbar.set_label(f'{channel} ({signal_unit_prefix}{unit})')
@@ -937,3 +910,54 @@ class OdmrLogic(LogicBase):
         #                          verticalalignment='center',
         #                          rotation=90)
         return fig
+
+    def add_fit_params_to_figure(self, ax, fit_result):
+        """
+        ax -- the 1D subplot with the fit
+        fit_result -- the fit results from the fit container (the lmfit object)
+        """
+        # add then the fit result to the plot:
+
+        # Parameters for the text plot:
+        # The position of the text annotation is controlled with the
+        # relative offset in x direction and the relative length factor
+        # rel_len_fac of the longest entry in one column
+        rel_offset = 0.02
+        rel_len_fac = 0.011
+        entries_per_col = 24
+        result_str = self._fit_container.formatted_result(fit_result)
+
+        # do reverse processing to get each entry in a list
+        entry_list = result_str.split('\n')
+        # slice the entry_list in entries_per_col
+        chunks = [entry_list[x:x + entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
+
+        is_first_column = True  # first entry should contain header or \n
+
+        for column in chunks:
+
+            max_length = max(column, key=len)  # get the longest entry
+            column_text = ''
+
+            for entry in column:
+                column_text += entry + '\n'
+
+            column_text = column_text[:-1]  # remove the last new line
+
+            heading = ''
+            if is_first_column:
+                heading = 'Fit results:'
+
+            column_text = heading + '\n' + column_text
+
+            ax.text(1.00 + rel_offset, 0.99, column_text,
+                        verticalalignment='top',
+                        horizontalalignment='left',
+                        transform=ax.transAxes,
+                        fontsize=12)
+
+            # the rel_offset in position of the text is a linear function
+            # which depends on the longest entry in the column
+            rel_offset += rel_len_fac * len(max_length)
+
+            is_first_column = False
