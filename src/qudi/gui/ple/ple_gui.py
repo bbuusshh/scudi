@@ -820,7 +820,7 @@ class PLEScanGui(GuiBase):
 
             self.sigSaveScan.emit(scans[0], 
                                   self._accumulated_data, 
-                                  self._scanning_logic._fit_container.last_fit,
+                                  self._scanning_logic._fit_container,
                                   cbar_range, 
                                   name_tag, 
                                   self._save_folderpath, 

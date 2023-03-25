@@ -20,6 +20,8 @@ You should have received a copy of the GNU Lesser General Public License along w
 If not, see <https://www.gnu.org/licenses/>.
 """
 
+#TODO fitting for separate channels!!!
+
 
 import time
 import copy
@@ -81,7 +83,7 @@ class PleDataLogic(LogicBase):
         self._curr_data_per_scan = dict()
         self.last_saved_files_paths = dict()
         self._logic_id = None
-        self.fit_result = None
+        self.fit_container = None
         return
 
     def on_activate(self):
@@ -254,12 +256,12 @@ class PleDataLogic(LogicBase):
 
         xy_plot = ax.plot(x_axis/si_factor_x,
                           data/si_factor_data)
-
-        if self.fit_result is not None:
+        
+        if self.fit_container is not None:
             ax.plot(x_axis/si_factor_x, 
-                    self.fit_result[1].best_fit/si_factor_data, 
+                    self.fit_container.last_fit[1].best_fit/si_factor_data, 
                     marker='None')
-            self.add_fit_params_to_figure(ax, FitContainer.formatted_result(self.fit_result[1]))
+            self.add_fit_params_to_figure(ax, self.fit_container)
 
         # Axes labels
         if scan_data.axes_units[axis]:
@@ -292,7 +294,8 @@ class PleDataLogic(LogicBase):
                         arrowprops={'facecolor': '#17becf', 'shrink': 0.05})
         return fig
 
-    def save_scan(self, scan_data, accumulated_data, fit_result=None, color_range=None, tag='', root_dir=None, control_parameters = dict()):
+    def save_scan(self, scan_data, accumulated_data, fit_container=None, color_range=None, tag='', root_dir=None, control_parameters = dict()):
+        
         with self._thread_lock:
             if self.module_state() != 'idle':
                 self.log.error('Unable to save 2D scan. Saving still in progress...')
@@ -325,12 +328,16 @@ class PleDataLogic(LogicBase):
                 parameters[f"scanner target at start"] = scan_data.scanner_target_at_start
                 parameters['measurement start'] = str(scan_data._timestamp)
                 
-                self.fit_result = fit_result
-                if fit_result is not None:
-                    fit_params_meta = {key: value for key, value in dict(self.fit_result[1].params).items()}
-                    fit_params_meta["Fit function name"] = self.fit_result[0]
-                    parameters.update(fit_params_meta)
+                self.fit_container = fit_container
+                
 
+                if fit_container is not None:
+                    fit_result = fit_container.last_fit
+                
+                    fit_params_meta = {key: value for key, value in dict(fit_result[1].params).items()}
+                    fit_params_meta["Fit function name"] = fit_result[0]
+                    parameters.update(fit_params_meta)
+                print(fit_params_meta)
                 # add meta data for axes in full target, but not scan axes
                 if scan_data.scanner_target_at_start:
                     for new_ax in scan_data.scanner_target_at_start.keys():
@@ -526,7 +533,7 @@ class PleDataLogic(LogicBase):
 
 
 
-    def add_fit_params_to_figure(self, ax, fit_result):
+    def add_fit_params_to_figure(self, ax, fit_container):
         """
         ax -- the 1D subplot with the fit
         fit_result -- the fit results from the fit container (the lmfit object)
@@ -540,7 +547,7 @@ class PleDataLogic(LogicBase):
         rel_offset = 0.02
         rel_len_fac = 0.011
         entries_per_col = 24
-        result_str = self._fit_container.formatted_result(fit_result)
+        result_str = fit_container.formatted_result(fit_container._last_fit_result)
 
         # do reverse processing to get each entry in a list
         entry_list = result_str.split('\n')
