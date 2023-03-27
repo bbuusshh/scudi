@@ -85,6 +85,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
     _ni_ao = Connector(name='analog_output', interface='ProcessSetpointInterface')
 
     _ni_channel_mapping = ConfigOption(name='ni_channel_mapping', missing='error')
+    _sum_channels = ConfigOption(name='sum_channels', default=[], missing='nothing')
     _position_ranges = ConfigOption(name='position_ranges', missing='error')
     _frequency_ranges = ConfigOption(name='frequency_ranges', missing='error')
     _resolution_ranges = ConfigOption(name='resolution_ranges', missing='error')
@@ -131,13 +132,15 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         assert set(self._input_channel_units).union(self._position_ranges) == set(self._ni_channel_mapping), \
             f'Not all specified channels are mapped to an ni card physical channel'
 
-        # TODO: Any case where ni_ao and ni_fio potentially don't have the same channels?
+        # TODO: Any case where ni_ao and ni_io potentially don't have the same channels?
         specified_ni_finite_io_channels_set = set(self._ni_finite_sampling_io().constraints.input_channel_units).union(
             set(self._ni_finite_sampling_io().constraints.output_channel_units))
         mapped_channels = set([val.lower() for val in self._ni_channel_mapping.values()])
 
         assert set(mapped_channels).issubset(specified_ni_finite_io_channels_set), \
             f'Channel mapping does not coincide with ni finite sampling io.'
+        
+        self._input_channel_units["sum"] = self._input_channel_units[self._sum_channels[0]]
 
         # Constraints
         axes = list()
@@ -554,7 +557,8 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
             reverse_routing = {val.lower(): key for key, val in self._ni_channel_mapping.items()}
 
             new_data = {reverse_routing[key]: samples for key, samples in samples_dict.items()}
-
+            new_data["sum"] = np.sum([samples for channel, samples in new_data.items() if channel in self._sum_channels ], axis=0)
+            
             with self._thread_lock_data:
                 self.raw_data_container.fill_container(new_data)
                 self._scan_data.data = self.raw_data_container.forwards_data()
