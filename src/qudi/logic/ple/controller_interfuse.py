@@ -45,8 +45,8 @@ class ControllerInterfuseLogic(LogicBase):
           
         }
     parameters = StatusVar(name="parameters", default=default_params)
-    def __init__(self, config, **kwargs):
-        super().__init__(config=config, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         
     
     def on_activate(self):
@@ -57,8 +57,15 @@ class ControllerInterfuseLogic(LogicBase):
             self._power_controller.sig_set_power.connect(self.update_power, QtCore.Qt.QueuedConnection)
         
     def on_deactivate(self):
-        pass
-    
+        if self._power_controller:
+            self._power_controller.sig_set_power.disconnect(self.update_power)
+        for i in range(5):
+            QtCore.QCoreApplication.processEvents()
+        
+        if self.module_state() != 'idle' and self.module_state() != 'deactivated':
+            pass
+        return 
+
     @QtCore.Slot(dict)
     def params_updated(self, params):
         self.parameters['power'] = params['power']

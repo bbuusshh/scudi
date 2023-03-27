@@ -109,6 +109,7 @@ class PLEScannerLogic(ScanningProbeLogic):
 
           @param dict kwargs: optional parameters
         """
+        self._thread_lock = RecursiveMutex()
 
         #Took some from the spectrometer program, beacuse it's graaape
         self.refractive_index_air = 1.00028823
@@ -119,13 +120,11 @@ class PLEScannerLogic(ScanningProbeLogic):
 
         self._wavelength = None
         self._fit_method = ''
-        # self.__scan_poll_interval = 0
-        # self.__scan_stop_requested = True
-        # self._curr_caller_id = self.module_uuid
-        # self._thread_lock = RecursiveMutex()
         self.__scan_poll_timer = None
         self.__scan_poll_interval = 0
         self.__scan_stop_requested = True
+        self._curr_caller_id = self.module_uuid
+
         self.data_accumulated = None
         self._scan_id = 0
         self._fit_results = dict()
