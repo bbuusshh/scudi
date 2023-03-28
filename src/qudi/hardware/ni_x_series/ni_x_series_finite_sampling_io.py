@@ -332,7 +332,6 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                self.__active_channels['ao_channels']
 
     def set_active_channels(self, input_channels, output_channels):
-        
         """ Will set the currently active input and output channels.
         All other channels will be deactivated.
 
@@ -349,9 +348,9 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         assert not self.is_running, \
             'Unable to change active channels while IO is running. New settings ignored.'
 
-        input_channels = tuple(self._extract_terminal(channel) if channel != "sum" else "sum" for channel in input_channels )
+        input_channels = tuple(self._extract_terminal(channel) for channel in input_channels )
         output_channels = tuple(self._extract_terminal(channel) for channel in output_channels)
-        print(input_channels)
+
         assert set(input_channels).issubset(set(self._constraints.input_channel_names)), \
             f'Trying to set invalid input channels "' \
             f'{set(input_channels).difference(set(self._constraints.input_channel_names))}" not defined in config '
@@ -704,10 +703,8 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
                     di_data = di_data.reshape(len(self.__active_channels['di_channels']), samples_to_read)
                     for num, di_channel in enumerate(self.__active_channels['di_channels']):
-                        if di_channel!="sum":
-                            data[di_channel] = di_data[num] * self.sample_rate  # To go to c/s # TODO What if unit not c/s
-                    data["sum"] = np.sum([data_ch for ch, data_ch in data.items() if ch!='sum'], axis=0)
-                    print(data)
+                        data[di_channel] = di_data[num] * self.sample_rate  # To go to c/s # TODO What if unit not c/s
+
                 if self._ai_reader is not None:
                     data_buffer = np.zeros(samples_to_read * len(self.__active_channels['ai_channels']))
                     # self.log.debug(f'Buff shape {data_buffer.shape} and len {len(data_buffer)}')
@@ -836,7 +833,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        digital_channels = [d_ch for d_ch in self.__active_channels['di_channels'] if "sum" not in d_ch]
+        digital_channels = self.__active_channels['di_channels']
         if not digital_channels:
             return 0
         if self._di_task_handles:
@@ -1215,7 +1212,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         """
         input_channels = tuple(self._extract_terminal(src) for src in input_channels)
 
-        di_channels = tuple(channel for channel in input_channels if ('pfi' in channel) or ('sum' in channel))
+        di_channels = tuple(channel for channel in input_channels if ('pfi' in channel))
         ai_channels = tuple(channel for channel in input_channels if 'ai' in channel)
 
         assert (di_channels or ai_channels), f'No channels could be extracted from {*input_channels,}'
