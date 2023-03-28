@@ -86,7 +86,6 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
     _frame_size_limits = ConfigOption(name='frame_size_limits', default=(1, 1e9))
     _input_channel_units = ConfigOption(name='input_channel_units',
                                         missing='error')
-    _sum_channels = ConfigOption(name='sum_channels', default=[], missing='nothing')
 
     _output_channel_units = ConfigOption(name='output_channel_units',
                                          default={'ao{}'.format(channel_index): 'V' for channel_index in range(0, 4)},
@@ -160,7 +159,6 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         """
         self._input_channel_units = {self._extract_terminal(key): value
                                      for key, value in self._input_channel_units.items()}
-                                     
         self._output_channel_units = {self._extract_terminal(key): value
                                       for key, value in self._output_channel_units.items()}
 
@@ -248,8 +246,6 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             raise ValueError(
                 f'The channels "{", ".join(invalid_channels)}", specified in the config, were not recognized.'
             )
-
-        self._input_channel_units["sum"] = self._input_channel_units[self._sum_channels[0]]
 
         # Check Physical clock output if specified
         if self._physical_sample_clock_output is not None:
