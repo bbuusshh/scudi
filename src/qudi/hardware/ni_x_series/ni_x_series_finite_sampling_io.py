@@ -246,8 +246,6 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             raise ValueError(
                 f'The channels "{", ".join(invalid_channels)}", specified in the config, were not recognized.'
             )
-        self._sum_channels = [ch.lower() for ch in self._sum_channels]
-        self._input_channel_units["sum"] = self._input_channel_units[self._sum_channels[0]]
 
         # Check Physical clock output if specified
         if self._physical_sample_clock_output is not None:
@@ -280,7 +278,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         if digital_sources:
             input_limits.update({self._extract_terminal(key): [0, int(1e8)]
                                  for key in digital_sources})  # TODO Real HW constraint?
-        input_limits["sum"] = [0, int(1e8)]
+
         if analog_sources:
             adc_voltage_ranges = {self._extract_terminal(key): value
                                   for key, value in self._adc_voltage_ranges.items()}
@@ -346,7 +344,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         assert not self.is_running, \
             'Unable to change active channels while IO is running. New settings ignored.'
 
-        input_channels = tuple(self._extract_terminal(channel) for channel in input_channels )
+        input_channels = tuple(self._extract_terminal(channel) for channel in input_channels)
         output_channels = tuple(self._extract_terminal(channel) for channel in output_channels)
 
         assert set(input_channels).issubset(set(self._constraints.input_channel_names)), \
@@ -1210,7 +1208,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         """
         input_channels = tuple(self._extract_terminal(src) for src in input_channels)
 
-        di_channels = tuple(channel for channel in input_channels if ('pfi' in channel))
+        di_channels = tuple(channel for channel in input_channels if 'pfi' in channel)
         ai_channels = tuple(channel for channel in input_channels if 'ai' in channel)
 
         assert (di_channels or ai_channels), f'No channels could be extracted from {*input_channels,}'

@@ -109,7 +109,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         self.raw_data_container = None
 
         self._constraints = None
-        
+
         self._target_pos = dict()
         self._stored_target_pos = dict()
         self._start_scan_after_cursor = False
@@ -138,8 +138,6 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
 
         assert set(mapped_channels).issubset(specified_ni_finite_io_channels_set), \
             f'Channel mapping does not coincide with ni finite sampling io.'
-        self._sum_channels = [ch.lower() for ch in self._sum_channels]
-        self._input_channel_units["sum"] = list(self._input_channel_units.values())[1]
 
         # Constraints
         axes = list()
@@ -289,10 +287,9 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
                 return True, self.scan_settings
 
             try:
-                
                 self._ni_finite_sampling_io().set_sample_rate(frequency)
                 self._ni_finite_sampling_io().set_active_channels(
-                    input_channels=(self._ni_channel_mapping[in_ch] if in_ch!="sum" else "sum" for in_ch in self._input_channel_units),
+                    input_channels=(self._ni_channel_mapping[in_ch] for in_ch in self._input_channel_units),
                     output_channels=(self._ni_channel_mapping[ax] for ax in axes)
                     # TODO Use all axes and keep the unused constant? basically just constants in ni scan dict.
                 )
@@ -553,12 +550,10 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
             # except ValueError:  # ValueError is raised, when more samples are requested then pending or still to get
             #     # after HW stopped
             samples_dict = self._ni_finite_sampling_io().get_buffered_samples()
-            
+
             reverse_routing = {val.lower(): key for key, val in self._ni_channel_mapping.items()}
 
             new_data = {reverse_routing[key]: samples for key, samples in samples_dict.items()}
-            new_data["sum"] = np.sum([samples for key, samples in samples_dict.items() if key in self._sum_channels], axis=0)
-            # self.log.debug(f'new data: {new_data}')
 
             with self._thread_lock_data:
                 self.raw_data_container.fill_container(new_data)
