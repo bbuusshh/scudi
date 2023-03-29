@@ -93,26 +93,7 @@ class PLEScanGui(GuiBase):
     sigDoFit = QtCore.Signal(str, str)
     fit_result = None
 
-    def on_deactivate(self):
-        """ Reverse steps of activation
-        @return int: error code (0:OK, -1:error)
-        """
-
-        self._fit_config_dialog.close()
-        # self._fsd = None
-        self._save_window_geometry(self._mw)
-        self.save_view()
-        
-        self.sigScannerTargetChanged.disconnect()
-        #self._optimize_logic().sigOptimizeStateChanged.disconnect(self.optimize_state_updated)
-        self.sigScanSettingsChanged.disconnect()
-        self.sigOptimizerSettingsChanged.disconnect()
-        #self._scanning_logic.sigToggleScan.disconnect()
-        self.sigToggleOptimize.disconnect()
-
-        self._mw.close()
-
-        return 0
+    
 
     def on_activate(self):
         """ 
@@ -128,7 +109,7 @@ class PLEScanGui(GuiBase):
         self._mw = PLEScanMainWindow(self.axis, channel)
         self._save_dialog = SaveDialog(self._mw)
         self._mw.show()
-        
+        self.scan_state_updated(self._scanning_logic.module_state() != 'idle')
         # Connect signals
         self.sigScannerTargetChanged.connect(
             self._scanning_logic.set_target_position, QtCore.Qt.QueuedConnection
@@ -191,10 +172,6 @@ class PLEScanGui(GuiBase):
             self._init_microwave()
 
         if self._repump_logic() is not None:
-            self._repump_logic = self._repump_logic()
-            #TODO repumps single or one???
-            repump = self._repump_logic._repump_laser
-            resonant = self._repump_logic._resonant_laser
 
             self._scanning_logic.sigRepeatScan.connect(self. _repump_logic.repump_before_scan)
             
@@ -212,11 +189,14 @@ class PLEScanGui(GuiBase):
             self._controller_logic.sigGuiParamsUpdated.connect(self._mw.Controller_widget.update_gui, QtCore.Qt.QueuedConnection)
             self._controller_logic.sigGuiParamsUpdated.emit(self._controller_logic.parameters)
 
-
-
         self.scanner_target_updated()
-        self.scan_state_updated(self._scanning_logic.module_state() != 'idle')
-        self.scan_state_updated(self._scanning_logic.module_state() != 'idle', caller_id=self._optimizer_id)
+        # self.scan_state_updated(
+        #     self._scanning_logic.module_state() != 'idle'
+        #     )
+        # self.scan_state_updated(
+        #     self._scanning_logic.module_state() != 'idle', 
+        #     caller_id=self._optimizer_id
+        #                         )
 
         self.restore_scanner_settings()
         self._init_ui_connectors()
@@ -247,6 +227,55 @@ class PLEScanGui(GuiBase):
 
         self.load_view()
 
+    def on_deactivate(self):
+        """ Reverse steps of activation
+        @return int: error code (0:OK, -1:error)
+        """
+        # Connect signals
+        self.sigScannerTargetChanged.disconnect()
+        self._scanning_logic.sigScannerTargetChanged.disconnect(self.scanner_target_updated)
+
+        self.sigScanSettingsChanged.disconnect()
+        self._scanning_logic.sigUpdateAccumulated.disconnect()
+        self._scanning_logic.sigToggleScan.disconnect()
+        self._mw.actionToggle_scan.triggered.disconnect()
+        self._scanning_logic.sigRepeatScan.disconnect()
+        self._scanning_logic.sigScanStateChanged.disconnect(self.scan_state_updated)
+        self._scanning_logic.sigScanSettingsChanged.disconnect(self.scanner_settings_updated)
+        
+        self.sigToggleOptimize.disconnect()
+        self.sigOptimizerSettingsChanged.disconnect()
+        self._mw.action_optimize_position.triggered[bool].disconnect()
+        self._optimize_logic().sigOptimizeStateChanged.disconnect()
+       
+        if self._microwave_logic() is not None:
+            self._microwave_logic().sigCwParametersUpdated.disconnect()
+            self._microwave_logic().sigCwStateUpdated.disconnect()
+        
+
+        if self._repump_logic() is not None:
+            self._scanning_logic.sigRepeatScan.disconnect()
+            self._repump_logic().sigGuiParamsUpdated.disconnect()
+
+        if self._controller_logic() is not None:
+            self._controller_logic().sigGuiParamsUpdated.disconnect()
+
+
+
+        self.sigSaveScan.disconnect()
+        self.sigSaveFinished.disconnect()
+        self._data_logic().sigSaveStateChanged.disconnect()
+        
+        self.sigShowSaveDialog.disconnect()
+
+        self._mw.action_Save.triggered.disconnect()
+        self._mw.actionSave.triggered.disconnect()
+
+
+        self._mw.close()
+
+        return 0
+    
     @QtCore.Slot(bool)
     def setup_repump_before_scan(self, do_repump):
         #here we can measure the start frequency!
