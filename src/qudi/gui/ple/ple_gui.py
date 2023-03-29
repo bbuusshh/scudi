@@ -813,7 +813,7 @@ class PLEScanGui(GuiBase):
             # else:
             #     scan_axes = [scan_axes]
             cbar_range = self._mw.matrix_widget.image_widget.levels
-            if self._controller_logic() is not None:
+            if self._controller_logic is not None:
                 meta_params = self._mw.Controller_widget.params
             else:
                 meta_params = dict()

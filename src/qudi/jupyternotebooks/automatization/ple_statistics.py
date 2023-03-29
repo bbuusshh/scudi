@@ -23,8 +23,9 @@ class PleAuto:
         self.ibeam_smart = ibeam_smart
         return
     def go_to_poi(self, poi_cur, ref_poi="ref", opt_times = 1):
-        self.poi_manager_logic.go_to_poi(ref_poi)
-        time.sleep(2)
+        if ref_poi is not None:
+            self.poi_manager_logic.go_to_poi(ref_poi)
+            time.sleep(2)
         self.poi_manager_logic.go_to_poi(poi_cur)
         time.sleep(0.5)
         self.poi_manager_logic.go_to_poi(poi_cur)
