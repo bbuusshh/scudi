@@ -122,7 +122,7 @@ class PleAuto:
             f"{poi_name}_{tag}"
             )
         self.ple_gui._mw.actionSave.triggered.emit()
-    
+        time.sleep(1)
     
     def save_spectrum(self, name_tag, folder_path=None):
         if folder_path:
@@ -130,4 +130,5 @@ class PleAuto:
         self.spectrometer.save_widget.saveTagLineEdit.setText(name_tag)
         # hit save
         self.spectrometer._mw.action_save_spectrum.triggered.emit()
+        time.sleep(1)
         return self.spectrometerlogic.last_saved_path
