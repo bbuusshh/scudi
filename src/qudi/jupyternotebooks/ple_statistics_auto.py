@@ -45,7 +45,7 @@ def ple_is_here(res, center_sigma = 3e3, amplitude = 1000, sigma_stderr_ratio = 
         return False
 
     return it_is
-def adjust_eta(pa, poi_name, folder_defect):
+def adjust_eta(pa, poi_name, folder_defect, results_poi):
     center_v = -6.8
     eta_volts = [center_v, center_v + 0.3, center_v - 0.3, center_v + 0.6, center_v - 0.6]
     sigma_errs = []
@@ -58,11 +58,12 @@ def adjust_eta(pa, poi_name, folder_defect):
             sigma_errs.append(1e15)
         else:
             sigma_errs.append(res["sigma"].stderr/res["sigma"].value if res["sigma"].stderr is not None else 1e15)
+    results_poi["eta_voltage"] = eta_volts[sigma_errs.index(min(sigma_errs))]
     laser_controller_remote.etalon_voltage = eta_volts[sigma_errs.index(min(sigma_errs))]
     res = pa.do_ple_scan(lines = 1)
     pa.save_ple(tag = "full_range_eta_adjusted",
                 poi_name=poi_name, folder_name=folder_defect)
-    return res
+    return res, results_poi
 def ple_refocus(pa, opt_times = 1, 
                 scan_frequency=200, 
                 scan_resolution=500,
@@ -102,8 +103,9 @@ def settings_confocal_refocus_coarse():
 def confocal_refocus(opt_times=2):
     for i in range(opt_times):
         scanning_optimize_logic.start_optimize()
-        if scanning_optimize_logic.module_state()=='locked':
+        while scanning_optimize_logic.module_state()=='locked':
             time.sleep(1)
+    time.sleep(1)
 #find the defect:
 def find_the_defect(pa, poi_name, folder_defect):
     switchlogic.set_state("ScanningMode", 'Wavemeter')
@@ -113,7 +115,7 @@ def find_the_defect(pa, poi_name, folder_defect):
     confocal_refocus(opt_times=2)
     #configure slow scanning for the wavemeter scanning optimizations
     switchlogic.set_state("ScanningMode", 'NI')
-    time.sleep(0.2)
+    time.sleep(0.5)
     #Check how the PLE look like
     res = pa.do_ple_scan(lines = 1)
     pa.save_ple(tag = "full_range",
@@ -152,6 +154,7 @@ def take_spectrum(pa, poi_name, folder_defect, results_poi):
 # Perform the saturation measurement
 
 def fine_optimize(pa, poi_name, folder_defect, results_poi):
+    res = pa.do_ple_scan(lines = 1)
     pa.go_to_ple_target(res["center"].value)
     ple_refocus(pa, scan_range=4000, scan_frequency=100)
     settings_confocal_refocus_fine()
@@ -161,17 +164,18 @@ def fine_optimize(pa, poi_name, folder_defect, results_poi):
     res = pa.do_ple_scan(lines = 1)
     pa.go_to_ple_target(res["center"].value)
     results_poi["center"] = res["center"].value
-    results_poi["eta_voltage"] = res["eta_voltage"]
+    
     results_poi["center_λ"] = high_finesse_wavemeter_remote.get_current_wavelength()
     pa.save_ple(tag = "full_range_optimized",
             poi_name=poi_name, 
             folder_name=folder_defect)
-    return results_poi
+    return res, results_poi
 
-def run_saturation_measurement(pa, poi_name, folder_defect, results_poi):
+def run_saturation_measurement(pa, res, poi_name, folder_defect, results_poi):
     os.mkdir(saturation_folder := os.path.join(folder_defect, "saturation"))
     results_poi["saturation"] = {}
     idx_no_ple = None
+    res_old =res
     power_steps = 3 * np.logspace(1.5, 2, 10, endpoint=True).astype(int)[::-1]
     for idx, power in enumerate(power_steps):
         if power < 90: 
@@ -181,6 +185,9 @@ def run_saturation_measurement(pa, poi_name, folder_defect, results_poi):
         time.sleep(1)
         #align twice
         for i in range(2):
+            if abs(res_old["center"].value - res["center"].value) > res_old["sigma"].value*2:
+                res = res_old
+            
             fine_range = (
                 res["center"].value - res["sigma"].value*6,
                 res["center"].value + res["sigma"].value*6
@@ -188,6 +195,7 @@ def run_saturation_measurement(pa, poi_name, folder_defect, results_poi):
             if res["center"].value is None or res["sigma"].value is None:
                 continue
             res = pa.do_ple_scan(lines = 1, in_range=fine_range)
+            res_old = res
         pa.save_ple(tag = f"{power}",
             poi_name=poi_name, folder_name=power_folder)
 
@@ -203,15 +211,16 @@ def run_saturation_measurement(pa, poi_name, folder_defect, results_poi):
         cobolt.disable_modulated()
         pa.one_pulse_repump("violet")
         
-        res = pa.do_ple_scan(lines = 1, in_range=fine_range)
+        res_ = pa.do_ple_scan(lines = 5, in_range=fine_range)
+
         pa.save_ple(tag = f"{power}_norepump",
             poi_name=poi_name, folder_name=power_folder)
         results_poi.update({"saturation": 
                         {f"{power}_norepump":
                             {"scan_data": ple_data_logic.last_saved_files_paths,
-                            "sigma": res["sigma"].value,
-                            "sigma_stderr": res["sigma"].stderr,
-                            "center": res["center"].value
+                            "sigma": res_["sigma"].value,
+                            "sigma_stderr": res_["sigma"].stderr,
+                            "center": res_["center"].value
                             }
                             }})
             #save_plots
@@ -224,7 +233,7 @@ scanning_optimize_logic._backwards_line_resolution = 20
 #%%
 poi_name = "def3"
 folder = r"C:\Users\yy3\Documents\data\Vlad\26-03-2023\158\#1_D\ROI2\auto"
-folder = os.path.join(folder, r"attempt_0")
+folder = os.path.join(folder, r"attempt_1")
 if not os.path.exists(folder):
     os.mkdir(folder) 
 high_finesse_wavemeter_remote.start_acquisition()
@@ -236,11 +245,40 @@ os.mkdir(folder_defect := os.path.join(folder, poi_name))
 # %%
 res = find_the_defect(pa, poi_name, folder_defect)
 #%%
-res = adjust_eta(pa, poi_name, folder_defect)
+res, results_poi = adjust_eta(pa, poi_name, folder_defect, results_poi)
 #%%
-res = fine_optimize(pa, poi_name, folder_defect, results_poi)
+res, results_poi = fine_optimize(pa, poi_name, folder_defect, results_poi)
 # %%
-results_poi = run_saturation_measurement(pa, poi_name, folder_defect, results_poi)
+results_poi = run_saturation_measurement(pa, res, poi_name, folder_defect, results_poi)
 #%%
 results_poi = take_spectrum(pa, poi_name, folder_defect, results_poi)
+# %%
+res = pa.do_ple_scan(lines = 1)
+# %%
+#cobolt.enable_modulated()
+# %%
+
+#NOW all together:
+
+folder = r"C:\Users\yy3\Documents\data\Vlad\26-03-2023\158\#1_D\ROI2\auto"
+folder = os.path.join(folder, r"attempt_3")
+if not os.path.exists(folder):
+    os.mkdir(folder) 
+high_finesse_wavemeter_remote.start_acquisition()
+# run throught the defects:
+results_poi = {}
+os.mkdir(folder_defect := os.path.join(folder, poi_name))
+
+for poi_name in poi_manager_logic.poi_names:
+    if poi_name == "ref":
+        continue
+    if not os.path.exists(folder):
+        os.mkdir(folder) 
+    res = find_the_defect(pa, poi_name, folder_defect)
+    res, results_poi = adjust_eta(pa, poi_name, folder_defect, results_poi)
+    if not ple_is_here(res):
+        continue
+    res, results_poi = fine_optimize(pa, poi_name, folder_defect, results_poi)
+    results_poi = run_saturation_measurement(pa, res, poi_name, folder_defect, results_poi)
+    results_poi = take_spectrum(pa, poi_name, folder_defect, results_poi)
 # %%
