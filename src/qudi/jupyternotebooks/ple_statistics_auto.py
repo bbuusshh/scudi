@@ -110,14 +110,36 @@ def confocal_refocus(opt_times=2):
 def find_the_defect(pa, poi_name, folder_defect):
     switchlogic.set_state("ScanningMode", 'Wavemeter')
     pa.set_resonant_power(power = 300)
+    cobolt.enable_modulated()
+    cobolt.set_laser_modulated_power(2)
     time.sleep(1)
     settings_confocal_refocus_coarse()
     confocal_refocus(opt_times=2)
-    #configure slow scanning for the wavemeter scanning optimizations
+
+    
     switchlogic.set_state("ScanningMode", 'NI')
     time.sleep(0.5)
     #Check how the PLE look like
     res = pa.do_ple_scan(lines = 1)
+
+    #configure slow scanning for the wavemeter scanning optimizations
+    for kk in range(3):
+        if not ple_is_here(res, amplitude = 2000):
+            switchlogic.set_state("ScanningMode", 'Wavemeter')
+            time.sleep(1)
+            settings_confocal_refocus_coarse()
+            confocal_refocus(opt_times=1)
+            #Check how the PLE look like
+            time.sleep(0.5)
+            switchlogic.set_state("ScanningMode", 'NI')
+            res = pa.do_ple_scan(lines = 1)
+            time.sleep(0.5)
+            pa.save_ple(tag = "full_range",
+                    poi_name=poi_name, folder_name=folder_defect)
+            time.sleep(0.5)
+        else:
+            break
+
     pa.save_ple(tag = "full_range",
             poi_name=poi_name, 
             folder_name=folder_defect)
@@ -175,16 +197,18 @@ def run_saturation_measurement(pa, res, poi_name, folder_defect, results_poi):
     os.mkdir(saturation_folder := os.path.join(folder_defect, "saturation"))
     results_poi["saturation"] = {}
     idx_no_ple = None
-    res_old =res
+    res_old = res
     power_steps = 3 * np.logspace(1.5, 2, 10, endpoint=True).astype(int)[::-1]
+    
     for idx, power in enumerate(power_steps):
-        if power < 90: 
-            break
         os.mkdir(power_folder := os.path.join(saturation_folder, f"{power}"))
-        pa.set_resonant_power(power = power)
-        time.sleep(1)
-        #align twice
-        for i in range(2):
+        os.mkdir(power_folder_norepump := os.path.join(power_folder, f"no_repump"))
+        if power > 90: 
+            cobolt.enable_modulated()
+            pa.set_resonant_power(power = power)
+            time.sleep(1)
+            #align twice
+            # for i in range(2):
             if abs(res_old["center"].value - res["center"].value) > res_old["sigma"].value*2:
                 res = res_old
             
@@ -195,34 +219,43 @@ def run_saturation_measurement(pa, res, poi_name, folder_defect, results_poi):
             if res["center"].value is None or res["sigma"].value is None:
                 continue
             res = pa.do_ple_scan(lines = 1, in_range=fine_range)
-            res_old = res
-        pa.save_ple(tag = f"{power}",
-            poi_name=poi_name, folder_name=power_folder)
+            if abs(res_old["center"].value - res["center"].value) > res_old["sigma"].value*2:
+                res = res_old
+            else:
+                res_old = res
+            pa.save_ple(tag = f"{power}",
+                poi_name=poi_name, folder_name=power_folder)
 
-        results_poi.update({"saturation": 
-                        {f"{power}_norepump":
-                            {"scan_data": ple_data_logic.last_saved_files_paths,
-                            "sigma": res["sigma"].value,
-                            "sigma_stderr": res["sigma"].stderr,
-                            "center": res["center"].value
-                            }
-                            }})
-        # check with initioalization
-        cobolt.disable_modulated()
-        pa.one_pulse_repump("violet")
-        
-        res_ = pa.do_ple_scan(lines = 5, in_range=fine_range)
+            results_poi.update({"saturation": 
+                            {f"{power}_repump":
+                                {"scan_data": ple_data_logic.last_saved_files_paths,
+                                "sigma": res["sigma"].value,
+                                "sigma_stderr": res["sigma"].stderr,
+                                "center": res["center"].value
+                                }
+                                }})
+        if power > 50:
+            # check with initioalization
+            cobolt.disable_modulated()
+            pa.one_pulse_repump("violet")
+            res_ = pa.do_ple_scan(lines = 1, in_range=fine_range)
+            if not ple_is_here(res_, amplitude=800):
+                continue
+            res_ = pa.do_ple_scan(lines = 5, in_range=fine_range)
 
-        pa.save_ple(tag = f"{power}_norepump",
-            poi_name=poi_name, folder_name=power_folder)
-        results_poi.update({"saturation": 
-                        {f"{power}_norepump":
-                            {"scan_data": ple_data_logic.last_saved_files_paths,
-                            "sigma": res_["sigma"].value,
-                            "sigma_stderr": res_["sigma"].stderr,
-                            "center": res_["center"].value
-                            }
-                            }})
+            pa.save_ple(tag = f"{power}_norepump",
+                poi_name=poi_name, folder_name=power_folder_norepump)
+            results_poi.update({"saturation": 
+                            {f"{power}_norepump":
+                                {"scan_data": ple_data_logic.last_saved_files_paths,
+                                "sigma": res_["sigma"].value,
+                                "sigma_stderr": res_["sigma"].stderr,
+                                "center": res_["center"].value
+                                }
+                                }})
+        else:
+            break
+
             #save_plots
     return results_poi
 # constraints
@@ -232,8 +265,8 @@ scanning_optimize_logic._backwards_line_resolution = 20
 
 #%%
 poi_name = "def3"
-folder = r"C:\Users\yy3\Documents\data\Vlad\26-03-2023\158\#1_D\ROI2\auto"
-folder = os.path.join(folder, r"attempt_1")
+folder = r"C:\Users\yy3\Documents\data\Vlad\26-03-2023\158\#1_D\ROI3\auto"
+folder = os.path.join(folder, r"attempt_2")
 if not os.path.exists(folder):
     os.mkdir(folder) 
 high_finesse_wavemeter_remote.start_acquisition()
@@ -260,25 +293,34 @@ res = pa.do_ple_scan(lines = 1)
 
 #NOW all together:
 
-folder = r"C:\Users\yy3\Documents\data\Vlad\26-03-2023\158\#1_D\ROI2\auto"
-folder = os.path.join(folder, r"attempt_3")
+folder = r"C:\Users\yy3\Documents\data\Vlad\26-03-2023\158\#1_D\ROI3\auto"
+folder = os.path.join(folder, r"attempt_2")
+center_v = -7.3
 if not os.path.exists(folder):
     os.mkdir(folder) 
 high_finesse_wavemeter_remote.start_acquisition()
 # run throught the defects:
-results_poi = {}
-os.mkdir(folder_defect := os.path.join(folder, poi_name))
 
 for poi_name in poi_manager_logic.poi_names:
     if poi_name == "ref":
         continue
-    if not os.path.exists(folder):
-        os.mkdir(folder) 
+    results_poi = {}
+    os.mkdir(folder_defect := os.path.join(folder, poi_name))
+    print("Find the defect ", poi_name)
     res = find_the_defect(pa, poi_name, folder_defect)
+    print("Adjusting the eta")
     res, results_poi = adjust_eta(pa, poi_name, folder_defect, results_poi)
     if not ple_is_here(res):
+        # return the center eta
+        laser_controller_remote.etalon_voltage = center_v
         continue
+    print("Fine optimization of the ple and confocal")
     res, results_poi = fine_optimize(pa, poi_name, folder_defect, results_poi)
+    print("Run the saturation measurements")
     results_poi = run_saturation_measurement(pa, res, poi_name, folder_defect, results_poi)
+    print("Run spectrum")
     results_poi = take_spectrum(pa, poi_name, folder_defect, results_poi)
+    with open(os.path.join(folder_defect, f'results_{poi_name}'), 'wb') as handle:
+        pickle.dump(results_poi, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    
 # %%
