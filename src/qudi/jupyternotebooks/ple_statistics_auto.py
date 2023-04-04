@@ -45,8 +45,7 @@ def ple_is_here(res, center_sigma = 3e3, amplitude = 1000, sigma_stderr_ratio = 
         return False
 
     return it_is
-def adjust_eta(pa, poi_name, folder_defect, results_poi):
-    center_v = -6.8
+def adjust_eta(pa, poi_name, folder_defect, results_poi, center_v):
     eta_volts = [center_v, center_v + 0.3, center_v - 0.3, center_v + 0.6, center_v - 0.6]
     sigma_errs = []
     for eta_v in eta_volts:
@@ -124,9 +123,9 @@ def find_the_defect(pa, poi_name, folder_defect):
 
     #configure slow scanning for the wavemeter scanning optimizations
     for kk in range(3):
-        if not ple_is_here(res, amplitude = 2000):
+        if not ple_is_here(res, amplitude = 3000):
             switchlogic.set_state("ScanningMode", 'Wavemeter')
-            time.sleep(1)
+            time.sleep(0.5)
             settings_confocal_refocus_coarse()
             confocal_refocus(opt_times=1)
             #Check how the PLE look like
@@ -134,7 +133,7 @@ def find_the_defect(pa, poi_name, folder_defect):
             switchlogic.set_state("ScanningMode", 'NI')
             res = pa.do_ple_scan(lines = 1)
             time.sleep(0.5)
-            pa.save_ple(tag = "full_range",
+            pa.save_ple(tag = "full_range_iter_{kk}",
                     poi_name=poi_name, folder_name=folder_defect)
             time.sleep(0.5)
         else:
@@ -199,10 +198,12 @@ def run_saturation_measurement(pa, res, poi_name, folder_defect, results_poi):
     idx_no_ple = None
     res_old = res
     power_steps = 3 * np.logspace(1.5, 2, 10, endpoint=True).astype(int)[::-1]
-    
+    low_power_steps = np.array([85, 78, 70, 65, 60])
+    power_steps = np.append(power_steps,low_power_steps)
+
     for idx, power in enumerate(power_steps):
         os.mkdir(power_folder := os.path.join(saturation_folder, f"{power}"))
-        os.mkdir(power_folder_norepump := os.path.join(power_folder, f"no_repump"))
+        
         if power > 90: 
             cobolt.enable_modulated()
             pa.set_resonant_power(power = power)
@@ -234,7 +235,8 @@ def run_saturation_measurement(pa, res, poi_name, folder_defect, results_poi):
                                 "center": res["center"].value
                                 }
                                 }})
-        if power > 50:
+        if (power < 150):
+            os.mkdir(power_folder_norepump := os.path.join(power_folder, f"no_repump"))
             # check with initioalization
             cobolt.disable_modulated()
             pa.one_pulse_repump("violet")
@@ -253,7 +255,7 @@ def run_saturation_measurement(pa, res, poi_name, folder_defect, results_poi):
                                 "center": res_["center"].value
                                 }
                                 }})
-        else:
+        if power <= 40:
             break
 
             #save_plots
@@ -293,9 +295,9 @@ res = pa.do_ple_scan(lines = 1)
 
 #NOW all together:
 
-folder = r"C:\Users\yy3\Documents\data\Vlad\26-03-2023\158\#1_D\ROI3\auto"
-folder = os.path.join(folder, r"attempt_2")
-center_v = -7.3
+folder = r"C:\Users\yy3\Documents\data\Vlad\26-03-2023\158\#2_A\ROI1"
+folder = os.path.join(folder, r"auto_2")
+center_v = -7
 if not os.path.exists(folder):
     os.mkdir(folder) 
 high_finesse_wavemeter_remote.start_acquisition()
@@ -308,8 +310,9 @@ for poi_name in poi_manager_logic.poi_names:
     os.mkdir(folder_defect := os.path.join(folder, poi_name))
     print("Find the defect ", poi_name)
     res = find_the_defect(pa, poi_name, folder_defect)
+    
     print("Adjusting the eta")
-    res, results_poi = adjust_eta(pa, poi_name, folder_defect, results_poi)
+    res, results_poi = adjust_eta(pa, poi_name, folder_defect, results_poi, center_v)
     if not ple_is_here(res):
         # return the center eta
         laser_controller_remote.etalon_voltage = center_v
