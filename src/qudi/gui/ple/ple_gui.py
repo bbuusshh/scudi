@@ -107,8 +107,9 @@ class PLEScanGui(GuiBase):
 
 
         self._mw = PLEScanMainWindow(self.axis, channel)
+        
         self._save_dialog = SaveDialog(self._mw)
-        self._mw.show()
+        # self._mw.show()
         self.scan_state_updated(self._scanning_logic.module_state() != 'idle')
         # Connect signals
         self.sigScannerTargetChanged.connect(
@@ -224,8 +225,8 @@ class PLEScanGui(GuiBase):
 
         self._mw.action_Save.triggered.connect(lambda x: self.save_scan_data(scan_axes=None))
         self._mw.actionSave.triggered.connect(lambda x: self.save_scan_data(scan_axes=None))
-
-        self.load_view()
+        self._restore_window_geometry(self._mw)
+        # self.load_view()
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -271,7 +272,7 @@ class PLEScanGui(GuiBase):
         self._mw.action_Save.triggered.disconnect()
         self._mw.actionSave.triggered.disconnect()
 
-
+        self._save_window_geometry(self._mw)
         self._mw.close()
 
         return 0
@@ -858,19 +859,19 @@ class PLEScanGui(GuiBase):
         finally:
             pass
 
-    def save_view(self):
-        """Saves the current GUI state as a QbyteArray.
-           The .data() function will transform it to a bytearray, 
-           which can be saved as a StatusVar and read by the load_view method. 
-        """
-        self._save_display_view = self._mw.saveState().data() 
+    # def save_view(self):
+    #     """Saves the current GUI state as a QbyteArray.
+    #        The .data() function will transform it to a bytearray, 
+    #        which can be saved as a StatusVar and read by the load_view method. 
+    #     """
+    #     self._save_display_view = self._mw.saveState().data() 
         
-    def load_view(self):
-        """Loads the saved state from the GUI and can read a QbyteArray
-            or a simple byteArray aswell.
-        """
-        if self._save_display_view is None:
-            pass
-        else:
-            self._mw.restoreState(self._save_display_view)
+    # def load_view(self):
+    #     """Loads the saved state from the GUI and can read a QbyteArray
+    #         or a simple byteArray aswell.
+    #     """
+    #     if self._save_display_view is None:
+    #         pass
+    #     else:
+    #         self._mw.restoreState(self._save_display_view)
 

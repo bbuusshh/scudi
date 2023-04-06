@@ -79,6 +79,31 @@ class SaveDialog(QtWidgets.QDialog):
         self.hbox.addSpacerItem(QtWidgets.QSpacerItem(50, 0))
         self.setLayout(self.hbox)
 
+class RT_LT_Dialog(QtWidgets.QDialog):
+    """ Dialog to provide feedback and block GUI while saving """
+    def __init__(self, parent, title="Please confirm", text="The temperature regime is LT"):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setWindowModality(QtCore.Qt.WindowModal)
+        self.setAttribute(QtCore.Qt.WA_ShowWithoutActivating)
+
+        self.button_box = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok |
+                                                     QtWidgets.QDialogButtonBox.Cancel |
+                                                     QtWidgets.QDialogButtonBox.Apply,
+                                                     QtCore.Qt.Horizontal,
+                                                     self)
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+
+        # Dialog layout
+        self.text = QtWidgets.QLabel("<font size='16'>" + text + "</font>")
+        self.vbox = QtWidgets.QVBoxLayout()
+        self.vbox.addSpacerItem(QtWidgets.QSpacerItem(50, 0))
+        self.vbox.addWidget(self.text)
+        self.vbox.addSpacerItem(QtWidgets.QSpacerItem(50, 0))
+        self.vbox.addWidget(self.button_box)
+        self.setLayout(self.vbox)
+
 
 class ScannerGui(GuiBase):
     """Main Confocal Class for xy and depth scans.
@@ -153,6 +178,12 @@ class ScannerGui(GuiBase):
         self._mw = ConfocalMainWindow()
         self._mw.setDockNestingEnabled(True)
         self._save_dialog = SaveDialog(self._mw)
+        self._rt_lt_dialog = RT_LT_Dialog(self._mw)
+        self._rt_lt_dialog.accepted.connect(self.change_temperature_regime)
+        # self._rt_lt_dialog.rejected.connect(self.restore_scanner_settings)
+        # self._rt_lt_dialog.button_box.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
+        #     self.apply_scanner_settings
+        # )
         # Initialize fixed dockwidgets
         self._init_static_dockwidgets()
 
@@ -206,8 +237,13 @@ class ScannerGui(GuiBase):
         )
         self._mw.action_history_back.triggered.connect(
             self._data_logic().history_previous, QtCore.Qt.QueuedConnection
-        )
+        )   
 
+        self._mw.actionRT_LT.triggered.connect(
+            lambda x: self._rt_lt_dialog.show() if x else self._rt_lt_dialog.hide(),
+                                       QtCore.Qt.DirectConnection
+        )   
+        
         self._scanning_logic().sigScannerTargetChanged.connect(
             self.scanner_target_updated, QtCore.Qt.QueuedConnection
         )
@@ -291,6 +327,11 @@ class ScannerGui(GuiBase):
         self._mw.show()
         self._mw.activateWindow()
         self._mw.raise_()
+
+    def change_temperature_regime(self, regime):
+        # change the scanner contraints for the LT regime
+        self._scanning_logic().change_temperature_regime(regime)
+         
 
     def _init_optimizer_settings(self):
         """ Configuration and initialisation of the optimizer settings dialog.
