@@ -85,13 +85,14 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
     _ni_ao = Connector(name='analog_output', interface='ProcessSetpointInterface')
 
     _ni_channel_mapping = ConfigOption(name='ni_channel_mapping', missing='error')
+    _sum_channels = ConfigOption(name='sum_channels', default=[], missing='nothing')
     _position_ranges = ConfigOption(name='position_ranges', missing='error')
     _frequency_ranges = ConfigOption(name='frequency_ranges', missing='error')
     _resolution_ranges = ConfigOption(name='resolution_ranges', missing='error')
     _input_channel_units = ConfigOption(name='input_channel_units', missing='error')
     _scan_units = ConfigOption(name='scan_units', missing='error')
     _backwards_line_resolution = ConfigOption(name='backwards_line_resolution', default=50)
-    _max_move_velocity = ConfigOption(name='maximum_move_velocity', default=400e-6)
+    __max_move_velocity = ConfigOption(name='maximum_move_velocity', default=400e-6)
 
     _threaded = True  # Interfuse is by default not threaded.
 
@@ -109,7 +110,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         self.raw_data_container = None
 
         self._constraints = None
-
+        
         self._target_pos = dict()
         self._stored_target_pos = dict()
         self._start_scan_after_cursor = False
@@ -131,13 +132,15 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         assert set(self._input_channel_units).union(self._position_ranges) == set(self._ni_channel_mapping), \
             f'Not all specified channels are mapped to an ni card physical channel'
 
-        # TODO: Any case where ni_ao and ni_fio potentially don't have the same channels?
+        # TODO: Any case where ni_ao and ni_io potentially don't have the same channels?
         specified_ni_finite_io_channels_set = set(self._ni_finite_sampling_io().constraints.input_channel_units).union(
             set(self._ni_finite_sampling_io().constraints.output_channel_units))
         mapped_channels = set([val.lower() for val in self._ni_channel_mapping.values()])
 
         assert set(mapped_channels).issubset(specified_ni_finite_io_channels_set), \
             f'Channel mapping does not coincide with ni finite sampling io.'
+        self._sum_channels = [ch.lower() for ch in self._sum_channels]
+        self._input_channel_units["sum"] = list(self._input_channel_units.values())[1]
 
         # Constraints
         axes = list()
@@ -202,7 +205,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         
         @return float: max velocity of te scanner
         """
-        max_velocity = self._max_move_velocity.copy()
+        max_velocity = self.__max_move_velocity.copy()
         return max_velocity
 
 
@@ -287,9 +290,10 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
                 return True, self.scan_settings
 
             try:
+                
                 self._ni_finite_sampling_io().set_sample_rate(frequency)
                 self._ni_finite_sampling_io().set_active_channels(
-                    input_channels=(self._ni_channel_mapping[in_ch] for in_ch in self._input_channel_units),
+                    input_channels=(self._ni_channel_mapping[in_ch] if in_ch!="sum" else "sum" for in_ch in self._input_channel_units),
                     output_channels=(self._ni_channel_mapping[ax] for ax in axes)
                     # TODO Use all axes and keep the unused constant? basically just constants in ni scan dict.
                 )
@@ -550,10 +554,12 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
             # except ValueError:  # ValueError is raised, when more samples are requested then pending or still to get
             #     # after HW stopped
             samples_dict = self._ni_finite_sampling_io().get_buffered_samples()
-
+            
             reverse_routing = {val.lower(): key for key, val in self._ni_channel_mapping.items()}
 
             new_data = {reverse_routing[key]: samples for key, samples in samples_dict.items()}
+            new_data["sum"] = np.sum([samples for key, samples in samples_dict.items() if key in self._sum_channels], axis=0)
+            # self.log.debug(f'new data: {new_data}')
 
             with self._thread_lock_data:
                 self.raw_data_container.fill_container(new_data)
@@ -851,10 +857,10 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
 
             # TODO Add max velocity as a hardware constraint/ Calculate from scan_freq etc?
             if velocity is None:
-                velocity = self._max_move_velocity
-            v_in_range, velocity = in_range(velocity, 0, self._max_move_velocity)
+                velocity = self.__max_move_velocity
+            v_in_range, velocity = in_range(velocity, 0, self.__max_move_velocity)
             if not v_in_range:
-                self.log.warning(f'Requested velocity is exceeding the maximum velocity of {self._max_move_velocity} '
+                self.log.warning(f'Requested velocity is exceeding the maximum velocity of {self.__max_move_velocity} '
                                  f'm/s. Move will be done at maximum velocity')
 
             self._follow_velocity = velocity
