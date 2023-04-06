@@ -83,7 +83,6 @@ class OdmrGui(GuiBase):
         mw_constraints = logic.microwave_constraints
         self.__cw_control_available = True
         self._mw = OdmrMainWindow()
-        self._restore_window_geometry(self._mw)
         self._plot_widget = self._mw.centralWidget()
         # ToDo: Get constraints from scanner
         self._scan_control_dockwidget = OdmrScanControlDockWidget(
@@ -127,15 +126,14 @@ class OdmrGui(GuiBase):
             self._mw.action_toggle_cw.setVisible(False)
             self._mw.action_show_cw_controls.setEnabled(False)
 
-        # self.restore_default_view()
-        # self.load_view()
-        
+        self.restore_default_view()
+        self.load_view()
         self.show()
 
     def on_deactivate(self):
         # Disconnect signals
         self._save_window_geometry(self._mw)
-        # self.save_view()
+        self.save_view()
         self.__disconnect_main_window_actions()
         self.__disconnect_fit_control_signals()
         self.__disconnect_cw_control_signals()

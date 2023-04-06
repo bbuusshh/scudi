@@ -462,14 +462,6 @@ class ScanningProbeLogic(LogicBase):
         
         return self.set_scan_range(scan_range)
 
-
-    def change_temperature_regime(self, regime='RT'):
-        if regime == 'RT':
-            pass #self._scanner.
-        elif regime == 'LT':
-            pass #self._scanner.
-
-
     def __start_timer(self):
         if self.thread() is not QtCore.QThread.currentThread():
             QtCore.QMetaObject.invokeMethod(self.__scan_poll_timer,

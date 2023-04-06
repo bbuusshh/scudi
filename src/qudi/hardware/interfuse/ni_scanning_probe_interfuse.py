@@ -92,7 +92,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
     _input_channel_units = ConfigOption(name='input_channel_units', missing='error')
     _scan_units = ConfigOption(name='scan_units', missing='error')
     _backwards_line_resolution = ConfigOption(name='backwards_line_resolution', default=50)
-    _max_move_velocity = ConfigOption(name='maximum_move_velocity', default=400e-6)
+    __max_move_velocity = ConfigOption(name='maximum_move_velocity', default=400e-6)
 
     _threaded = True  # Interfuse is by default not threaded.
 
@@ -205,7 +205,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         
         @return float: max velocity of te scanner
         """
-        max_velocity = self._max_move_velocity.copy()
+        max_velocity = self.__max_move_velocity.copy()
         return max_velocity
 
 
@@ -857,10 +857,10 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
 
             # TODO Add max velocity as a hardware constraint/ Calculate from scan_freq etc?
             if velocity is None:
-                velocity = self._max_move_velocity
-            v_in_range, velocity = in_range(velocity, 0, self._max_move_velocity)
+                velocity = self.__max_move_velocity
+            v_in_range, velocity = in_range(velocity, 0, self.__max_move_velocity)
             if not v_in_range:
-                self.log.warning(f'Requested velocity is exceeding the maximum velocity of {self._max_move_velocity} '
+                self.log.warning(f'Requested velocity is exceeding the maximum velocity of {self.__max_move_velocity} '
                                  f'm/s. Move will be done at maximum velocity')
 
             self._follow_velocity = velocity
