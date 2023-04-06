@@ -33,7 +33,7 @@ from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 from qudi.util.fit_models.gaussian import Gaussian2D, Gaussian
-from qudi.util.fit_models.lorentzian import Lorentzian
+
 from qudi.interface.scanning_probe_interface import ScanData
 
 
@@ -77,7 +77,6 @@ class PLEOptimizeScannerLogic(LogicBase):
         self._stashed_scan_settings = dict()
         self._sequence_index = 0
         self._optimal_position = dict()
-        self._last_fit_results = None
         return
 
     def on_activate(self):
@@ -454,19 +453,7 @@ class PLEOptimizeScannerLogic(LogicBase):
             middle = (x_max - x_min) / 2 + x_min
             self.log.exception('1D Gaussian fit unsuccessful.')
             return (middle,), None, None
-        self._last_fit_results = fit_result
-        return (fit_result.best_values['center'],), fit_result.best_fit, fit_result
-    def _get_pos_from_1d_lorentian_fit(self, x, data):
-        model = Lorentzian()
 
-        try:
-            fit_result = model.fit(data, x=x, **model.estimate_peak(data, x))
-        except:
-            x_min, x_max = x.min(), x.max()
-            middle = (x_max - x_min) / 2 + x_min
-            self.log.exception('1D Lorentian fit unsuccessful.')
-            return (middle,), None, None
-        self._last_fit_results = fit_result
         return (fit_result.best_values['center'],), fit_result.best_fit, fit_result
 
 

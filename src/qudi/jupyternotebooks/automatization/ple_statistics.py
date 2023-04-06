@@ -23,9 +23,8 @@ class PleAuto:
         self.ibeam_smart = ibeam_smart
         return
     def go_to_poi(self, poi_cur, ref_poi="ref", opt_times = 1):
-        if ref_poi is not None:
-            self.poi_manager_logic.go_to_poi(ref_poi)
-            time.sleep(2)
+        self.poi_manager_logic.go_to_poi(ref_poi)
+        time.sleep(2)
         self.poi_manager_logic.go_to_poi(poi_cur)
         time.sleep(0.5)
         self.poi_manager_logic.go_to_poi(poi_cur)
@@ -122,7 +121,7 @@ class PleAuto:
             f"{poi_name}_{tag}"
             )
         self.ple_gui._mw.actionSave.triggered.emit()
-        time.sleep(1)
+    
     
     def save_spectrum(self, name_tag, folder_path=None):
         if folder_path:
@@ -130,5 +129,4 @@ class PleAuto:
         self.spectrometer.save_widget.saveTagLineEdit.setText(name_tag)
         # hit save
         self.spectrometer._mw.action_save_spectrum.triggered.emit()
-        time.sleep(1)
         return self.spectrometerlogic.last_saved_path

@@ -37,9 +37,7 @@ class RepumpInterfuseLogic(LogicBase):
     sigTimingPlotUpdated = QtCore.Signal(object,  QtCore.Qt.QueuedConnection)
     _pulsed = Connector(name='pulsed', interface='PulsedMasterLogic')
     _switchlogic = Connector(name='switchlogic', interface="SwitchLogic", optional=True) 
-    _cobolt = Connector(name='cobolt_laser', interface="Cobolt", optional=True)
     _switch_name = ConfigOption(name='switcher_name', default=None)
-
     _resonant_laser = ConfigOption(name='resonant_laser', default=None)
     _repump_laser = ConfigOption(name='repump_laser', default=None)
 
@@ -68,7 +66,6 @@ class RepumpInterfuseLogic(LogicBase):
     def on_activate(self):
         self.pulsed = self._pulsed()
         self.switch = self._switchlogic()
-        self.cobolt = self._cobolt()
         self.do_prescan_repump = False
         #self.create_pulse_block(channels = list(self._resonant_lasers.values()))
         self.a_ch = {
@@ -282,18 +279,15 @@ class RepumpInterfuseLogic(LogicBase):
         self.timing_diagram['repump'] = self._repump_laser
         
         self.sigTimingPlotUpdated.emit(self.timing_diagram)
-    @QtCore.Slot(bool, tuple)
-    def repump_before_scan(self, start, scan_axes):
+
+    def repump_before_scan(self):
         if self.do_prescan_repump:
-            if self.switch is not None:
-                self.switch.set_state(self._switch_name, 'On')
-                time.sleep(self.repump_scan_length/1000)
-                #delay(msec = self.repump_scan_length)
-                self.switch.set_state(self._switch_name, 'Off')
-            if self.cobolt:
-      
-                self.cobolt.enable_modulated()
-                time.sleep(self.repump_scan_length/1000)
-                #delay(msec = self.repump_scan_length)
-                self.cobolt.disable_modulated()
+            if self.switch is None:
+                return 
+           
+            self.switch.set_state(self._switch_name, 'On')
+            time.sleep(self.repump_scan_length/1000)
+            #delay(msec = self.repump_scan_length)
+            self.switch.set_state(self._switch_name, 'Off')
             
+        
