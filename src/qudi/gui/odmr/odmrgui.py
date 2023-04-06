@@ -26,6 +26,7 @@ from PySide2 import QtCore, QtWidgets, QtGui
 
 from qudi.core.connector import Connector
 from qudi.core.statusvariable import StatusVar
+from qudi.core.configoption import ConfigOption
 from qudi.util import units
 import qudi.util.uic as uic
 from qudi.core.module import GuiBase
@@ -55,6 +56,7 @@ class OdmrGui(GuiBase):
     _odmr_logic = Connector(name='odmr_logic', interface='OdmrLogic')
     _save_folderpath = StatusVar('save_folderpath', default=None)
     _save_display_view = StatusVar(name='save_display_view', default=None)
+    _mw_source_name = ConfigOption(name='mw_source_name', default=None)
     # declare status variables
     _max_shown_scans = StatusVar(name='max_shown_scans', default=50)
 
@@ -85,6 +87,8 @@ class OdmrGui(GuiBase):
         self._mw = OdmrMainWindow()
         self._restore_window_geometry(self._mw)
         self._plot_widget = self._mw.centralWidget()
+        if self._mw_source_name:
+            self._mw.setWindowTitle(self._mw_source_name)
         # ToDo: Get constraints from scanner
         self._scan_control_dockwidget = OdmrScanControlDockWidget(
             parent=self._mw,

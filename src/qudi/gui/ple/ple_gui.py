@@ -89,7 +89,7 @@ class PLEScanGui(GuiBase):
     sigShowSaveDialog = QtCore.Signal(bool)
 
     _n_save_tasks = 0
-
+    scan_data = None
     sigDoFit = QtCore.Signal(str, str)
     fit_result = None
 
@@ -171,10 +171,11 @@ class PLEScanGui(GuiBase):
             self._microwave_logic = self._microwave_logic()
             self._mw.add_dock_widget('Microwave')
             self._init_microwave()
-
-        if self._repump_logic() is not None:
-
-            self._scanning_logic.sigRepeatScan.connect(self. _repump_logic.repump_before_scan)
+        self._repump_logic = self._repump_logic()
+        if self._repump_logic is not None:
+            
+            self._scanning_logic.sigRepeatScan.connect(self. _repump_logic.repump_before_scan, 
+                                                         QtCore.Qt.QueuedConnection)
             
             self._mw.add_dock_widget('Pulsed')
             self._mw.Pulsed_widget.sig_pulser_params_updated.connect(self._repump_logic.pulser_updated, QtCore.Qt.QueuedConnection)
@@ -182,8 +183,9 @@ class PLEScanGui(GuiBase):
             self._mw.Pulsed_widget.sig_prescan_repump.connect(self.setup_repump_before_scan)
             self._repump_logic.sigGuiParamsUpdated.emit(self._repump_logic.parameters)
 
-        if self._controller_logic() is not None:
-            self._controller_logic = self._controller_logic()
+        self._controller_logic = self._controller_logic()
+        if self._controller_logic is not None:
+            
             
             self._mw.add_dock_widget('Controller')
             self._mw.Controller_widget.sig_controller_params_updated.connect(self._controller_logic.params_updated, QtCore.Qt.QueuedConnection)
@@ -254,9 +256,9 @@ class PLEScanGui(GuiBase):
             self._microwave_logic().sigCwStateUpdated.disconnect()
         
 
-        if self._repump_logic() is not None:
-            self._scanning_logic.sigRepeatScan.disconnect()
-            self._repump_logic().sigGuiParamsUpdated.disconnect()
+        # if self._repump_logic is not None:
+        #     self._scanning_logic.sigRepeatScan.disconnect()
+        #     self._repump_logic().sigGuiParamsUpdated.disconnect()
 
         if self._controller_logic() is not None:
             self._controller_logic().sigGuiParamsUpdated.disconnect()
@@ -717,7 +719,7 @@ class PLEScanGui(GuiBase):
                                                                 axs=scan_data.scan_axes)
             else:
                 self._update_scan_data(scan_data)
-        
+            self.scan_data = scan_data
         if not self._optimizer_state['is_running']:
             self._toggle_enable_actions(not is_running, exclude_action=self._mw.action_optimize_position)
         else:
@@ -835,20 +837,20 @@ class PLEScanGui(GuiBase):
             self.save_path_widget.currPathLabel.setText('Default')
 
         try:
-            data_logic = self._data_logic()
-            scans = data_logic.get_all_current_scan_data()
+            #data_logic = self._data_logic()
+            #scans = data_logic.get_all_current_scan_data()
 
             # if scan_axes is None:
             #     scan_axes = [scan.scan_axes for scan in data_logic.get_all_current_scan_data()]
             # else:
             #     scan_axes = [scan_axes]
             cbar_range = self._mw.matrix_widget.image_widget.levels
-            if self._controller_logic() is not None:
+            if self._controller_logic is not None:
                 meta_params = self._mw.Controller_widget.params
             else:
                 meta_params = dict()
 
-            self.sigSaveScan.emit(scans[0], 
+            self.sigSaveScan.emit(self.scan_data, 
                                   self._accumulated_data, 
                                   self._scanning_logic._fit_container,
                                   cbar_range, 
