@@ -46,7 +46,7 @@ def ple_is_here(res, center_sigma = 3e3, amplitude = 1000, sigma_stderr_ratio = 
 
     return it_is
 def adjust_eta(pa, poi_name, folder_defect, results_poi, center_v):
-    eta_volts = [center_v, center_v + 0.3, center_v - 0.3, center_v + 0.6, center_v - 0.6]
+    eta_volts = [center_v, center_v + 0.3, center_v - 0.3]#, center_v + 0.6, center_v - 0.6]
     sigma_errs = []
     for eta_v in eta_volts:
         laser_controller_remote.etalon_voltage = eta_v
@@ -275,12 +275,12 @@ high_finesse_wavemeter_remote.start_acquisition()
 # run throught the defects:
 results_poi = {}
 os.mkdir(folder_defect := os.path.join(folder, poi_name))
-
+#
 
 # %%
 res = find_the_defect(pa, poi_name, folder_defect)
 #%%
-res, results_poi = adjust_eta(pa, poi_name, folder_defect, results_poi)
+res, results_poi = adjust_eta(pa, poi_name, folder_defect, results_poi, center_v=-7)
 #%%
 res, results_poi = fine_optimize(pa, poi_name, folder_defect, results_poi)
 # %%
@@ -295,8 +295,8 @@ res = pa.do_ple_scan(lines = 1)
 
 #NOW all together:
 
-folder = r"C:\Users\yy3\Documents\data\Vlad\26-03-2023\158\#2_A\ROI1"
-folder = os.path.join(folder, r"auto_2")
+folder = r"C:\Users\yy3\Documents\data\Vlad\5-04-2023_90NA_4_5K\158\#1A\auto"
+folder = os.path.join(folder, r"auto_spectras2")
 center_v = -7
 if not os.path.exists(folder):
     os.mkdir(folder) 
@@ -308,19 +308,31 @@ for poi_name in poi_manager_logic.poi_names:
         continue
     results_poi = {}
     os.mkdir(folder_defect := os.path.join(folder, poi_name))
+    #Go to the defect:
+    pa.go_to_poi(poi_name, opt_times=1, ref_poi=None) 
+    #
     print("Find the defect ", poi_name)
     res = find_the_defect(pa, poi_name, folder_defect)
+    fine_range = (
+            res["center"].value - res["sigma"].value*6,
+            res["center"].value + res["sigma"].value*6
+        )
+    pa.set_resonant_power(power = 200)
+    time.sleep(1)
+    res = pa.do_ple_scan(lines = 4, in_range=fine_range)
     
-    print("Adjusting the eta")
-    res, results_poi = adjust_eta(pa, poi_name, folder_defect, results_poi, center_v)
-    if not ple_is_here(res):
-        # return the center eta
-        laser_controller_remote.etalon_voltage = center_v
-        continue
-    print("Fine optimization of the ple and confocal")
-    res, results_poi = fine_optimize(pa, poi_name, folder_defect, results_poi)
-    print("Run the saturation measurements")
-    results_poi = run_saturation_measurement(pa, res, poi_name, folder_defect, results_poi)
+    pa.save_ple(tag = f"200power",
+        poi_name=poi_name, folder_name=folder_defect)
+    # print("Adjusting the eta")
+    # res, results_poi = adjust_eta(pa, poi_name, folder_defect, results_poi, center_v)
+    # if not ple_is_here(res):
+    #     # return the center eta
+    #     laser_controller_remote.etalon_voltage = center_v
+    #     continue
+    # print("Fine optimization of the ple and confocal")
+    # res, results_poi = fine_optimize(pa, poi_name, folder_defect, results_poi)
+    # print("Run the saturation measurements")
+    # results_poi = run_saturation_measurement(pa, res, poi_name, folder_defect, results_poi)
     print("Run spectrum")
     results_poi = take_spectrum(pa, poi_name, folder_defect, results_poi)
     with open(os.path.join(folder_defect, f'results_{poi_name}'), 'wb') as handle:
