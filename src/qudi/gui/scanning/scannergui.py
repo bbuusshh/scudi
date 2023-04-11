@@ -179,8 +179,12 @@ class ScannerGui(GuiBase):
         self._mw.setDockNestingEnabled(True)
         self._save_dialog = SaveDialog(self._mw)
         self._rt_lt_dialog = RT_LT_Dialog(self._mw)
-        self._rt_lt_dialog.accepted.connect(self.change_temperature_regime)
-        # self._rt_lt_dialog.rejected.connect(self.restore_scanner_settings)
+        self._rt_lt_dialog.accepted.connect(
+            lambda x: self.change_temperature_regime(True)
+            )
+        self._rt_lt_dialog.rejected.connect(
+            lambda x: self.change_temperature_regime(False)
+            )
         # self._rt_lt_dialog.button_box.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
         #     self.apply_scanner_settings
         # )
@@ -328,9 +332,9 @@ class ScannerGui(GuiBase):
         self._mw.activateWindow()
         self._mw.raise_()
 
-    def change_temperature_regime(self, regime):
+    def change_temperature_regime(self, is_LT_regime):
         # change the scanner contraints for the LT regime
-        self._scanning_logic().change_temperature_regime(regime)
+        self._scanning_logic().change_temperature_regime(is_LT_regime)
          
 
     def _init_optimizer_settings(self):

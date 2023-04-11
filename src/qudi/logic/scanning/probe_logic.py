@@ -463,11 +463,8 @@ class ScanningProbeLogic(LogicBase):
         return self.set_scan_range(scan_range)
 
 
-    def change_temperature_regime(self, regime='RT'):
-        if regime == 'RT':
-            pass #self._scanner.
-        elif regime == 'LT':
-            pass #self._scanner.
+    def change_temperature_regime(self, is_LT_regime=False):
+        self._scanner.sigChangeTemperatureRegime.emit(is_LT_regime)
 
 
     def __start_timer(self):

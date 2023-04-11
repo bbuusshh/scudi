@@ -1133,6 +1133,41 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             return -1
         return 0
 
+    def set_new_io_limits(self, is_LT_regime):
+
+        if is_LT_regime:
+            limits = self.output_voltage_ranges_LT
+        else:
+            limits = self.output_voltage_ranges
+
+        digital_sources = tuple(src for src in self._input_channel_units)
+        input_limits = dict()
+
+        if digital_sources:
+            input_limits.update({self._extract_terminal(key): [0, int(1e8)]
+                                for key in digital_sources})  # TODO Real HW constraint?
+
+        sample_rate_limits = (self._device_handle.ao_min_rate, min(self._device_handle.ao_max_rate, self._device_handle.ci_max_timebase))
+
+        # output_voltage_ranges = {self._extract_terminal(key): value
+        #                                 for key, value in self._output_voltage_ranges.items()}
+        output_voltage_ranges = limits
+        output_voltage_ranges = dict(sorted(output_voltage_ranges.items()))
+        self._output_channel_units = dict(sorted(self._output_channel_units.items()))
+
+        self._input_channel_units = dict(sorted(self._input_channel_units.items()))
+        input_limits = dict(sorted(input_limits.items()))
+
+        self._constraints = FiniteSamplingIOConstraints(
+                    supported_output_modes=(SamplingOutputMode.JUMP_LIST, SamplingOutputMode.EQUIDISTANT_SWEEP),
+                    input_channel_units=dict(self._input_channel_units),
+                    output_channel_units=dict(self._output_channel_units),
+                    frame_size_limits=self._frame_size_limits,
+                    sample_rate_limits=sample_rate_limits,
+                    output_channel_limits=output_voltage_ranges,
+                    input_channel_limits=input_limits
+                )
+
     def terminate_all_tasks(self):
         err = 0
 
