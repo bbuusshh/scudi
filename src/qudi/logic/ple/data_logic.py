@@ -257,7 +257,7 @@ class PleDataLogic(LogicBase):
         xy_plot = ax.plot(x_axis/si_factor_x,
                           data/si_factor_data)
         
-        if self.fit_container is not None:
+        if self.fit_container.last_fit is not None:
             ax.plot(x_axis/si_factor_x, 
                     self.fit_container.last_fit[1].best_fit/si_factor_data, 
                     marker='None')
@@ -331,8 +331,8 @@ class PleDataLogic(LogicBase):
                 self.fit_container = fit_container
                 
 
-                if fit_container is not None:
-                    fit_result = fit_container.last_fit
+                if (fit_result:= fit_container.last_fit) is not None:
+                    
                 
                     fit_params_meta = {key: value for key, value in dict(fit_result[1].params).items()}
                     fit_params_meta["Fit function name"] = fit_result[0]
@@ -364,7 +364,7 @@ class PleDataLogic(LogicBase):
                         {f"scan_ch_{channel}": file_path},
                     )
                     if len(scan_data.scan_axes) == 1:
-                        figure = self.draw_1d_scan_figure(scan_data, channel)
+                        figure = self.draw_1d_scan_figure(scan_data, channel) 
                         ds.save_thumbnail(figure, file_path=file_path.rsplit('.', 1)[0])
                     elif len(scan_data.scan_axes) == 2:
                         figure = self.draw_2d_scan_figure(scan_data, accumulated_data, channel, cbar_range=color_range)
