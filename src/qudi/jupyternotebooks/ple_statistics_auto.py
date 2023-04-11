@@ -296,7 +296,7 @@ res = pa.do_ple_scan(lines = 1)
 #NOW all together:
 
 folder = r"C:\Users\yy3\Documents\data\Vlad\5-04-2023_90NA_4_5K\158\#1A\auto"
-folder = os.path.join(folder, r"auto_spectras2")
+folder = os.path.join(folder, r"auto_spec_n_low_power3")
 center_v = -7
 if not os.path.exists(folder):
     os.mkdir(folder) 
@@ -313,21 +313,36 @@ for poi_name in poi_manager_logic.poi_names:
     #
     print("Find the defect ", poi_name)
     res = find_the_defect(pa, poi_name, folder_defect)
-    fine_range = (
+    fine_range_1 = (
             res["center"].value - res["sigma"].value*6,
             res["center"].value + res["sigma"].value*6
         )
+    # print("Adjusting the eta")
+    res_adj, results_poi = adjust_eta(pa, poi_name, folder_defect, results_poi, center_v)
+    if not ple_is_here(res):
+        # return the center eta
+        laser_controller_remote.etalon_voltage = center_v
+
     pa.set_resonant_power(power = 200)
     time.sleep(1)
-    res = pa.do_ple_scan(lines = 4, in_range=fine_range)
+    res = pa.do_ple_scan(lines = 4, in_range=fine_range_1)
     
     pa.save_ple(tag = f"200power",
         poi_name=poi_name, folder_name=folder_defect)
-    # print("Adjusting the eta")
-    # res, results_poi = adjust_eta(pa, poi_name, folder_defect, results_poi, center_v)
-    # if not ple_is_here(res):
-    #     # return the center eta
-    #     laser_controller_remote.etalon_voltage = center_v
+    
+    fine_range_2 = (
+            res_adj["center"].value - res_adj["sigma"].value,
+            res_adj["center"].value + res_adj["sigma"].value
+        )
+    pa.set_resonant_power(power = 130)
+    time.sleep(1)
+    res = pa.do_ple_scan(lines = 4, in_range=fine_range_2)
+    
+    pa.save_ple(tag = f"130power",
+        poi_name=poi_name, folder_name=folder_defect)
+    
+    
+
     #     continue
     # print("Fine optimization of the ple and confocal")
     # res, results_poi = fine_optimize(pa, poi_name, folder_defect, results_poi)
