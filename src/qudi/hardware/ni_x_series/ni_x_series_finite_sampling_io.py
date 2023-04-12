@@ -253,7 +253,8 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                 f'The channels "{", ".join(invalid_channels)}", specified in the config, were not recognized.'
             )
         self._sum_channels = [ch.lower() for ch in self._sum_channels]
-        self._input_channel_units["sum"] = self._input_channel_units[self._sum_channels[0]]
+        if len(self._sum_channels) > 1:
+            self._input_channel_units["sum"] = self._input_channel_units[self._sum_channels[0]]
 
         # Check Physical clock output if specified
         if self._physical_sample_clock_output is not None:
@@ -286,7 +287,8 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         if digital_sources:
             input_limits.update({self._extract_terminal(key): [0, int(1e8)]
                                  for key in digital_sources})  # TODO Real HW constraint?
-        input_limits["sum"] = [0, int(1e8)]
+        if len(self._sum_channels) > 1:
+            input_limits["sum"] = [0, int(1e8)]
         if analog_sources:
             adc_voltage_ranges = {self._extract_terminal(key): value
                                   for key, value in self._adc_voltage_ranges.items()}

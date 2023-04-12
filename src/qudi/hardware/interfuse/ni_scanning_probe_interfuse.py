@@ -140,7 +140,8 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         assert set(mapped_channels).issubset(specified_ni_finite_io_channels_set), \
             f'Channel mapping does not coincide with ni finite sampling io.'
         self._sum_channels = [ch.lower() for ch in self._sum_channels]
-        self._input_channel_units["sum"] = list(self._input_channel_units.values())[1]
+        if len(self._sum_channels) > 1:
+            self._input_channel_units["sum"] = list(self._input_channel_units.values())[1]
 
         # Constraints
         axes = list()
@@ -558,7 +559,8 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
             reverse_routing = {val.lower(): key for key, val in self._ni_channel_mapping.items()}
 
             new_data = {reverse_routing[key]: samples for key, samples in samples_dict.items()}
-            new_data["sum"] = np.sum([samples for key, samples in samples_dict.items() if key in self._sum_channels], axis=0)
+            if len(self._sum_channels) > 1:
+                new_data["sum"] = np.sum([samples for key, samples in samples_dict.items() if key in self._sum_channels], axis=0)
             # self.log.debug(f'new data: {new_data}')
 
             with self._thread_lock_data:

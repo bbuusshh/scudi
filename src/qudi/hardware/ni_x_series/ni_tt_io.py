@@ -105,7 +105,7 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
     
     _tt_falling_edge_clock_input = ConfigOption(name = "tt_falling_edge_clock_input",
                                                 default=None)
-
+    _sum_channels = ConfigOption(name='sum_channels', default=[], missing='nothing')
     _adc_voltage_ranges = ConfigOption(name='adc_voltage_ranges',
                                        default={'ai{}'.format(channel_index): [-10, 10]
                                                 for channel_index in range(0, 10)},  # TODO max 10 some what arbitrary
@@ -250,6 +250,11 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             raise ValueError(
                 f'The channels "{", ".join(invalid_channels)}", specified in the config, were not recognized.'
             )
+        
+
+        self._sum_channels = [ch.lower() for ch in self._sum_channels]
+        if len(self._sum_channels) > 1:
+            self._input_channel_units["sum"] = self._input_channel_units[self._sum_channels[0]]
 
         # Check Physical clock output if specified
         if self._physical_sample_clock_output is not None:
@@ -282,7 +287,9 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         if digital_sources:
             input_limits.update({key: [0, int(1e8)]
                                  for key in digital_sources})  # TODO Real HW constraint?
-
+        if len(self._sum_channels) > 1:
+            input_limits["sum"] = [0, int(1e8)]
+            
         if analog_sources:
             adc_voltage_ranges = {self._extract_terminal(key): value
                                   for key, value in self._adc_voltage_ranges.items()}
