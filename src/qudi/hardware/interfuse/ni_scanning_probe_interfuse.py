@@ -900,8 +900,31 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         self._scan_data = None
         self._ni_ao().set_new_ao_limits(is_LT_regime)
         self._ni_finite_sampling_io().set_new_io_limits(is_LT_regime)
-            
+    
+    def _update_position_ranges(self, new_position_ranges):
+        self._position_ranges = new_position_ranges
+        # Constraints
+        axes = list()
+        for axis in self._position_ranges:
+            axes.append(ScannerAxis(name=axis,
+                                    unit=self._scan_units,
+                                    value_range=self._position_ranges[axis],
+                                    step_range=(0, abs(np.diff(self._position_ranges[axis]))),
+                                    resolution_range=self._resolution_ranges[axis],
+                                    frequency_range=self._frequency_ranges[axis])
+                        )
+        channels = list()
+        for channel, unit in self._input_channel_units.items():
+            channels.append(ScannerChannel(name=channel,
+                                           unit=unit,
+                                           dtype=np.float64))
 
+        self._constraints = ScanConstraints(axes=axes,
+                                            channels=channels,
+                                            backscan_configurable=False,  # TODO incorporate in scanning_probe toolchain
+                                            has_position_feedback=False,  # TODO incorporate in scanning_probe toolchain
+                                            square_px_only=False)  # TODO incorporate in scanning_probe toolchain
+        self._scan_data = None
 
 class RawDataContainer:
 
