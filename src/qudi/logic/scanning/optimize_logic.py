@@ -133,7 +133,7 @@ class ScanningOptimizeLogic(LogicBase):
         """
         self._scan_logic().sigScanStateChanged.disconnect(self._scan_state_changed)
         self._sigNextSequenceStep.disconnect()
-        self.stop_optimize()
+        self.sigOptimizeStateChanged.emit(False, dict(), None)
         return
 
     @property

@@ -897,6 +897,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
 
     @QtCore.Slot(bool)
     def _change_temperature_regime(self, is_LT_regime):
+        self._scan_data = None
         self._ni_ao().set_new_ao_limits(is_LT_regime)
         self._ni_finite_sampling_io().set_new_io_limits(is_LT_regime)
             

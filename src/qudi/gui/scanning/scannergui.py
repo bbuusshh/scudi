@@ -81,7 +81,7 @@ class SaveDialog(QtWidgets.QDialog):
 
 class RT_LT_Dialog(QtWidgets.QDialog):
     """ Dialog to provide feedback and block GUI while saving """
-    def __init__(self, parent, title="Please confirm", text="The temperature regime is LT"):
+    def __init__(self, parent, title="Please confirm", text="Switch to the Low Temperature regime"):
         super().__init__(parent)
         self.setWindowTitle(title)
         self.setWindowModality(QtCore.Qt.WindowModal)
@@ -185,6 +185,13 @@ class ScannerGui(GuiBase):
         self._rt_lt_dialog.rejected.connect(
             lambda: self.change_temperature_regime(False)
             )
+       
+       #Always start with the RT limits
+        self.change_temperature_regime(False)
+        self._mw.actionRT_LT.triggered.connect(
+            self.RT_LT_toggled, QtCore.Qt.DirectConnection
+        )   
+        
         # self._rt_lt_dialog.button_box.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
         #     self.apply_scanner_settings
         # )
@@ -243,10 +250,7 @@ class ScannerGui(GuiBase):
             self._data_logic().history_previous, QtCore.Qt.QueuedConnection
         )   
 
-        self._mw.actionRT_LT.triggered.connect(
-            lambda x: self._rt_lt_dialog.show() if x else self._rt_lt_dialog.hide(),
-                                       QtCore.Qt.DirectConnection
-        )   
+        
         
         self._scanning_logic().sigScannerTargetChanged.connect(
             self.scanner_target_updated, QtCore.Qt.QueuedConnection
@@ -336,9 +340,16 @@ class ScannerGui(GuiBase):
         # change the scanner contraints for the LT regime
         if regime_LT:
             regime_LT = self._mw.actionRT_LT.isChecked()
-
+        self._mw.actionRT_LT.setChecked(regime_LT)
         self._scanning_logic().change_temperature_regime(regime_LT)
-         
+
+    def RT_LT_toggled(self, is_toggled):
+        if is_toggled:
+            self._rt_lt_dialog.show() 
+        else:
+            self.change_temperature_regime(regime_LT=False)
+            self._rt_lt_dialog.hide()
+        #self.apply_scanner_settings()
 
     def _init_optimizer_settings(self):
         """ Configuration and initialisation of the optimizer settings dialog.
