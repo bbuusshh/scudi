@@ -1142,9 +1142,9 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
     def set_new_io_limits(self, is_LT_regime):
 
         if is_LT_regime:
-            limits = self.output_voltage_ranges_LT
+            limits = self._output_voltage_ranges_LT
         else:
-            limits = self.output_voltage_ranges
+            limits = self._output_voltage_ranges
 
         digital_sources = tuple(src for src in self._input_channel_units)
         input_limits = dict()

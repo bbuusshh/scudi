@@ -281,13 +281,13 @@ class ScannerGui(GuiBase):
             self.save_path_widget.DailyPathPushButton.clicked.emit()
 
         # Initialize dockwidgets to default view
-        self.restore_default_view()
-        self.show()
+        # self.restore_default_view()
+        
 
         self.restore_history()
 
         self._restore_window_geometry(self._mw)
-
+        self.show()
         # self._send_pop_up_message('We would appreciate your contribution',
         #                           'The scanning probe toolchain is still in active development. '
         #                           'Please report bugs and issues in the qudi-iqo-modules repository '
@@ -1085,3 +1085,18 @@ class ScannerGui(GuiBase):
 
                 # Adjust crosshair size according to optimizer range
                 self.update_crosshair_sizes()
+
+    def save_view(self):
+        """Saves the current GUI state as a QbyteArray.
+           The .data() function will transform it to a bytearray, 
+           which can be saved as a StatusVar and read by the load_view method. 
+        """
+        self._save_display_view = self._mw.saveState().data() 
+    def load_view(self):
+        """Loads the saved state from the GUI and can read a QbyteArray
+            or a simple byteArray aswell.
+        """
+        if self._save_display_view is None:
+            pass
+        else:
+            self._mw.restoreState(self._save_display_view)
