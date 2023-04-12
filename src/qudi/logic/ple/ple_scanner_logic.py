@@ -422,6 +422,9 @@ class PLEScannerLogic(ScanningProbeLogic):
         #if self.scan_data is not None:
         #    self.scan_data._accumulated = None
     
+    def _update_scan_position_range(self, new_position_ranges):
+        self._scanner()._update_position_ranges(new_position_ranges)
+
     def _update_scan_settings(self, scan_axes, settings):
         for ax_index, ax in enumerate(scan_axes):
             # Update scan ranges if needed

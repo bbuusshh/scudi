@@ -68,6 +68,7 @@ class PLEScanGui(GuiBase):
     _microwave_logic = Connector(name='microwave', interface= 'OdmrLogic', optional=True)
     _repump_logic = Connector(name='repump', interface= 'RepumpInterfuseLogic', optional=True)
     _controller_logic = Connector(name='controller', interface= 'ControllerInterfuseLogic', optional=True)
+    _wavemeter_logic = Connector(name="wavemeter", interface = "WavemeterInterfuseLogic", optional = True)
 
     # status vars
     _window_state = StatusVar(name='window_state', default=None)
@@ -156,7 +157,12 @@ class PLEScanGui(GuiBase):
         self._mw.ple_averaged_widget.selected_region.sigRegionChangeFinished.connect(self.region_value_changed_averaged_data) 
         self._mw.ple_averaged_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
         
-        
+        # restore_icon = QtGui.QIcon(os.path.join(icon_path, 'view-refresh'))
+        if self._wavemeter_logic():
+            self.action_calibrate = QtWidgets.QAction(text='Calibrate', parent=self)
+            self.action_calibrate.setToolTip('Calibrate with the range with a wavemeter.')
+            self.action_calibrate.triggered.connect(self.calibrate_the_range, QtCore.Qt.QueuedConnection)
+
         # x_range = settings['range'][self.scan_axis]
         # dec_places = decimal_places = np.abs(int(f'{x_range[0]:e}'.split('e')[-1])) + 3
         self._mw.startDoubleSpinBox.setSuffix(self.axis.unit)
@@ -811,7 +817,25 @@ class PLEScanGui(GuiBase):
             self._mw.matrix_widget.set_scan_data(accumulated_data, scan_data)
             self._mw.ple_averaged_widget.set_scan_data(accumulated_data, scan_data)
             self._accumulated_data = accumulated_data
-           
+    
+    def calibrate_the_range(self):
+        cur_range = self._scanning_logic().scan_ranges["a"]
+
+        self.ple_gui._mw.ple_widget.target_point.setValue(cur_range[0])
+        self.ple_gui._mw.ple_widget.target_point.sigPositionChangeFinished.emit(cur_range[0])
+        #TODO check if the positioner is still moving
+        w1 = self._wavemeter_logic.wavelengths[-1]
+
+        self.ple_gui._mw.ple_widget.target_point.setValue(cur_range[1])
+        self.ple_gui._mw.ple_widget.target_point.sigPositionChangeFinished.emit(cur_range[1])
+        #TODO check if the positioner is still moving
+        w2 = self._wavemeter_logic.wavelengths[-1]
+
+        factor_calibration = (w2 - w1) * 1000000 / (cur_range[1] - cur_range[0]) #GHz?? 
+
+        new_position_ranges = {"a": (cur_range[0] * factor_calibration, cur_range[1] * factor_calibration)}
+
+        self._scanning_logic()._update_scan_position_range(new_position_ranges)
 
     @QtCore.Slot(tuple)
     def save_scan_data(self, scan_axes=None):
