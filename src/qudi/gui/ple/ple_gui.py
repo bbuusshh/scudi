@@ -260,8 +260,8 @@ class PLEScanGui(GuiBase):
         #     self._scanning_logic.sigRepeatScan.disconnect()
         #     self._repump_logic().sigGuiParamsUpdated.disconnect()
 
-        if self._controller_logic() is not None:
-            self._controller_logic().sigGuiParamsUpdated.disconnect()
+        if self._controller_logic is not None:
+            self._controller_logic.sigGuiParamsUpdated.disconnect()
 
 
 
