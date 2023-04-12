@@ -108,6 +108,10 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                                           default={'ao{}'.format(channel_index): [-10, 10]
                                                    for channel_index in range(0, 4)},
                                           missing='warn')
+    _output_voltage_ranges_LT = ConfigOption(name='output_voltage_ranges_LT',
+                                          default={'ao{}'.format(channel_index): [-10, 10]
+                                                   for channel_index in range(0, 4)},
+                                          missing='nothing')
     _scanner_ready = True # FIX for a nicer compatibility with time tagger
     # Hardcoded data type
     __data_type = np.float64

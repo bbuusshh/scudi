@@ -97,7 +97,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
     _threaded = True  # Interfuse is by default not threaded.
 
     sigNextDataChunk = QtCore.Signal()
-    sigChangeTemperatureRegime = QtCore.Signal()
+    sigChangeTemperatureRegime = QtCore.Signal(bool)
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -893,12 +893,11 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         except:
             self.log.exception("")
 
-    @QtCore.Slot
+    @QtCore.Slot(bool)
     def _change_temperature_regime(self, is_LT_regime):
-        if is_LT_regime:
-            self._ni_ao.set_new_ao_limits(is_LT_regime)
-        else:
-            self._ni_finite_sampling_io
+        self._ni_ao().set_new_ao_limits(is_LT_regime)
+        self._ni_finite_sampling_io().set_new_io_limits(is_LT_regime)
+            
 
 
 class RawDataContainer:

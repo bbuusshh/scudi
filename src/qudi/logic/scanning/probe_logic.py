@@ -464,7 +464,7 @@ class ScanningProbeLogic(LogicBase):
 
 
     def change_temperature_regime(self, is_LT_regime=False):
-        self._scanner.sigChangeTemperatureRegime.emit(is_LT_regime)
+        self._scanner().sigChangeTemperatureRegime.emit(is_LT_regime)
 
 
     def __start_timer(self):

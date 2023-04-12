@@ -92,7 +92,9 @@ class ANC300(Base):
         self.port.write((f"geto {axis}\r\n").encode())
         info = b""
         for line in self.port.readlines():
+            print(line)
             info += line
+        return info
     
     def inWaiting(self):
         """ See how many characters are input buffer.
