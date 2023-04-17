@@ -39,7 +39,7 @@ from qudi.util.widgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
 from qudi.gui.ple.optimizer_setting_dialog import OptimizerSettingDialog
 from qudi.gui.ple.ple_settings_dialog import PleSettingDialog
 from qudi.gui.ple.optimizer_dockwidget import OptimizerDockWidget
-
+from qudi.util
 
 class SaveDialog(QtWidgets.QDialog):
     """ Dialog to provide feedback and block GUI while saving """
@@ -819,21 +819,25 @@ class PLEScanGui(GuiBase):
             self._accumulated_data = accumulated_data
     
     def calibrate_the_range(self):
-        cur_range = self._scanning_logic().scan_ranges["a"]
+        cur_range = self._scanning_logic().scan_ranges[self.scan_axis]
 
         self.ple_gui._mw.ple_widget.target_point.setValue(cur_range[0])
         self.ple_gui._mw.ple_widget.target_point.sigPositionChangeFinished.emit(cur_range[0])
         #TODO check if the positioner is still moving
+        while self._scanning_logic().module_state() == 'locked':
+            delay(1000)
         w1 = self._wavemeter_logic.wavelengths[-1]
 
         self.ple_gui._mw.ple_widget.target_point.setValue(cur_range[1])
         self.ple_gui._mw.ple_widget.target_point.sigPositionChangeFinished.emit(cur_range[1])
         #TODO check if the positioner is still moving
+        while self._scanning_logic().module_state() == 'locked':
+            delay(1000)
         w2 = self._wavemeter_logic.wavelengths[-1]
 
         factor_calibration = (w2 - w1) * 1000000 / (cur_range[1] - cur_range[0]) #GHz?? 
 
-        new_position_ranges = {"a": (cur_range[0] * factor_calibration, cur_range[1] * factor_calibration)}
+        new_position_ranges = {self.scan_axis: (cur_range[0] * factor_calibration, cur_range[1] * factor_calibration)}
 
         self._scanning_logic()._update_scan_position_range(new_position_ranges)
 
