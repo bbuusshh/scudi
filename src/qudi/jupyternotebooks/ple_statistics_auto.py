@@ -295,8 +295,9 @@ res = pa.do_ple_scan(lines = 1)
 
 #NOW all together:
 
-folder = r"C:\Users\yy3\Documents\data\Vlad\5-04-2023_90NA_4_5K\158\#1A\auto"
-folder = os.path.join(folder, r"auto_spectras2")
+folder = rf"C:\Users\yy3\Documents\data\Vlad\158\#1_A\{datetime.today().strftime('%d-%m-%Y')}"
+os.makedirs(folder, exist_ok=True)
+folder = os.path.join(folder, r"auto")
 center_v = -7
 if not os.path.exists(folder):
     os.mkdir(folder) 

@@ -324,7 +324,8 @@ class PoiManagerGui(GuiBase):
         self.__connect_update_signals_from_logic()
         self.__connect_control_signals_to_logic()
 
-        self._mw.show()
+        # self._mw.show()
+        self._restore_window_geometry(self._mw)
         return
 
     def on_deactivate(self):
@@ -335,6 +336,7 @@ class PoiManagerGui(GuiBase):
         self.__disconnect_control_signals_to_logic()
         self.__disconnect_update_signals_from_logic()
         self.__disconnect_internal_signals()
+        self._save_window_geometry(self._mw)
         self._mw.close()
 
     @QtCore.Slot()
