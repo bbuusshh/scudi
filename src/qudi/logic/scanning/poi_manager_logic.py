@@ -454,8 +454,8 @@ class PoiManagerLogic(LogicBase):
             self.stop_periodic_refocus, QtCore.Qt.QueuedConnection)
 
         # Initialise the ROI scan image (xy confocal image) if not present
-        if self._roi.scan_image is None:
-            self.set_scan_image(False)
+        # if self._roi.scan_image is None:
+        #     self.set_scan_image(False)
 
         self.sigRoiUpdated.emit({'name': self.roi_name,
                                  'poi_nametag': self.poi_nametag,
