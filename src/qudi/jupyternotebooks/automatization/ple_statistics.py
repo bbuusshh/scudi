@@ -102,13 +102,14 @@ class PleAuto:
         self.ple_gui._mw.ple_widget.target_point.sigPositionChangeFinished.emit(target)
         time.sleep(2)
 
-    def one_pulse_repump(self, color='violet'):
+    def one_pulse_repump(self, color='violet', power=0.1):
         if color == "violet":
-            self.cobolt.set_laser_modulated_power(power = 20)
+            self.cobolt.set_laser_modulated_power(power = power)
             self.cobolt.enable_modulated()
             time.sleep(0.2)
             self.cobolt.disable_modulated()
         elif color == "green":
+            self.ibeam_smart.setPower(power)
             self.ibeam_smart.enable()
             time.sleep(0.2)
             self.ibeam_smart.disable()
