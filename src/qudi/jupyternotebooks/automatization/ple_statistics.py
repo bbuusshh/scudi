@@ -96,11 +96,11 @@ class PleAuto:
 
     def go_to_ple_target(self, target):
         #target = self.ple_gui.fit_result[1].params["center"].value
-        self.ple_gui._mw.ple_widget.target_point.setValue(0)
-        time.sleep(2)
+        # self.ple_gui._mw.ple_widget.target_point.setValue(0)
+        # time.sleep(2)
         self.ple_gui._mw.ple_widget.target_point.setValue(target)
         self.ple_gui._mw.ple_widget.target_point.sigPositionChangeFinished.emit(target)
-        time.sleep(2)
+        time.sleep(0.5)
 
     def one_pulse_repump(self, color='violet', power=0.1):
         if color == "violet":
