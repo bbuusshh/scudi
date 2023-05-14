@@ -82,7 +82,8 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
     # config options
     _timetagger = Connector(name='tt', interface = "TT")
     _device_name = ConfigOption(name='device_name', default='Dev1', missing='warn')
-    _device_handle_remote = Connector(name='device_handle', interface = "NI_DeviceHandle")
+    
+    _device_handle = Connector(name='device_handle', interface = "NI_DeviceHandle", optional = True)
     _rw_timeout = ConfigOption('read_write_timeout', default=10, missing='nothing')
 
     # Finite Sampling #TODO What are the frame size hardware limits?
@@ -129,7 +130,7 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         super().__init__(*args, **kwargs)
 
         # NIDAQmx device handle
-        self._device_handle = None
+        # self._device_handle = None
         # Task handles for NIDAQmx tasks
         self._di_task_handles = list()
 
@@ -191,7 +192,13 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             if dev.lower() == self._device_name.lower():
                 self._device_name = dev
                 break
-        self._device_handle = ni.system.Device(self._device_name)
+        
+        if self._device_handle():
+            print("Hi")
+            self._device_handle = self._device_handle()
+        else:
+            self._device_handle = ni.system.Device(self._device_name)
+
 
         self.__all_counters = tuple(
             self._extract_terminal(ctr) for ctr in self._device_handle.co_physical_chans.channel_names if

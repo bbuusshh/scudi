@@ -18,7 +18,7 @@ import warnings
 
 
 class NI_DeviceHandle(Base):
-    device_name = ConfigOption(name='name', missing='error')
+    _device_name = ConfigOption(name='device_name', missing='error')
 
     _scanner_ready = False
     # Hardcoded data type
@@ -49,23 +49,13 @@ class NI_DeviceHandle(Base):
                 self._device_name = dev
                 break
         self._device_handle = ni.system.Device(self._device_name)
-        
-        self._all_counters = tuple(
-            self._extract_terminal(ctr) for ctr in self._device_handle.co_physical_chans.channel_names if
-            'ctr' in ctr.lower())
-        self._all_digital_terminals = tuple(
-            self._extract_terminal(term) for term in self._device_handle.terminals if 'pfi' in term.lower())
-        self._all_analog_in_terminals = tuple(
-            self._extract_terminal(term) for term in self._device_handle.ai_physical_chans.channel_names)
-        self._all_analog_out_terminals = tuple(
-            self._extract_terminal(term) for term in self._device_handle.ao_physical_chans.channel_names)
 
         
 
     def on_deactivate(self):
         """ Shut down the NI card.
         """
-        self.terminate_all_tasks()
+        # self.terminate_all_tasks()
         # Free memory if possible while module is inactive
         self.__frame_buffer = np.empty(0, dtype=self.__data_type)
         return
