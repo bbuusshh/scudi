@@ -35,7 +35,7 @@ import time
 class RepumpInterfuseLogic(LogicBase):
     sigGuiParamsUpdated = QtCore.Signal(object,  QtCore.Qt.QueuedConnection)
     sigTimingPlotUpdated = QtCore.Signal(object,  QtCore.Qt.QueuedConnection)
-    _pulsed = Connector(name='pulsed', interface='PulsedMasterLogic')
+    _pulsed = Connector(name='pulsed', interface='PulsedMasterLogic', optional=True)
     _switchlogic = Connector(name='switchlogic', interface="SwitchLogic", optional=True) 
     _cobolt = Connector(name='cobolt_laser', interface="Cobolt", optional=True)
     _switch_name = ConfigOption(name='switcher_name', default=None)
@@ -71,10 +71,10 @@ class RepumpInterfuseLogic(LogicBase):
         self.cobolt = self._cobolt()
         self.do_prescan_repump = False
         #self.create_pulse_block(channels = list(self._resonant_lasers.values()))
-        self.a_ch = {
-        'a_ch1': SamplingFunctions.Idle(),
-        'a_ch2': SamplingFunctions.Idle()
-        }
+        # self.a_ch = {
+        # 'a_ch1': SamplingFunctions.Idle(),
+        # 'a_ch2': SamplingFunctions.Idle()
+        # }
         self.d_ch = {
         'd_ch1': False, 
         'd_ch2': False, 

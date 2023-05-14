@@ -30,7 +30,6 @@ if __version_info__ < (20, 0, 0, "alpha", 5):
         f"visit https://docs.python-telegram-bot.org/en/v{TG_VER}/examples.html"
     )
 
-TOKEN = '517124256:AAE2dHpeO5KGI9c2G9J593JM6X24wb8JVMk'
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
 from telegram.ext import (
     Application,
@@ -79,14 +78,14 @@ class TelegramBot(Base):
     def on_activate(self):
         """Run the bot."""
         # Create the Application and pass it your bot's token.
-        self.application = Application.builder().token(TOKEN).build()
+        self.application = Application.builder().token(self.token).build()
 
         # Add conversation handler with the states GENDER, PHOTO, LOCATION and BIO
         conv_handler = ConversationHandler(
             entry_points=[CommandHandler("start", self.start)],
             states={
                 GENDER: [MessageHandler(filters.Regex("^(Boy|Girl|Other)$"), self.gender)],
-                PHOTO: [MessageHandler(filters.PHOTO, self.photo), CommandHandler("skip", skip_photo)],
+                PHOTO: [MessageHandler(filters.PHOTO, self.photo), CommandHandler("skip", self.skip_photo)],
                 LOCATION: [
                     MessageHandler(filters.LOCATION, self.location),
                     CommandHandler("skip", self.skip_location),
