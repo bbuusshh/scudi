@@ -82,6 +82,7 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
     # config options
     _timetagger = Connector(name='tt', interface = "TT")
     _device_name = ConfigOption(name='device_name', default='Dev1', missing='warn')
+    _device_handle_remote = Connector(name='device_handle', interface = "NI_DeviceHandle")
     _rw_timeout = ConfigOption('read_write_timeout', default=10, missing='nothing')
 
     # Finite Sampling #TODO What are the frame size hardware limits?
