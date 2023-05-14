@@ -73,8 +73,8 @@ class TT(Base):
             channel = int(channel)
             if 'delay' in params.keys():
                 self.delay_channel(delay=params['delay'], channel = channel)
-            if 'triggerLevel' in params.keys():
-                self.tagger.setTriggerLevel(channel, params['triggerLevel'])
+            if 'trigger_level' in params.keys():
+                self.tagger.setTriggerLevel(channel, params['trigger_level'])
 
         self._combined_channels = self.combiner(self._combiner["channels"])
         
@@ -93,6 +93,7 @@ class TT(Base):
 
         get data by hist.getData()
         """
+        self.tagger.setConditionalFilter(trigger=self._hist["channels"], filtered=self._hist["trigger_channel"])
         return Histogram(self.tagger,
                             kwargs['channel'],
                             kwargs['trigger_channel'],
