@@ -26,7 +26,7 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
 
     # Finite Sampling #TODO What are the frame size hardware limits?
     _frame_size_limits = ConfigOption(name='frame_size_limits', default=(1, 1e9))
-    _input_channel_units = ConfigOption(name='input_channel_units',
+    input_channel_units = ConfigOption(name='input_channel_units',
                                         missing='error')
     
     _tt_ni_clock_input = ConfigOption(name = "tt_ni_clock_input",
@@ -78,43 +78,43 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
         self._device_handle = self._ni_finite_sampling_io._device_handle
 
         self._sum_channels = [ch.lower() for ch in self._sum_channels]
-        
-        self._input_channel_units = {self._extract_terminal(key): value
-                                     for key, value in self._input_channel_units.items()}
+        # SOLVE THE ISSUE WITH _input channel units USING ORDERERD DICT
+        self._input_channel_units = self._ni_finite_sampling_io._input_channel_units
+        self._input_channel_units.update({self._extract_terminal(key): value
+                                     for key, value in self.input_channel_units.items()})
         if len(self._sum_channels) > 1:
             self._input_channel_units["sum"] = self._input_channel_units[self._sum_channels[0]]
-        self._input_channel_units.update(self._ni_finite_sampling_io._input_channel_units)
+        
         output_voltage_ranges = {self._extract_terminal(key): value
                                  for key, value in self._ni_finite_sampling_io._output_voltage_ranges.items()}
 
-        sample_rate_limits = (
-                self._ni_finite_sampling_io._device_handle.ao_min_rate,
-                min(self._ni_finite_sampling_io._device_handle.ao_max_rate, 
-                    self._ni_finite_sampling_io._device_handle.ci_max_timebase)
-            )        
-        
         digital_sources = tuple(src for src in self._input_channel_units if 'tt' in src) #!FIX check maybe regex out tt
-        input_limits = self._ni_finite_sampling_io._constraints.input_channel_limits
+        self.input_limits = self._ni_finite_sampling_io._constraints.input_channel_limits
         if digital_sources:
-            input_limits.update({key: [0, int(1e8)]
+            self.input_limits.update({key: [0, int(1e8)]
                                  for key in digital_sources})  # TODO Real HW constraint?
         if len(self._sum_channels) > 1:
-            input_limits["sum"] = [0, int(1e8)]
+            self.input_limits["sum"] = [0, int(1e8)]
         self.__active_channels["di_channels"] = [int(ch[2:]) for ch in self._input_channel_units.keys() if "tt" in ch]
-
+        
         # Create constraints
+        # output_units = self._ni_finite_sampling_io._output_channel_units
+        # print("Output ranges", output_voltage_ranges.keys())
+        # output_units = {"ao1": "V"}
+        # self._constraints = self._ni_finite_sampling_io._constraints
+        # self._constraints._input_channel_units
+
         self._constraints = FiniteSamplingIOConstraints(
             supported_output_modes=(SamplingOutputMode.JUMP_LIST, SamplingOutputMode.EQUIDISTANT_SWEEP),
             input_channel_units=self._input_channel_units,
-            output_channel_units=self._ni_finite_sampling_io._output_channel_units,
-            frame_size_limits=self._ni_finite_sampling_io._frame_size_limits,
-            sample_rate_limits=sample_rate_limits,
-            output_channel_limits=output_voltage_ranges,
-            input_channel_limits=input_limits,
+            output_channel_units=self._ni_finite_sampling_io._constraints._output_channel_units,
+            frame_size_limits=self._ni_finite_sampling_io._constraints._frame_size_limits,
+            sample_rate_limits=self._ni_finite_sampling_io._constraints.sample_rate_limits,
+            output_channel_limits=self._ni_finite_sampling_io._output_voltage_ranges,
+            input_channel_limits=self.input_limits,
         )
-
-        assert self._constraints.output_mode_supported(self._ni_finite_sampling_io._default_output_mode), \
-            f'Config output "{self._ni_finite_sampling_io._default_output_mode}" mode not supported'
+        # assert self._constraints.output_mode_supported(self._ni_finite_sampling_io._default_output_mode), \
+        #     f'Config output "{self._ni_finite_sampling_io._default_output_mode}" mode not supported'
 
         self.__output_mode = self._ni_finite_sampling_io._default_output_mode
         self.__frame_size = 0
