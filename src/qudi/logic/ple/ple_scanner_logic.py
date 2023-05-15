@@ -371,6 +371,7 @@ class PLEScannerLogic(ScanningProbeLogic):
             fail, new_settings = self._scanner().configure_scan(settings)
             if fail:
                 self.module_state.unlock()
+                self.stop_scan() 
                 self.sigScanStateChanged.emit(False, None, self._curr_caller_id)
                 return -1
 
@@ -402,7 +403,7 @@ class PLEScannerLogic(ScanningProbeLogic):
             if self.module_state() == 'idle':
                 self.sigScanStateChanged.emit(False, self.scan_data, self._curr_caller_id)
                 return 0
-
+            
             self.__stop_timer()
 
             err = self._scanner().stop_scan() if self._scanner().module_state() != 'idle' else 0
