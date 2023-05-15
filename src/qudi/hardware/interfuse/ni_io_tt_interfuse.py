@@ -154,7 +154,8 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
         #set active the lockal channels (the time tagger channels for readout!)
 
         di_channels, ai_channels = self._extract_ai_di_from_input_channels(input_channels)
-
+        di_channels = [int(ch[2:]) for ch in self._input_channel_units.keys() if "tt" in ch]
+        
         with self._thread_lock:
             self.__active_channels['di_channels'], self.__active_channels['ai_channels'] \
                 = frozenset(di_channels), frozenset(ai_channels)
@@ -289,7 +290,9 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
 
         Must NOT raise exceptions if no frame output is running.
         """
+        
         if self.is_running:
+            self._ni_finite_sampling_io.stop_buffered_frame()
             with self._thread_lock:
                 number_of_missing_samples = self.samples_in_buffer
                 self.__unread_samples_buffer = self.get_buffered_samples()
