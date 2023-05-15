@@ -194,7 +194,6 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                 break
         
         if self._device_handle():
-            print("Hi")
             self._device_handle = self._device_handle()
         else:
             self._device_handle = ni.system.Device(self._device_name)

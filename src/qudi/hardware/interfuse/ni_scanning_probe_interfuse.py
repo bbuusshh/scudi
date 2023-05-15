@@ -304,7 +304,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
                 ni_scan_dict = self._initialize_ni_scan_arrays(self._scan_data)
 
                 self._ni_finite_sampling_io().set_frame_data(ni_scan_dict)
-
+                print("Frame ", self._ni_finite_sampling_io()._ni_finite_sampling_io.frame_size)
             except:
                 self.log.exception("")
                 return True, self.scan_settings
@@ -562,7 +562,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
             if len(self._sum_channels) > 1:
                 new_data["sum"] = np.sum([samples for key, samples in samples_dict.items() if key in self._sum_channels], axis=0)
             # self.log.debug(f'new data: {new_data}')
-
+          
             with self._thread_lock_data:
                 self.raw_data_container.fill_container(new_data)
                 self._scan_data.data = self.raw_data_container.forwards_data()

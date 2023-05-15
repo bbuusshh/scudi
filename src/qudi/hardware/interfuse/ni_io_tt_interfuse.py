@@ -28,34 +28,13 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
     _frame_size_limits = ConfigOption(name='frame_size_limits', default=(1, 1e9))
     _input_channel_units = ConfigOption(name='input_channel_units',
                                         missing='error')
-
-    _output_channel_units = ConfigOption(name='output_channel_units',
-                                         default={'ao{}'.format(channel_index): 'V' for channel_index in range(0, 4)},
-                                         missing='error')
-
-    _default_output_mode = ConfigOption(name='default_output_mode', default='JUMP_LIST',
-                                        constructor=lambda x: SamplingOutputMode[x.upper()],
-                                        missing='nothing')
-
-    _physical_sample_clock_output = ConfigOption(name='sample_clock_output',
-                                                 default=None)
-
+    
     _tt_ni_clock_input = ConfigOption(name = "tt_ni_clock_input",
-                                                default=None)
+                                                default=None, missing='warn')
     
     _tt_falling_edge_clock_input = ConfigOption(name = "tt_falling_edge_clock_input",
-                                                default=None)
+                                                default=None, missing='warn')
     _sum_channels = ConfigOption(name='sum_channels', default=[], missing='nothing')
-    _adc_voltage_ranges = ConfigOption(name='adc_voltage_ranges',
-                                       default={'ai{}'.format(channel_index): [-10, 10]
-                                                for channel_index in range(0, 10)},  # TODO max 10 some what arbitrary
-                                       missing='nothing')
-
-    _output_voltage_ranges = ConfigOption(name='output_voltage_ranges',
-                                          default={'ao{}'.format(channel_index): [-10, 10]
-                                                   for channel_index in range(0, 4)},
-                                          missing='warn')
-
     _scanner_ready = False
     # Hardcoded data type
     __data_type = np.float64
@@ -91,10 +70,6 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
         """
         Starts up the NI-card and performs sanity checks.
         """
-        self._input_channel_units = {self._extract_terminal(key): value
-                                     for key, value in self._input_channel_units.items()}
-        self._output_channel_units = {self._extract_terminal(key): value
-                                      for key, value in self._output_channel_units.items()}
 
         # Check if device is connected and set device to use
         self._tt = self._timetagger()
@@ -103,19 +78,29 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
         self._device_handle = self._ni_finite_sampling_io._device_handle
 
         self._sum_channels = [ch.lower() for ch in self._sum_channels]
+        
+        self._input_channel_units = {self._extract_terminal(key): value
+                                     for key, value in self._input_channel_units.items()}
         if len(self._sum_channels) > 1:
             self._input_channel_units["sum"] = self._input_channel_units[self._sum_channels[0]]
-
+        self._input_channel_units.update(self._ni_finite_sampling_io._input_channel_units)
         output_voltage_ranges = {self._extract_terminal(key): value
                                  for key, value in self._ni_finite_sampling_io._output_voltage_ranges.items()}
 
-        input_limits = dict()
-      
         sample_rate_limits = (
                 self._ni_finite_sampling_io._device_handle.ao_min_rate,
                 min(self._ni_finite_sampling_io._device_handle.ao_max_rate, 
                     self._ni_finite_sampling_io._device_handle.ci_max_timebase)
             )        
+        
+        digital_sources = tuple(src for src in self._input_channel_units if 'tt' in src) #!FIX check maybe regex out tt
+        input_limits = self._ni_finite_sampling_io._constraints.input_channel_limits
+        if digital_sources:
+            input_limits.update({key: [0, int(1e8)]
+                                 for key in digital_sources})  # TODO Real HW constraint?
+        if len(self._sum_channels) > 1:
+            input_limits["sum"] = [0, int(1e8)]
+        self.__active_channels["di_channels"] = [int(ch[2:]) for ch in self._input_channel_units.keys() if "tt" in ch]
 
         # Create constraints
         self._constraints = FiniteSamplingIOConstraints(
@@ -125,13 +110,13 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
             frame_size_limits=self._ni_finite_sampling_io._frame_size_limits,
             sample_rate_limits=sample_rate_limits,
             output_channel_limits=output_voltage_ranges,
-            input_channel_limits=input_limits
+            input_channel_limits=input_limits,
         )
 
-        assert self._constraints.output_mode_supported(self._default_output_mode), \
-            f'Config output "{self._default_output_mode}" mode not supported'
+        assert self._constraints.output_mode_supported(self._ni_finite_sampling_io._default_output_mode), \
+            f'Config output "{self._ni_finite_sampling_io._default_output_mode}" mode not supported'
 
-        self.__output_mode = self._default_output_mode
+        self.__output_mode = self._ni_finite_sampling_io._default_output_mode
         self.__frame_size = 0
         return
 
@@ -175,7 +160,7 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
                 = frozenset(di_channels), frozenset(ai_channels)
 
             self.__active_channels['ao_channels'] = frozenset(output_channels)
-
+        self.__active_channels["di_channels"] = frozenset([ch for ch in self._input_channel_units.keys() if "tt" in ch])
     @property
     def sample_rate(self):
         """ The sample rate (in Hz) at which the samples will be emitted.
@@ -207,6 +192,7 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
 
         @param SamplingOutputMode mode: The output mode to set as SamplingOutputMode Enum
         """
+        self._ni_finite_sampling_io.set_output_mode(mode)
         assert not self.is_running, \
             'Unable to set output mode while IO is running. New settings ignored.'
         assert self._constraints.output_mode_supported(mode), f'Output mode {mode} not supported'
@@ -230,6 +216,8 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
         """
         if not self.is_running:
             return self._number_of_pending_samples
+        else:
+            return self.frame_size #self._di_task_handles[0].in_stream.avail_samp_per_chan
 
     @property
     def frame_size(self):
@@ -240,8 +228,12 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
         return self.__frame_size
 
     def _set_frame_size(self, size):
-        self._ni_finite_sampling_io._set_frame_size(size)
-        self.__frame_size = size
+        
+        samples_per_channel = int(round(size))
+        with self._thread_lock:
+            self.__frame_size = samples_per_channel
+            self.__frame_buffer = None
+        #self._ni_finite_sampling_io._set_frame_size(size)#
 
     def set_frame_data(self, data):
         """ Fills the frame buffer for the next data frame to be emitted. Data must be a dict
@@ -263,57 +255,8 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
         assert not self.is_running, f'IO is running. Can not set frame data'
 
         active_output_channels_set = self._ni_finite_sampling_io.active_channels[1]
-
-        if data is not None:
-            # assure dict keys are striped from device name and are lower case
-            data = {self._extract_terminal(ch): value for ch, value in data.items()}
-            # Check for invalid keys
-            assert not set(data).difference(active_output_channels_set), \
-                f'Invalid keys in data {*set(data).difference(active_output_channels_set),} '
-            # Check if all active channels are in data
-            assert set(data) == active_output_channels_set, f'Keys of data {*data,} do not match active' \
-                                                            f'channels {*active_output_channels_set,}'
-
-            # set frame size
-            if self.output_mode == SamplingOutputMode.JUMP_LIST:
-                frame_size = len(next(iter(data.values())))
-                assert all(isinstance(d, np.ndarray) and len(d.shape) == 1 for d in data.values()), \
-                    f'Data values are no 1D numpy.ndarrays'
-                assert all(len(d) == frame_size for d in data.values()), f'Length of data values not the same'
-
-                for output_channel in data:
-                    assert not np.any(
-                        (min(data[output_channel]) < min(self.constraints.output_channel_limits[output_channel])) |
-                        (max(data[output_channel]) > max(self.constraints.output_channel_limits[output_channel]))
-                    ), f'Output channel {output_channel} value out of constraints range'
-
-            elif self.output_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
-                assert all(len(tup) == 3 and isinstance(tup, tuple) for tup in data.values()), \
-                    f'EQUIDISTANT_SWEEP output mode requires value tuples of length 3 for each output channel'
-                assert all(isinstance(tup[-1], int) for tup in data.values()), \
-                    f'Linspace number of points not integer'
-
-                assert len(set(tup[-1] for tup in data.values())) == 1, 'Linspace lengths are different'
-
-                for output_channel in data:
-                    assert not np.any(
-                        (min(data[output_channel][:-1]) < min(self.constraints.output_channel_limits[output_channel])) |
-                        (max(data[output_channel][:-1]) > max(self.constraints.output_channel_limits[output_channel]))
-                    ), f'Output channel {output_channel} value out of constraints range'
-                frame_size = next(iter(data.values()))[-1]
-            else:
-                frame_size = 0
-
-        with self._thread_lock:
-            self._set_frame_size(frame_size)
-            # set frame buffer
-            if data is not None:
-                if self.output_mode == SamplingOutputMode.JUMP_LIST:
-                    self.__frame_buffer = {output_ch: jump_list for output_ch, jump_list in data.items()}
-                elif self.output_mode == SamplingOutputMode.EQUIDISTANT_SWEEP:
-                    self.__frame_buffer = {output_ch: np.linspace(*tup) for output_ch, tup in data.items()}
-            if data is None:
-                self._set_frame_size(0)  # Sets frame buffer to None
+        self._ni_finite_sampling_io.set_frame_data(data)
+        self._set_frame_size(self._ni_finite_sampling_io.frame_size)
 
     def start_buffered_frame(self):
         """ Will start the input and output of the previously set data frame in a non-blocking way.
@@ -322,15 +265,14 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
         Must raise exception if frame output can not be started.
         """
         # I need to check if the frame size is set and active channels are set
+        
         self.module_state.lock()
-        self._ni_finite_sampling_io.start_buffered_frame()
         with self._thread_lock:
-            self._number_of_pending_samples = self.frame_size
-
             if self._init_tt_cbm_task() < 0:
                 self.terminate_all_tasks() # add the treatment of the TT task termination
                 self.module_state.unlock()
-                
+            self._ni_finite_sampling_io.start_buffered_frame()
+
             # output_data = np.ndarray((len(self.active_channels[1]), self.frame_size))
 
             # for num, output_channel in enumerate(self.active_channels[1]):
@@ -385,10 +327,10 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
         with self._thread_lock:
             if number_of_samples is not None:
                 assert isinstance(number_of_samples, (int, np.integer)), f'Number of requested samples not integer'
-
+         
             samples_to_read = number_of_samples if number_of_samples is not None else self.samples_in_buffer
             pre_stop = not self.is_running
-
+          
             # if not samples_to_read <= self._number_of_pending_samples:
             #     print(f"Requested {samples_to_read} samples, "
             #                      f"but only {self._number_of_pending_samples} enough pending.")
@@ -424,7 +366,9 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
                                                     in self.__unread_samples_buffer.items()}
                     return data
             else:
+               
                 if self._timetagger_cbm_tasks:
+                    
                     di_data = np.zeros(len(self.__active_channels['di_channels']) * samples_to_read)
 
                     di_data = di_data.reshape(len(self.__active_channels['di_channels']), samples_to_read)
@@ -433,10 +377,19 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
                         di_data[num] = data_cbm
                         data[di_channel] = di_data[num] * self.sample_rate  # To go to c/s # TODO What if unit not c/s
                         self._scanner_ready = self._timetagger_cbm_tasks[num].ready()
-
+              
                 self._number_of_pending_samples -= samples_to_read
                 
                 return data
+    @property
+    def active_channels(self):
+        """ Names of all currently active input and output channels.
+
+        @return (frozenset, frozenset): active input channels, active output channels
+        """
+        return self.__active_channels['di_channels'].union(self.__active_channels['ai_channels']), \
+               self.__active_channels['ao_channels']
+    
 
     def get_frame(self, data=None):
         """ Performs io for a single data frame for all active channels.
@@ -476,7 +429,8 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
         cbm stnads for count between markers
         @return int: error code (0:OK, -1:error)
         """
-        channels_tt = [int(ch[2:]) for ch in self.__active_channels['di_channels'] if "tt" in ch]
+        
+        channels_tt =[int(ch[2:]) for ch in self.__active_channels['di_channels'] if "tt" in ch]
         clock_tt = int(self._tt_ni_clock_input[2:])
         #Workaround for the old time tagger version at the praktikum
         if self._tt_falling_edge_clock_input:
