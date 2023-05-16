@@ -26,6 +26,7 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
 
     # Finite Sampling #TODO What are the frame size hardware limits?
     _frame_size_limits = ConfigOption(name='frame_size_limits', default=(1, 1e9))
+   
     input_channel_units = ConfigOption(name='input_channel_units',
                                         missing='error')
     
@@ -269,11 +270,14 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
         
         self.module_state.lock()
         with self._thread_lock:
+            
+
             if self._init_tt_cbm_task() < 0:
                 self.terminate_all_tasks() # add the treatment of the TT task termination
                 self.module_state.unlock()
+            
+            time.sleep(0.2)
             self._ni_finite_sampling_io.start_buffered_frame()
-
             # output_data = np.ndarray((len(self.active_channels[1]), self.frame_size))
 
             # for num, output_channel in enumerate(self.active_channels[1]):
@@ -291,17 +295,21 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
         Must NOT raise exceptions if no frame output is running.
         """
         
+        
         if self.is_running:
-            self._ni_finite_sampling_io.stop_buffered_frame()
+            
             with self._thread_lock:
+                
                 number_of_missing_samples = self.samples_in_buffer
                 self.__unread_samples_buffer = self.get_buffered_samples()
                 self._number_of_pending_samples = number_of_missing_samples
-
+                
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 self.terminate_all_tasks()  # nidaqmx raises a warning when frame is stopped before all samples acq.
             self.module_state.unlock()
+            with self._thread_lock:
+                self._ni_finite_sampling_io.stop_buffered_frame()
 
     def get_buffered_samples(self, number_of_samples=None):
         """ Returns a chunk of the current data frame for all active input channels read from the
@@ -379,11 +387,13 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
                         data_cbm = self._timetagger_cbm_tasks[num].getData()
                         di_data[num] = data_cbm
                         data[di_channel] = di_data[num] * self.sample_rate  # To go to c/s # TODO What if unit not c/s
-                        self._scanner_ready = self._timetagger_cbm_tasks[num].ready()
+                        self._scanner_ready = self.is_scanner_ready()
               
                 self._number_of_pending_samples -= samples_to_read
                 
                 return data
+    def is_scanner_ready(self):
+        return self._timetagger_cbm_tasks[0].ready()
     @property
     def active_channels(self):
         """ Names of all currently active input and output channels.
@@ -442,12 +452,8 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
             clock_fall_tt = - clock_tt
         self._timetagger_cbm_tasks = [self._tt.count_between_markers(click_channel = channel, 
                                         begin_channel = clock_tt,
-                                        end_channel = clock_fall_tt, 
-                                        n_values=self.frame_size) if channel != 111 else self._tt.count_between_markers(
-                                                        click_channel = self._tt._combined_channels.getChannel(), 
-                                                        begin_channel = clock_tt,
-                                                        end_channel = clock_fall_tt, 
-                                                        n_values=self.frame_size) 
+                                        end_channel = clock_tt,#clock_fall_tt, 
+                                        n_values=self.frame_size) 
                                         for channel in channels_tt]
         return 0
 

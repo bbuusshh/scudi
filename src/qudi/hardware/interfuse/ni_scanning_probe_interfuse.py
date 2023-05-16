@@ -304,7 +304,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
                 ni_scan_dict = self._initialize_ni_scan_arrays(self._scan_data)
 
                 self._ni_finite_sampling_io().set_frame_data(ni_scan_dict)
-                print("Frame ", self._ni_finite_sampling_io()._ni_finite_sampling_io.frame_size)
+                
             except:
                 self.log.exception("")
                 return True, self.scan_settings
@@ -452,7 +452,6 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         @return bool: Failure indicator (fail=True)
         # todo: return values as error codes are deprecated
         """
-
         #self.log.debug("Stopping scan")
         if self.thread() is not QtCore.QThread.currentThread():
             QtCore.QMetaObject.invokeMethod(self, '_stop_scan',
@@ -472,6 +471,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
             # self.log.debug("Move aborted")
 
         if self._ni_finite_sampling_io().is_running:
+
             self._ni_finite_sampling_io().stop_buffered_frame()
             # self.log.debug("Frame stopped")
 
@@ -539,21 +539,11 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
     def _check_scan_end_reached(self):
         # not thread safe, call from thread_lock protected code only
         #FIx this shit
-        
         return self.raw_data_container.is_full and self._ni_finite_sampling_io()._scanner_ready
 
     def _fetch_data_chunk(self):
         try:
-            # self.log.debug(f'fetch chunk: {self._ni_finite_sampling_io().samples_in_buffer}, {self.is_scan_running}')
-            # chunk_size = self._scan_data.scan_resolution[0] + self._backwards_line_resolution
-            # chunk_size = 10  # TODO Hardcode or go line by line as commented out above?
-            # Request a minimum of chunk_size samples per loop
-            # try:
-            #     samples_dict = self._ni_finite_sampling_io().get_buffered_samples() \
-            #         if self._ni_finite_sampling_io().samples_in_buffer < chunk_size\
-            #         else self._ni_finite_sampling_io().get_buffered_samples()
-            # except ValueError:  # ValueError is raised, when more samples are requested then pending or still to get
-            #     # after HW stopped
+
             samples_dict = self._ni_finite_sampling_io().get_buffered_samples()
             
             reverse_routing = {val.lower(): key for key, val in self._ni_channel_mapping.items()}
@@ -561,17 +551,19 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
             new_data = {reverse_routing[key]: samples for key, samples in samples_dict.items()}
             if len(self._sum_channels) > 1:
                 new_data["sum"] = np.sum([samples for key, samples in samples_dict.items() if key in self._sum_channels], axis=0)
-            # self.log.debug(f'new data: {new_data}')
-          
+
             with self._thread_lock_data:
                 self.raw_data_container.fill_container(new_data)
                 self._scan_data.data = self.raw_data_container.forwards_data()
 
                 if self._check_scan_end_reached():
+                   
                     self.stop_scan()
                 elif not self.is_scan_running:
+                    
                     return
                 else:
+
                     self.sigNextDataChunk.emit()
 
         except:
