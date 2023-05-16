@@ -46,7 +46,7 @@
      <x>0</x>
      <y>0</y>
      <width>380</width>
-     <height>26</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_File">
@@ -84,6 +84,7 @@
    <addaction name="separator"/>
    <addaction name="action_optimize_position"/>
    <addaction name="actionFull_range"/>
+   <addaction name="actionTrackPLE"/>
   </widget>
   <widget class="QDockWidget" name="scan_control_DockWidget">
    <property name="sizePolicy">
@@ -95,7 +96,7 @@
    <property name="minimumSize">
     <size>
      <width>380</width>
-     <height>100</height>
+     <height>133</height>
     </size>
    </property>
    <property name="maximumSize">
@@ -666,6 +667,14 @@
   <action name="action_show_fit_settings">
    <property name="text">
     <string>Fit configuration</string>
+   </property>
+  </action>
+  <action name="actionTrackPLE">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Track PLE</string>
    </property>
   </action>
   <zorder>scan_control_DockWidget</zorder>

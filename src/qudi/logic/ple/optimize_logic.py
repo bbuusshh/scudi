@@ -62,18 +62,19 @@ class PLEOptimizeScannerLogic(LogicBase):
     _scan_range = StatusVar(name='scan_range', default=None)
     _scan_resolution = StatusVar(name='scan_resolution', default=None)
     _min_r_squared = StatusVar(name='min_r_squared', default=0.2)
+    _tracking_period = StatusVar(name='tracking_period', default=0)
     # signals
     sigOptimizeStateChanged = QtCore.Signal(bool, dict, object)
     sigOptimizeSettingsChanged = QtCore.Signal(dict)
     sigOptimizeDone = QtCore.Signal()
-
+    sigTrackPle = QtCore.Signal(bool)
     _sigNextSequenceStep = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
         self._thread_lock = RecursiveMutex()
-
+        self.stopRequested = False
         self._stashed_scan_settings = dict()
         self._sequence_index = 0
         self._optimal_position = dict()
@@ -126,6 +127,12 @@ class PLEOptimizeScannerLogic(LogicBase):
         self._scan_logic().sigScanStateChanged.connect(
             self._scan_state_changed, QtCore.Qt.QueuedConnection
         )
+        self._ple_tracking_timer = QtCore.QTimer()
+        self._ple_tracking_timer.setSingleShot(False)
+        self._ple_tracking_timer.timeout.connect(self.start_optimize, 
+                                                 QtCore.Qt.QueuedConnection)
+        self.sigTrackPle.connect(self.enable_ple_tracking, 
+                                 QtCore.Qt.QueuedConnection)
         return
 
     def on_deactivate(self):
@@ -181,7 +188,8 @@ class PLEOptimizeScannerLogic(LogicBase):
                 'data_channel': self._data_channel,
                 'scan_range': self.scan_range,
                 'scan_resolution': self.scan_resolution,
-                'scan_sequence': self.scan_sequence}
+                'scan_sequence': self.scan_sequence,
+                "tracking_period": self._tracking_period,}
 
     def check_sanity_optimizer_settings(self, settings=None):
         # shaddows scanning_probe_logic::check_sanity. Unify code somehow?
@@ -220,7 +228,8 @@ class PLEOptimizeScannerLogic(LogicBase):
                                                   in hw_axes.values()}
                 if key == 'data_channel':
                     settings['data_channel'] = list(sig_channels.keys())[0]
-
+                if key == "tracking_period":
+                    settings["tracking_period"] = self._tracking_period
 
         # scan_sequence check, only sensibel if plot dimensions (eg. from confocal gui) are available
         if 'scan_sequence' in settings:
@@ -265,6 +274,9 @@ class PLEOptimizeScannerLogic(LogicBase):
                 if 'scan_sequence' in settings:
                     self.scan_sequence = settings['scan_sequence']
                     settings_update['scan_sequence'] = self.scan_sequence
+                if 'tracking_period' in settings:
+                    self._tracking_period = settings['tracking_period']
+                    settings_update['tracking_period'] = self._tracking_period
                     
                     # self._optimizer_dim = [len(i) for i in self.scan_sequence]
                     
@@ -412,17 +424,26 @@ class PLEOptimizeScannerLogic(LogicBase):
                 self._sigNextSequenceStep.emit()
             return
 
-    def track_ple(self, track_ple):
-        with self._thread_lock:
-            
-            
+    def toggle_ple_tracking(self, enable, tracking_period=None):
+        if tracking_period is not None:
+            self._tracking_period = tracking_period
+        self.sigTrackPle.emit(enable)
+
+           
+    @QtCore.Slot(bool)
+    def enable_ple_tracking(self, enable):
+        if enable:
+            self._ple_tracking_timer.setInterval(self._tracking_period)
+            self._ple_tracking_timer.start()
+        else:
+            self._ple_tracking_timer.stop()
+
+        
 
     def stop_optimize(self):
         with self._thread_lock:
             if self.module_state() == 'idle':
                 self.sigOptimizeStateChanged.emit(False, dict(), None)
-                
-
             if self._scan_logic().module_state() != 'idle':
                 # optimizer scans are never saved in scanning history
                 err = self._scan_logic().stop_scan()

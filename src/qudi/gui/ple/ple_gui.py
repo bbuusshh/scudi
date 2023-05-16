@@ -191,7 +191,11 @@ class PLEScanGui(GuiBase):
             self._mw.Controller_widget.sig_controller_params_updated.connect(self._controller_logic.params_updated, QtCore.Qt.QueuedConnection)
             self._controller_logic.sigGuiParamsUpdated.connect(self._mw.Controller_widget.update_gui, QtCore.Qt.QueuedConnection)
             self._controller_logic.sigGuiParamsUpdated.emit(self._controller_logic.parameters)
-
+        
+        #PLE tracking
+        self._mw.actionTrackPLE.triggered.connect(
+            lambda: self._optimize_logic().toggle_ple_tracking(self._mw.actionTrackPLE.isChecked()), 
+            QtCore.Qt.QueuedConnection)
         self.scanner_target_updated()
         # self.scan_state_updated(
         #     self._scanning_logic.module_state() != 'idle'
