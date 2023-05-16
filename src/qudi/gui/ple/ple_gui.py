@@ -777,7 +777,7 @@ class PLEScanGui(GuiBase):
                 self._mw.ple_averaged_widget.target_point.setValue(optimal_position[self._scanning_logic._scan_axis])
                 self._mw.constDoubleSpinBox.setValue(optimal_position[self._scanning_logic._scan_axis])
 
-        if fit_data is not None and isinstance(optimal_position, dict):
+        if fit_data is not None and fit_data['full_fit_res'] is not None and isinstance(optimal_position, dict):
             data = fit_data['fit_data']
             fit_res = fit_data['full_fit_res']
             if data.ndim == 1:

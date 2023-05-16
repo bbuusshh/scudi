@@ -62,7 +62,7 @@ class PLEOptimizeScannerLogic(LogicBase):
     _scan_range = StatusVar(name='scan_range', default=None)
     _scan_resolution = StatusVar(name='scan_resolution', default=None)
     _min_r_squared = StatusVar(name='min_r_squared', default=0.2)
-    _tracking_period = StatusVar(name='tracking_period', default=0)
+    _tracking_period = StatusVar(name='tracking_period', default=5000)
     # signals
     sigOptimizeStateChanged = QtCore.Signal(bool, dict, object)
     sigOptimizeSettingsChanged = QtCore.Signal(dict)

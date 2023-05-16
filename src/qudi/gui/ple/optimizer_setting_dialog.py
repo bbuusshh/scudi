@@ -85,9 +85,9 @@ class OptimizerSettingWidget(QtWidgets.QWidget):
         self.data_channel_combobox.addItems(tuple(ch.name for ch in scanner_channels))
 
         self.tracking_period_spinbox = ScienDSpinBox()
-        self.tracking_period_spinbox.setRange(0, 1e6)
-        self.tracking_period_spinbox.setSuffix(' s')
-        self.tracking_period_spinbox.setValue(0)
+        self.tracking_period_spinbox.setRange(0, 1e7)
+        self.tracking_period_spinbox.setSuffix(' ms')
+        self.tracking_period_spinbox.setValue(5000)
 
         self.optimize_sequence_combobox = QtWidgets.QComboBox()
         self.optimize_sequence_combobox.addItems(str(seq) for seq in self.available_opt_sequences)
