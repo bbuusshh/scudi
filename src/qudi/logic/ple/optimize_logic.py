@@ -433,7 +433,7 @@ class PLEOptimizeScannerLogic(LogicBase):
     @QtCore.Slot(bool)
     def enable_ple_tracking(self, enable):
         if enable:
-            self._ple_tracking_timer.setInterval(self._tracking_period)
+            self._ple_tracking_timer.setInterval(self._tracking_period * 1000) #in secs
             self._ple_tracking_timer.start()
         else:
             self._ple_tracking_timer.stop()

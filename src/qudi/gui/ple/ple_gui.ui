@@ -83,8 +83,8 @@
    <addaction name="actionSave"/>
    <addaction name="separator"/>
    <addaction name="action_optimize_position"/>
-   <addaction name="actionFull_range"/>
    <addaction name="actionTrackPLE"/>
+   <addaction name="actionFull_range"/>
   </widget>
   <widget class="QDockWidget" name="scan_control_DockWidget">
    <property name="sizePolicy">
