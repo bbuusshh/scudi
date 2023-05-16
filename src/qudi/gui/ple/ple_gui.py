@@ -526,7 +526,10 @@ class PLEScanGui(GuiBase):
         )
 
     def toggle_scan(self):
+
         self._mw.elapsed_lines_DisplayWidget.display(self._scanning_logic._repeated)
+        self._mw.constDoubleSpinBox.setValue(self._mw.startDoubleSpinBox.value())
+        self._mw.constDoubleSpinBox.editingFinished.emit()
         self._scanning_logic.sigToggleScan.emit(self._mw.actionToggle_scan.isChecked(), [self.scan_axis], self.module_uuid)
 
     def show(self):
