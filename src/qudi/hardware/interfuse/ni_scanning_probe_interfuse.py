@@ -470,7 +470,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
             self._abort_cursor_movement()
             # self.log.debug("Move aborted")
 
-        if self._ni_finite_sampling_io()._ni_finite_sampling_io.is_running:
+        if self._ni_finite_sampling_io().is_running:
 
             self._ni_finite_sampling_io().stop_buffered_frame()
             # self.log.debug("Frame stopped")
@@ -539,7 +539,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
     def _check_scan_end_reached(self):
         # not thread safe, call from thread_lock protected code only
         #FIx this shit
-        return self.raw_data_container.is_full and self._ni_finite_sampling_io().is_scanner_ready()
+        return self.raw_data_container.is_full and self._ni_finite_sampling_io()._scanner_ready
 
     def _fetch_data_chunk(self):
         try:
@@ -557,10 +557,13 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
                 self._scan_data.data = self.raw_data_container.forwards_data()
 
                 if self._check_scan_end_reached():
+                   
                     self.stop_scan()
                 elif not self.is_scan_running:
+                    
                     return
                 else:
+
                     self.sigNextDataChunk.emit()
 
         except:
