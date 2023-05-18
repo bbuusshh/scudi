@@ -427,16 +427,14 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         if not self.is_running:
             return self._number_of_pending_samples
 
-        if (self._ai_task_handle is None 
-        and self._di_task_handles is not None and len(self._di_task_handles) > 0):
+        if self._ai_task_handle is None and self._di_task_handles is not None:
             return self._di_task_handles[0].in_stream.avail_samp_per_chan
         elif self._ai_task_handle is not None and self._di_task_handles is None:
             return self._ai_task_handle.in_stream.avail_samp_per_chan
-        elif len(self._di_task_handles) > 0:
+        else:
             return min(self._ai_task_handle.in_stream.avail_samp_per_chan,
                        self._di_task_handles[0].in_stream.avail_samp_per_chan)
-        else:
-            return self.frame_size
+
     @property
     def frame_size(self):
         """ Currently set number of samples per channel to emit for each data frame.
@@ -514,7 +512,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                 frame_size = next(iter(data.values()))[-1]
             else:
                 frame_size = 0
-        
+
         with self._thread_lock:
             self._set_frame_size(frame_size)
             # set frame buffer
@@ -525,8 +523,6 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                     self.__frame_buffer = {output_ch: np.linspace(*tup) for output_ch, tup in data.items()}
             if data is None:
                 self._set_frame_size(0)  # Sets frame buffer to None
-            
-
 
     def start_buffered_frame(self):
         """ Will start the input and output of the previously set data frame in a non-blocking way.
@@ -534,11 +530,12 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         Must raise exception if frame output can not be started.
         """
-        # assert self._constraints.sample_rate_in_range(self.sample_rate)[0], \
-        #     f'Cannot start frame as sample rate {self.sample_rate:.2g}Hz not valid'
-        # assert self.frame_size != 0, f'No frame data set, can not start buffered frame'
 
-        # assert not self.is_running, f'Frame IO already running. Can not start'
+        assert self._constraints.sample_rate_in_range(self.sample_rate)[0], \
+            f'Cannot start frame as sample rate {self.sample_rate:.2g}Hz not valid'
+        assert self.frame_size != 0, f'No frame data set, can not start buffered frame'
+        assert not self.is_running, f'Frame IO already running. Can not start'
+
         assert self.active_channels[1] == set(self.__frame_buffer), \
             f'Channels in active channels and frame buffer do not coincide'
 
@@ -569,6 +566,7 @@ class NIXSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                 raise NiInitError('Analog out task initialization failed; all tasks terminated')
 
             output_data = np.ndarray((len(self.active_channels[1]), self.frame_size))
+
             for num, output_channel in enumerate(self.active_channels[1]):
                 output_data[num] = self.__frame_buffer[output_channel]
 
