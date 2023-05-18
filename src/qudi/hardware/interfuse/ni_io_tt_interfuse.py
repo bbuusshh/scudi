@@ -295,7 +295,7 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
         Must NOT raise exceptions if no frame output is running.
         """
         
-        self._ni_finite_sampling_io.stop_buffered_frame()
+        
         if self.is_running:
             with self._thread_lock:
                 
@@ -307,7 +307,7 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
                 warnings.simplefilter("ignore")
                 self.terminate_all_tasks()  # nidaqmx raises a warning when frame is stopped before all samples acq.
             
-            
+            self._ni_finite_sampling_io.stop_buffered_frame()
             self.module_state.unlock()
         
             
