@@ -782,9 +782,7 @@ class PLEScanGui(GuiBase):
 
         if (fit_data is not None and
             np.any('full_fit_res' in fit_data) and
-            np.any('fit_data' in fit_data)
-            and fit_data['full_fit_res'].size > 0 
-            and fit_data['fit_data'].size > 0 is not None
+            np.any('fit_data' in fit_data) 
             and isinstance(optimal_position, dict)):
             data = fit_data['fit_data']
             fit_res = fit_data['full_fit_res']
