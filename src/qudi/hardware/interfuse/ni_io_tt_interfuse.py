@@ -23,7 +23,7 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
     _device_name = ConfigOption(name='device_name', default='Dev1', missing='warn')
     
     _rw_timeout = ConfigOption('read_write_timeout', default=10, missing='nothing')
-
+    _delay_buffered_frame = ConfigOption('delay_buffered_frame', default=0.1, missing='nothing')
     # Finite Sampling #TODO What are the frame size hardware limits?
     _frame_size_limits = ConfigOption(name='frame_size_limits', default=(1, 1e9))
    
@@ -276,7 +276,7 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
                 self.terminate_all_tasks() # add the treatment of the TT task termination
                 self.module_state.unlock()
             
-            time.sleep(0.2)
+            time.sleep(self._delay_buffered_frame)
             self._ni_finite_sampling_io.start_buffered_frame()
             # output_data = np.ndarray((len(self.active_channels[1]), self.frame_size))
 
@@ -387,13 +387,11 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
                         data_cbm = self._timetagger_cbm_tasks[num].getData()
                         di_data[num] = data_cbm
                         data[di_channel] = di_data[num] * self.sample_rate  # To go to c/s # TODO What if unit not c/s
-                        self._scanner_ready = self.is_scanner_ready()
+                        self._scanner_ready = self._timetagger_cbm_tasks[0].ready()
               
                 self._number_of_pending_samples -= samples_to_read
                 
                 return data
-    def is_scanner_ready(self):
-        return self._timetagger_cbm_tasks[0].ready()
     @property
     def active_channels(self):
         """ Names of all currently active input and output channels.
