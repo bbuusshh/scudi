@@ -23,7 +23,7 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
     _device_name = ConfigOption(name='device_name', default='Dev1', missing='warn')
     
     _rw_timeout = ConfigOption('read_write_timeout', default=10, missing='nothing')
-    _delay_buffered_frame = ConfigOption('delay_buffered_frame', default=0, missing='nothing')
+    # _delay_buffered_frame = ConfigOption('delay_buffered_frame', default=0, missing='nothing')
     # Finite Sampling #TODO What are the frame size hardware limits?
     _frame_size_limits = ConfigOption(name='frame_size_limits', default=(1, 1e9))
    
@@ -271,20 +271,13 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
         self.module_state.lock()
         with self._thread_lock:
             
+
+            if self._init_tt_cbm_task() < 0:
+                self.terminate_all_tasks() # add the treatment of the TT task termination
+                self.module_state.unlock()
             
-            if self._delay_buffered_frame > 0:
-                if self._init_tt_cbm_task() < 0:
-                    self.terminate_all_tasks() # add the treatment of the TT task termination
-                    self.module_state.unlock()
-                
-                time.sleep(abs(self._delay_buffered_frame))
-                self._ni_finite_sampling_io.start_buffered_frame()
-            else:
-                self._ni_finite_sampling_io.start_buffered_frame()
-                time.sleep(abs(self._delay_buffered_frame))
-                if self._init_tt_cbm_task() < 0:
-                    self.terminate_all_tasks() # add the treatment of the TT task termination
-                    self.module_state.unlock()
+            # time.sleep(self._delay_buffered_frame)
+            self._ni_finite_sampling_io.start_buffered_frame()
             # output_data = np.ndarray((len(self.active_channels[1]), self.frame_size))
 
             # for num, output_channel in enumerate(self.active_channels[1]):
@@ -302,9 +295,8 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
         Must NOT raise exceptions if no frame output is running.
         """
         
-        
+        self._ni_finite_sampling_io.stop_buffered_frame()
         if self.is_running:
-            
             with self._thread_lock:
                 
                 number_of_missing_samples = self.samples_in_buffer
@@ -314,9 +306,11 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 self.terminate_all_tasks()  # nidaqmx raises a warning when frame is stopped before all samples acq.
+            
+            
             self.module_state.unlock()
-            with self._thread_lock:
-                self._ni_finite_sampling_io.stop_buffered_frame()
+        
+            
 
     def get_buffered_samples(self, number_of_samples=None):
         """ Returns a chunk of the current data frame for all active input channels read from the
