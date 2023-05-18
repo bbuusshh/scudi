@@ -184,6 +184,9 @@
            <property name="minimum">
             <double>-99.000000000000000</double>
            </property>
+           <property name="maximum">
+            <double>100000000000000.000000000000000</double>
+           </property>
           </widget>
          </item>
         </layout>
@@ -228,7 +231,7 @@
             <double>1.000000000000000</double>
            </property>
            <property name="maximum">
-            <double>1000.000000000000000</double>
+            <double>1000000000.000000000000000</double>
            </property>
            <property name="value">
             <double>50.000000000000000</double>
@@ -310,7 +313,7 @@
             </size>
            </property>
            <property name="maximum">
-            <number>1000</number>
+            <number>1000000000</number>
            </property>
           </widget>
          </item>
@@ -686,7 +689,7 @@
   <customwidget>
    <class>ScienDSpinBox</class>
    <extends>QDoubleSpinBox</extends>
-   <header location="global">qudi.util.widgets.scientific_spinbox</header>
+   <header>qudi.util.widgets.scientific_spinbox.h</header>
   </customwidget>
   <customwidget>
    <class>PlotWidget</class>
