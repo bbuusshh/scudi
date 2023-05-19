@@ -394,6 +394,7 @@ class PLEOptimizeScannerLogic(LogicBase):
                     #!ADD CHECK THE Rsquared VALUE OF THE FIT
                     position_update = {ax: opt_pos[ii] for ii, ax in enumerate(data.scan_axes)}
                                         # Abort optimize if fit failed
+                    self._last_fit_results = fit_res
                     if ((fit_data is None) 
                         or (fit_res is None) 
                         or (fit_res is not None and fit_res.rsquared < self._min_r_squared)):
@@ -407,7 +408,7 @@ class PLEOptimizeScannerLogic(LogicBase):
                             position_update[ax] = new_pos[ax]
 
                         fit_data = {'fit_data':fit_data, 'full_fit_res':fit_res}
-
+                        
                         self.log.debug(f"Optimizer issuing position update: {position_update}")
                         self._optimal_position.update(position_update)
                         self.sigOptimizeStateChanged.emit(True, position_update, fit_data)

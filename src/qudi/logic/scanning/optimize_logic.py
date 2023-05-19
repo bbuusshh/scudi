@@ -383,7 +383,7 @@ class ScanningOptimizeLogic(LogicBase):
                         )
 
                     position_update = {ax: opt_pos[ii] for ii, ax in enumerate(data.scan_axes)}
-                    
+                    self._last_fit_results = fit_res
                     # Abort optimize if fit failed
                     if ((fit_data is None) 
                         or (fit_res is None) 
