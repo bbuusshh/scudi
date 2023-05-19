@@ -61,7 +61,7 @@ class PLEOptimizeScannerLogic(LogicBase):
     _scan_frequency = StatusVar(name='scan_frequency', default=None)
     _scan_range = StatusVar(name='scan_range', default=None)
     _scan_resolution = StatusVar(name='scan_resolution', default=None)
-    _min_r_squared = StatusVar(name='min_r_squared', default=0.2)
+    _min_r_squared = StatusVar(name='min_r_squared', default=0.1)
     _tracking_period = StatusVar(name='tracking_period', default=5000)
     # signals
     sigOptimizeStateChanged = QtCore.Signal(bool, dict, object)
@@ -393,24 +393,26 @@ class PLEOptimizeScannerLogic(LogicBase):
                         )
                     #!ADD CHECK THE Rsquared VALUE OF THE FIT
                     position_update = {ax: opt_pos[ii] for ii, ax in enumerate(data.scan_axes)}
-                    if fit_data is not None and (fit_res.rsquared > self._min_r_squared):
+                                        # Abort optimize if fit failed
+                    if ((fit_data is None) 
+                        or (fit_res is None) 
+                        or (fit_res is not None and fit_res.rsquared < self._min_r_squared)):
+                        self.log.warning("Stopping optimization due to failed fit.")
+                        self.stop_optimize()
+                        return
+                    
+                    if fit_data is not None:
                         new_pos = self._scan_logic().set_target_position(position_update)
                         for ax in tuple(position_update):
                             position_update[ax] = new_pos[ax]
 
                         fit_data = {'fit_data':fit_data, 'full_fit_res':fit_res}
 
-                    self.log.debug(f"Optimizer issuing position update: {position_update}")
-                    self._optimal_position.update(position_update)
-                    self.sigOptimizeStateChanged.emit(True, position_update, fit_data)
+                        self.log.debug(f"Optimizer issuing position update: {position_update}")
+                        self._optimal_position.update(position_update)
+                        self.sigOptimizeStateChanged.emit(True, position_update, fit_data)
 
-                    # Abort optimize if fit failed
-                    if (fit_data is None 
-                        or fit_res is None 
-                        or fit_res.rsquared < self._min_r_squared):
-                        self.log.warning("Stopping optimization due to failed fit.")
-                        self.stop_optimize()
-                        return
+
 
                 except:
                     self.log.exception()

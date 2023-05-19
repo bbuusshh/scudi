@@ -57,6 +57,7 @@ class ScanningOptimizeLogic(LogicBase):
 
     # status variables
     _scan_sequence = StatusVar(name='scan_sequence', default=None)
+    _min_r_squared = StatusVar(name='min_r_squared', default=0.1)
     _data_channel = StatusVar(name='data_channel', default=None)
     _scan_frequency = StatusVar(name='scan_frequency', default=None)
     _scan_range = StatusVar(name='scan_range', default=None)
@@ -382,6 +383,15 @@ class ScanningOptimizeLogic(LogicBase):
                         )
 
                     position_update = {ax: opt_pos[ii] for ii, ax in enumerate(data.scan_axes)}
+                    
+                    # Abort optimize if fit failed
+                    if ((fit_data is None) 
+                        or (fit_res is None) 
+                        or (fit_res is not None and fit_res.rsquared < self._min_r_squared)):
+                        self.log.warning("Stopping optimization due to failed fit.")
+                        self.stop_optimize()
+                        return
+                
                     if fit_data is not None:
                         new_pos = self._scan_logic().set_target_position(position_update)
                         for ax in tuple(position_update):
@@ -389,15 +399,11 @@ class ScanningOptimizeLogic(LogicBase):
 
                         fit_data = {'fit_data':fit_data, 'full_fit_res':fit_res}
 
-                    self.log.debug(f"Optimizer issuing position update: {position_update}")
-                    self._optimal_position.update(position_update)
-                    self.sigOptimizeStateChanged.emit(True, position_update, fit_data)
+                        self.log.debug(f"Optimizer issuing position update: {position_update}")
+                        self._optimal_position.update(position_update)
+                        self.sigOptimizeStateChanged.emit(True, position_update, fit_data)
 
-                    # Abort optimize if fit failed
-                    if fit_data is None:
-                        self.log.warning("Stopping optimization due to failed fit.")
-                        self.stop_optimize()
-                        return
+                    
 
                 except:
                     self.log.exception()
@@ -427,7 +433,6 @@ class ScanningOptimizeLogic(LogicBase):
             self.module_state.unlock()
             self.sigOptimizeStateChanged.emit(False, dict(), None)
             self.sigOptimizeDone.emit()
-            print('stop_optimize, sig sent')
             return err
 
     def _get_pos_from_2d_gauss_fit(self, xy, data):
