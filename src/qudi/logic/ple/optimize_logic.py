@@ -133,7 +133,7 @@ class PLEOptimizeScannerLogic(LogicBase):
         """
         self._scan_logic().sigScanStateChanged.disconnect(self._scan_state_changed)
         self._sigNextSequenceStep.disconnect()
-        self.stop_optimize()
+        # self.stop_optimize()
         return
 
     @property
@@ -426,7 +426,7 @@ class PLEOptimizeScannerLogic(LogicBase):
             self.module_state.unlock()
             self.sigOptimizeStateChanged.emit(False, dict(), None)
             self.sigOptimizeDone.emit()
-            
+       
             return err
 
     def _get_pos_from_2d_gauss_fit(self, xy, data):

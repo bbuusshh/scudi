@@ -225,7 +225,7 @@ class PLEScannerLogic(ScanningProbeLogic):
         """
         Execute the currently configured fit on the measurement data. Optionally on passed data
         """
-        print(fit_config)
+       
         if fit_config != 'No Fit' and fit_config not in self._fit_config_model.configuration_names:
             self.log.error(f'Unknown fit configuration "{fit_config}" encountered.')
             return
