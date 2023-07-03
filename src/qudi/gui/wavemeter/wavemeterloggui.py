@@ -140,17 +140,16 @@ class WavemeterLogGui(GuiBase):
         self._mw.wavelength_widget._update_scan_data(None)
         
 
-    @QtCore.Slot(object)
+    @QtCore.Slot(object, object)
     def _update_data(self, wavelengths, count_data):
         """
         @param ScanData scan_data:
         
         """
         #We receive wavelengths in THz
-        # print(wavelengths['wavelength'][-1])
-        if len(wavelengths) > 1 and wavelengths['wavelength'][-1] > 0:
-            freq = wavelengths['wavelength'][-1]/1e12
-            wavelength = self.wavelog_logic.freq_to_wavelength(freq)/1e3
+        if len(wavelengths) > 1 and wavelengths.wavelength[-1] > 0:
+            freq = wavelengths.wavelength[-1]
+            wavelength = self.wavelog_logic.wavelength_to_freq(wavelengths.wavelength[-1])/1e12
             wavelength = np.round(wavelength, 6)
             freq = np.round(freq, 6)
             

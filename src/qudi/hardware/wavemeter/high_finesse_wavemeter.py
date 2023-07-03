@@ -108,8 +108,8 @@ class HighFinesseWavemeter(WavemeterInterface):
         # the current wavelength read by the wavemeter in nm (vac)
         self._current_wavelengths = {ch: 0 for ch in self._active_channels}
         
-        self._wavelength_buffer = []
-        self._timer_buffer = []
+        self._wavelength_buffer = np.array([])
+      
 
 
     def on_activate(self):
@@ -156,16 +156,20 @@ class HighFinesseWavemeter(WavemeterInterface):
         """ Function to save the wavelength, when it comes in with a signal.
         """
         elapsed_time = time.time() - self.start_time
-        if len(self._wavelength_buffer) < 1 :
-            self._wavelength_buffer.append(wavelengths[self._default_channel]) 
-            self._timer_buffer.append(elapsed_time)
+        if len(self._wavelength_buffer) < 1:
+            self._wavelength_buffer = np.array([wavelengths[self._default_channel], elapsed_time])
+        elif len(self._wavelength_buffer) > 2:
+            if (np.abs(np.round(wavelengths[self._default_channel], 5) - np.round(self._wavelength_buffer[-1][0], 5))) > 0:
+                self._wavelength_buffer = np.vstack((self._wavelength_buffer, [wavelengths[self._default_channel], elapsed_time]))
+            else:
+                pass
         else:
-            if (np.abs(np.round(wavelengths[self._default_channel], 5) - np.round(self._wavelength_buffer[-1], 5))) > 0:
-                self._wavelength_buffer.append(wavelengths[self._default_channel]) 
-                self._timer_buffer.append(elapsed_time)
+            self._wavelength_buffer = np.vstack((self._wavelength_buffer, [wavelengths[self._default_channel], elapsed_time]))
+
         self._wavelength_buffer = self._wavelength_buffer[-self._buffer_size:]
-        self._timer_buffer = self._timer_buffer[-self._buffer_size:]
         self._current_wavelengths = wavelengths
+    def empty_buffer(self):
+        self._wavelength_buffer = np.array([])
 
     def start_acquisition(self):
         """ Method to start the wavemeter software.
@@ -212,9 +216,9 @@ class HighFinesseWavemeter(WavemeterInterface):
     def get_wavelength_buffer(self):
       
         if len(self._wavelength_buffer) > 0:
-            return np.array(self._wavelength_buffer), np.array(self._timer_buffer)
+            return np.array(self._wavelength_buffer)
         else:
-            return np.array([self.get_current_wavelength()]), np.array([0])
+            return np.array([self.get_current_wavelength(), 0])
 
     def get_current_wavelengths(self):
         """ This method returns the current wavelength.
