@@ -167,6 +167,8 @@ class WavemeterLoggerLogic(LogicBase):
     def empty_buffer(self):
         self.wavelengths = None
         self._wavemeter.empty_buffer()
+        self._acquisition_start_time = time.time()
+        
 
     def determine_count_time(self):
         #OBSOLETE
@@ -220,7 +222,7 @@ class WavemeterLoggerLogic(LogicBase):
                 self.module_state.lock()
                 self.recalculate_histogram()
                 self._queryTimer.start(int(self._logic_update_timing))
-                
+                self._acquisition_start_time = time.time()
                 # self.sig_query_wavemeter.emit()
             else:
                 self._queryTimer.stop()

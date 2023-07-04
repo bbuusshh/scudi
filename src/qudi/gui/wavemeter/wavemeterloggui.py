@@ -96,7 +96,12 @@ class WavemeterLogGui(GuiBase):
         self.update_range()
         # self.selected_region.setRegion(self._scan_data.scan_range[0])
         self._mw.show()
-
+        self._mw.wavelength_pushButton.clicked.connect(
+            lambda : QtWidgets.QApplication.clipboard().setText(self._mw.wavelengthLabel.text()) 
+        )
+        self._mw.freq_pushButton.clicked.connect(
+            lambda : QtWidgets.QApplication.clipboard().setText(self._mw.frequencyLabel.text()) 
+        )
         # self.wavelog_logic.sig_new_data_point.connect(self.add_data_point)
 
         self.wavelog_logic.sig_update_data.connect(self._update_data, QtCore.Qt.QueuedConnection)
@@ -119,6 +124,8 @@ class WavemeterLogGui(GuiBase):
         self._mw.show()
         self._mw.activateWindow()
         self._mw.raise_()
+
+
 
     def update_sweep_around_centre(self):
         sweep_range = self._mw.sweepRangeDoubleSpinBox.value()
@@ -152,7 +159,7 @@ class WavemeterLogGui(GuiBase):
             wavelength = self.wavelog_logic.wavelength_to_freq(wavelengths.wavelength[-1])/1e12
             wavelength = np.round(wavelength, 6)
             freq = np.round(freq, 6)
-            
+            wavelengths.time = wavelengths.time - wavelengths.time[0]
             self._mw.wavelength_widget.set_data(wavelengths)
             if count_data is not None:
                 self._mw.countlog_widget.set_data(count_data)
@@ -160,7 +167,8 @@ class WavemeterLogGui(GuiBase):
             wavelength = freq = 0
         self._mw.wavelengthLabel.setText(f"{wavelength} nm")
         self._mw.frequencyLabel.setText(f"{freq} THz")
-        
+   
+
 
     def stop_resume_clicked(self):
         """ Handling the Start button to stop and restart the counter.
