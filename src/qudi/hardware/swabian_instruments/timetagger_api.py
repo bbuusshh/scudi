@@ -13,7 +13,7 @@ class TT(Base):
     _counter = ConfigOption('counter', dict(), missing='warn')
     _combiner = ConfigOption('combiner', dict(), missing='warn')
     _channels_params = ConfigOption('channels_params', dict(), missing='info')
-    
+    set_conditional_filter = False
 
     """
     Example config.
@@ -93,7 +93,9 @@ class TT(Base):
 
         get data by hist.getData()
         """
-        self.tagger.setConditionalFilter(trigger=self._hist["channels"], filtered=self._hist["trigger_channel"])
+        if self.set_conditional_filter:
+            self.tagger.setConditionalFilter(trigger=self._hist["channels"], 
+                                             filtered=self._hist["trigger_channel"])
         return Histogram(self.tagger,
                             kwargs['channel'],
                             kwargs['trigger_channel'],

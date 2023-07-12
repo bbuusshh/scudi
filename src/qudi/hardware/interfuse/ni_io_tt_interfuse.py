@@ -23,7 +23,7 @@ class NI_IO_TT_Interfuse(FiniteSamplingIOInterface):
     _device_name = ConfigOption(name='device_name', default='Dev1', missing='warn')
     
     _rw_timeout = ConfigOption('read_write_timeout', default=10, missing='nothing')
-    _delay_buffered_frame = ConfigOption('delay_buffered_frame', default=0.1, missing='nothing')
+    _delay_buffered_frame = ConfigOption('delay_buffered_frame', default=0.0, missing='nothing')
     # Finite Sampling #TODO What are the frame size hardware limits?
     _frame_size_limits = ConfigOption(name='frame_size_limits', default=(1, 1e9))
    
