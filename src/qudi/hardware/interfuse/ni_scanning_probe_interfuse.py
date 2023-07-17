@@ -566,7 +566,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
             with self._thread_lock_data:
                 self.raw_data_container.fill_container(new_data)
                 self._scan_data.data = self.raw_data_container.forwards_data()
-
+                self._scan_data.retrace_data = self.raw_data_container.backwards_data()
                 if self._check_scan_end_reached():
                     self.stop_scan()
                 elif not self.is_scan_running:

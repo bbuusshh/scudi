@@ -467,6 +467,7 @@ class PLEScanGui(GuiBase):
         
         ch = self._scanning_logic.scanner_channels[value]
         self._mw.ple_widget.channel = ch
+        self._mw.ple_retrace_widget.channel = ch
         self._mw.ple_averaged_widget.channel = ch
         self._mw.matrix_widget.channel = ch
         # self.optimizer_dockwidget.
@@ -628,6 +629,9 @@ class PLEScanGui(GuiBase):
             self._mw.ple_widget.selected_region.setRegion(x_range)
             self._mw.ple_widget.target_point.setValue(self._scanning_logic.scanner_target[self._scanning_logic._scan_axis])
             self._mw.ple_widget.plot_widget.setRange(xRange = x_range)
+            self._mw.ple_retrace_widget.selected_region.setRegion(x_range)
+            self._mw.ple_retrace_widget.target_point.setValue(self._scanning_logic.scanner_target[self._scanning_logic._scan_axis])
+            self._mw.ple_retrace_widget.plot_widget.setRange(xRange = x_range)
 
             self._mw.ple_averaged_widget.selected_region.setRegion(x_range)
             self._mw.ple_averaged_widget.target_point.setValue(self._scanning_logic.scanner_target[self._scanning_logic._scan_axis])
@@ -813,6 +817,7 @@ class PLEScanGui(GuiBase):
         @param ScanData scan_data:
         """
         self._mw.ple_widget.set_scan_data(scan_data)
+        self._mw.ple_retrace_widget.set_scan_data(scan_data)
        
 
     @QtCore.Slot(object)

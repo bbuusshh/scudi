@@ -195,6 +195,8 @@ class ScanData:
 
         self._timestamp = None
         self._data = None
+        self._retrace_data = None
+        self._retrace_accumulated = None
         self._accumulated = None
         self._averaged_data = None
         self._position_data = None
@@ -213,10 +215,15 @@ class ScanData:
         new_inst._timestamp = self._timestamp
         if self._data is not None:
             new_inst._data = self._data.copy()
+        if self._retrace_data is not None:
+            new_inst._retrace_data = self._retrace_data.copy()
+            
         if self._position_data is not None:
             new_inst._position_data = self._position_data.copy()
         if self._accumulated is not None:
             new_inst._accumulated = self._accumulated.copy()
+        if self._retrace_accumulated is not None:
+            new_inst._retrace_accumulated = self._retrace_accumulated.copy()
         return new_inst
 
     def __deepcopy__(self, memodict={}):
@@ -227,7 +234,7 @@ class ScanData:
             raise NotImplemented
 
         attrs = ('_timestamp', '_scan_frequency', '_scan_axes', '_scan_range', '_scan_resolution',
-                 '_channels', '_position_feedback_axes', '_data', '_accumulated', '_position_data', '_timestamp')
+                 '_channels', '_position_feedback_axes', '_data','_retrace_data', '_accumulated','_retrace_accumulated', '_position_data', '_timestamp')
         return all(getattr(self, a) == getattr(other, a) for a in attrs)
 
     @property
@@ -280,6 +287,16 @@ class ScanData:
         self._data = data_dict
 
     @property
+    def retrace_data(self):
+        return self._retrace_data
+
+    @retrace_data.setter
+    def retrace_data(self, retrace_data_dict):
+        assert tuple(retrace_data_dict.keys()) == self.channels
+        assert all([val.shape == self.scan_resolution for val in retrace_data_dict.values()])
+        self._retrace_data = retrace_data_dict
+
+    @property
     def accumulated(self):
         return self._accumulated
     
@@ -287,6 +304,15 @@ class ScanData:
     def accumulated(self, accumulated_dict):
         assert tuple(accumulated_dict.keys()) == self.channels
         self._accumulated = accumulated_dict
+
+    @property
+    def retrace_accumulated(self):
+        return self._retrace_accumulated
+    
+    @accumulated.setter
+    def accumulated(self, retrace_accumulated_dict):
+        assert tuple(retrace_accumulated_dict.keys()) == self.channels
+        self._retrace_accumulated = retrace_accumulated_dict
 
     @property
     def position_data(self):

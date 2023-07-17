@@ -16,6 +16,11 @@ try:
 except NameError:
     import qudi.gui.ple.ple_data_widget as ple_data_widget
 try:
+    importlib.reload(ple_retrace_widget)
+except NameError:
+    import qudi.gui.ple.ple_retrace_widget as ple_retrace_widget
+
+try:
     importlib.reload(ple_averaged_widget)
 except NameError:
     import qudi.gui.ple.ple_averaged_widget as ple_averaged_widget
@@ -45,6 +50,9 @@ class PLEScanMainWindow(QtWidgets.QMainWindow):
 
         self.ple_widget = ple_data_widget.PLEDataWidget(axes, channel)
         self.ple_data_dockWidget.setWidget(self.ple_widget)
+
+        self.ple_retrace_widget = ple_retrace_widget.PLERetraceDataWidget(axes, channel)
+        self.ple_retrace_data_dockWidget.setWidget(self.ple_retrace_widget)
 
         self.ple_averaged_widget = ple_averaged_widget.PLEAveragedDataWidget(axes, channel)
         self.ple_averaged_dockWidget.setWidget(self.ple_averaged_widget)
