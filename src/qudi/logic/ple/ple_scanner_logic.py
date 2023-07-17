@@ -275,6 +275,7 @@ class PLEScannerLogic(ScanningProbeLogic):
     @property
     def fit_results(self):
         return self._fit_results.copy()
+    
     def stack_data(self):
         if (self.scan_data is not None) and (self.scan_data.scan_dimension == 1):
            

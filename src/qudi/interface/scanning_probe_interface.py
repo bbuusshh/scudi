@@ -310,7 +310,7 @@ class ScanData:
         return self._retrace_accumulated
     
     @accumulated.setter
-    def accumulated(self, retrace_accumulated_dict):
+    def retrace_accumulated(self, retrace_accumulated_dict):
         assert tuple(retrace_accumulated_dict.keys()) == self.channels
         self._retrace_accumulated = retrace_accumulated_dict
 
@@ -359,6 +359,12 @@ class ScanData:
         new_inst._timestamp = self._timestamp
         if self._data is not None:
             new_inst._data = {ch: arr.copy() for ch, arr in self._data.items()}
+        if self._retrace_data is not None:
+            new_inst._retrace_data = {ch: arr.copy() for ch, arr in self._retrace_data.items()}
+        if self._accumulated is not None:
+            new_inst._accumulated = {ch: arr.copy() for ch, arr in self._accumulated.items()}
+        if self._retrace_accumulated is not None:
+            new_inst._retrace_accumulated = {ch: arr.copy() for ch, arr in self._retrace_accumulated.items()}
         if self._position_data is not None:
             new_inst._position_data = {ch: arr.copy() for ch, arr in self._position_data.items()}
         return new_inst

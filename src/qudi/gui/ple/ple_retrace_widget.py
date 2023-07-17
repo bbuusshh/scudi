@@ -19,7 +19,7 @@ You should have received a copy of the GNU Lesser General Public License along w
 If not, see <https://www.gnu.org/licenses/>.
 """
 
-__all__ = ['PLEDataWidget']
+__all__ = ['PLERetraceDataWidget']
 
 import pyqtgraph as pg
 from typing import Tuple, Union, Sequence
@@ -113,15 +113,16 @@ class PLERetraceDataWidget(QtWidgets.QWidget):
         if (self._scan_data is None) or (self._scan_data.retrace_data is None):
             self.data_curve.clear()
         else:
+            x_data = np.linspace(*self._scan_data.scan_range[0],
+                                     self._scan_data.scan_resolution[0])[::-1]
             if update_range:
-                x_data = np.linspace(*self._scan_data.scan_range[0],
-                                     self._scan_data.scan_resolution[0])
-                self.data_curve.setData(y=self._scan_data.retrace_data[current_channel], x=x_data)
+                
+                self.data_curve.setData(y=self._scan_data.data[current_channel], x=x_data)
                 self.selected_region.setRegion(self._scan_data.scan_range[0])
                 # self.target_point.setValue(self._scan_data.scan_range[0][0])
             else:
                 self.data_curve.setData(y=self._scan_data.retrace_data[current_channel],
-                                       x=self.data_curve.xData)
+                                       x=x_data)
 
 class CustomAxis(pg.AxisItem):
     """ This is a CustomAxis that extends the normal pyqtgraph to be able to nudge the axis labels.

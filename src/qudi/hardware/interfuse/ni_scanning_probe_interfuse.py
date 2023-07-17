@@ -236,7 +236,8 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         )
         resolution = scan_settings.get('resolution', self._current_scan_resolution)
         frequency = float(scan_settings.get('frequency', self._current_scan_frequency))
-        self._backwards_line_resolution = int(scan_settings.get('backward_resolution', self._backwards_line_resolution))
+        self._backwards_line_resolution = int(resolution[0])
+        #self._backwards_line_resolution = int(scan_settings.get('backward_resolution', self._backwards_line_resolution))
 
         if not set(axes).issubset(self._position_ranges):
             self.log.error('Unknown axes names encountered. Valid axes are: {0}'
@@ -566,8 +567,23 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
             with self._thread_lock_data:
                 self.raw_data_container.fill_container(new_data)
                 self._scan_data.data = self.raw_data_container.forwards_data()
+                # if self._backwards_line_resolution == len(self.raw_data_container.backwards_data()):
                 self._scan_data.retrace_data = self.raw_data_container.backwards_data()
                 if self._check_scan_end_reached():
+
+                    if self._scan_data.accumulated is None:
+                        self._scan_data.accumulated = self._scan_data.data
+                    else:
+                        self._scan_data.accumulated = {channel : 
+                                np.vstack((self._scan_data.accumulated[channel], data_i)) \
+                                for channel, data_i in self._scan_data.data.items() if len(data_i) > 0}
+                        
+                    if self._scan_data.retrace_accumulated is None:
+                        self._scan_data.retrace_accumulated = self._scan_data.retrace_data
+                    else:
+                        self._scan_data.retrace_accumulated = {channel : 
+                                np.vstack((self._scan_data.retrace_accumulated[channel], data_i)) \
+                                    for channel, data_i in self._scan_data.retrace_data.items() if len(data_i) > 0}
                     self.stop_scan()
                 elif not self.is_scan_running:
                     return

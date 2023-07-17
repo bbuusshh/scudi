@@ -151,6 +151,7 @@ class PLEScanGui(GuiBase):
         self._mw.ple_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing) #set_scanner_target_position
         self._mw.ple_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
         self._mw.ple_widget.selected_region.sigRegionChangeFinished.connect(self.region_value_changed) 
+        
 
         self._mw.ple_averaged_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing_averaged_data)
         self._mw.ple_averaged_widget.selected_region.sigRegionChangeFinished.connect(self.region_value_changed_averaged_data) 
@@ -629,6 +630,7 @@ class PLEScanGui(GuiBase):
             self._mw.ple_widget.selected_region.setRegion(x_range)
             self._mw.ple_widget.target_point.setValue(self._scanning_logic.scanner_target[self._scanning_logic._scan_axis])
             self._mw.ple_widget.plot_widget.setRange(xRange = x_range)
+            
             self._mw.ple_retrace_widget.selected_region.setRegion(x_range)
             self._mw.ple_retrace_widget.target_point.setValue(self._scanning_logic.scanner_target[self._scanning_logic._scan_axis])
             self._mw.ple_retrace_widget.plot_widget.setRange(xRange = x_range)
@@ -816,8 +818,9 @@ class PLEScanGui(GuiBase):
         """
         @param ScanData scan_data:
         """
-        self._mw.ple_widget.set_scan_data(scan_data)
         self._mw.ple_retrace_widget.set_scan_data(scan_data)
+        self._mw.ple_widget.set_scan_data(scan_data)
+        
        
 
     @QtCore.Slot(object)
