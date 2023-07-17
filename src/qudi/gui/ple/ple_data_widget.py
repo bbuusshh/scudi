@@ -116,12 +116,12 @@ class PLEDataWidget(QtWidgets.QWidget):
             if update_range:
                 x_data = np.linspace(*self._scan_data.scan_range[0],
                                      self._scan_data.scan_resolution[0])
-                self.data_curve.setData(y=self._scan_data.data[current_channel], x=x_data[::-1])
+                self.data_curve.setData(y=self._scan_data.data[current_channel], x=x_data)
                 self.selected_region.setRegion(self._scan_data.scan_range[0])
                 # self.target_point.setValue(self._scan_data.scan_range[0][0])
             else:
                 self.data_curve.setData(y=self._scan_data.data[current_channel],
-                                       x=self.data_curve.xData[::-1])
+                                       x=self.data_curve.xData)
 
 class CustomAxis(pg.AxisItem):
     """ This is a CustomAxis that extends the normal pyqtgraph to be able to nudge the axis labels.
