@@ -92,6 +92,7 @@ class HighFinesseWavemeter(WavemeterInterface):
     # config options
     _measurement_timing = ConfigOption('measurement_timing', default=0.2)
     _active_channels = ConfigOption('active_channels', default=[0])
+    _selected_channels = ConfigOption('selected_channels', default=[2,4])
     _default_channel = ConfigOption('default_channel', default=0)
     _buffer_size = 3000
     # signals
@@ -156,15 +157,20 @@ class HighFinesseWavemeter(WavemeterInterface):
         """ Function to save the wavelength, when it comes in with a signal.
         """
         elapsed_time = time.time() - self.start_time
+        row = [wavelengths[ch] for ch in self._selected_channels]
+        row.append(elapsed_time)
         if len(self._wavelength_buffer) < 1:
-            self._wavelength_buffer = np.array([wavelengths[self._default_channel], elapsed_time])
+            
+            self._wavelength_buffer = np.array(
+                row
+                )
         elif len(self._wavelength_buffer) > 2:
             if (np.abs(np.round(wavelengths[self._default_channel], 5) - np.round(self._wavelength_buffer[-1][0], 5))) > 0:
-                self._wavelength_buffer = np.vstack((self._wavelength_buffer, [wavelengths[self._default_channel], elapsed_time]))
+                self._wavelength_buffer = np.vstack((self._wavelength_buffer, row))
             else:
                 pass
         else:
-            self._wavelength_buffer = np.vstack((self._wavelength_buffer, [wavelengths[self._default_channel], elapsed_time]))
+            self._wavelength_buffer = np.vstack((self._wavelength_buffer, row))
 
         self._wavelength_buffer = self._wavelength_buffer[-self._buffer_size:]
         self._current_wavelengths = wavelengths
@@ -226,6 +232,8 @@ class HighFinesseWavemeter(WavemeterInterface):
         """
 
         return self._current_wavelengths
+    def get_selected_channels(self):
+        return self._selected_channels
     
     def get_current_wavelength(self):
     
