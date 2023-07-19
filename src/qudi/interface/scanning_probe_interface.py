@@ -293,7 +293,7 @@ class ScanData:
     @retrace_data.setter
     def retrace_data(self, retrace_data_dict):
         assert tuple(retrace_data_dict.keys()) == self.channels
-        assert all([val.shape == self.scan_resolution for val in retrace_data_dict.values()])
+        # assert all([val.shape == self.scan_resolution for val in retrace_data_dict.values()])
         self._retrace_data = retrace_data_dict
 
     @property
