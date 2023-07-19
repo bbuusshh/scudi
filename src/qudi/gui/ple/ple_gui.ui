@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>380</width>
-    <height>1026</height>
+    <width>669</width>
+    <height>1030</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -45,7 +45,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>380</width>
+     <width>669</width>
      <height>21</height>
     </rect>
    </property>
@@ -606,6 +606,15 @@
     </layout>
    </widget>
   </widget>
+  <widget class="QDockWidget" name="ple_retrace_data_dockWidget">
+   <property name="windowTitle">
+    <string>Retrace</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>1</number>
+   </attribute>
+   <widget class="QWidget" name="ple_retrace_widget"/>
+  </widget>
   <action name="action_ple_settings">
    <property name="icon">
     <iconset>
@@ -684,6 +693,7 @@
   <zorder>ple_data_dockWidget</zorder>
   <zorder>ple_matrix_dockWidget</zorder>
   <zorder>ple_averaged_dockWidget</zorder>
+  <zorder>ple_retrace_data_dockWidget</zorder>
  </widget>
  <customwidgets>
   <customwidget>

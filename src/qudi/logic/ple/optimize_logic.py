@@ -61,7 +61,7 @@ class PLEOptimizeScannerLogic(LogicBase):
     _scan_frequency = StatusVar(name='scan_frequency', default=None)
     _scan_range = StatusVar(name='scan_range', default=None)
     _scan_resolution = StatusVar(name='scan_resolution', default=None)
-    _min_r_squared = StatusVar(name='min_r_squared', default=0.1)
+    _min_r_squared = StatusVar(name='min_r_squared', default=0.02)
     _tracking_period = StatusVar(name='tracking_period', default=5000)
     # signals
     sigOptimizeStateChanged = QtCore.Signal(bool, dict, object)
@@ -379,7 +379,7 @@ class PLEOptimizeScannerLogic(LogicBase):
                 try:
                     if data.scan_dimension == 1:
                         x = np.linspace(*data.scan_range[0], data.scan_resolution[0])
-                        opt_pos, fit_data, fit_res = self._get_pos_from_1d_gauss_fit(
+                        opt_pos, fit_data, fit_res = self._get_pos_from_1d_lorentian_fit(
                             x,
                             data.data[self._data_channel]
                         )
@@ -396,7 +396,7 @@ class PLEOptimizeScannerLogic(LogicBase):
                                         # Abort optimize if fit failed
                     self._last_fit_results = fit_res
                     if ((fit_data is None) 
-                        or (fit_res is None)):#or (fit_res is not None and fit_res.rsquared < self._min_r_squared)):
+                        or (fit_res is None) or (fit_res is not None and fit_res.rsquared < self._min_r_squared)):
                         self.log.warning("Stopping optimization due to failed fit.")
                         self.stop_optimize()
                         return
@@ -499,6 +499,7 @@ class PLEOptimizeScannerLogic(LogicBase):
         self._last_fit_results = fit_result
         return (fit_result.best_values['center'],), fit_result.best_fit, fit_result
 
+    
 
 class OptimizerScanSequence():
     def __init__(self, axes, sequence=None):
