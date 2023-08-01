@@ -1,31 +1,39 @@
 
 
 from qudi.core.configoption import ConfigOption
+from typing import Iterable, Mapping, Union, Optional, Tuple, Type, Dict
 from qudi.interface.simple_laser_interface import SimpleLaserInterface
+from qudi.interface.triggered_ao_interface import TriggeredAOInterface
 from qudi.interface.simple_laser_interface import ControlMode, ShutterState, LaserState
 from enum import IntEnum
 import time
 from toptica.lasersdk.dlcpro.v2_0_3 import DLCpro,LaserHead,  NetworkConnection, DeviceNotFoundError
 import functools
 import asyncio
-
+_Real = Union[int, float]
 
 def connect_laser(func):
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        with DLCpro(NetworkConnection('169.254.128.41')) as self.dlc:
+        with DLCpro(NetworkConnection(self.tcp_address)) as self.dlc:
             res = func(self, *args, **kwargs)
         return res
     return wrapper
+
+def get_key_by_value(dictionary, target_value):
+    for key, value in dictionary.items():
+        if value == target_value:
+            return key
+    return None  # Return None if the value is not found in the dictionary
 
 
 class LaserState(IntEnum):
     OFF = 0
     ON = 1
 
-class DlProLaser(SimpleLaserInterface):
+class DlProLaser(SimpleLaserInterface, TriggeredAOInterface):
     """ ToDo: describe
 
     Example config for copy-paste:
@@ -38,9 +46,14 @@ class DlProLaser(SimpleLaserInterface):
 
     tcp_address = ConfigOption(name='tcp_address', missing='error')
     current_range = ConfigOption(name='current_range', default=(0, 90), missing='warn')
+    ao_channel = ConfigOption(name='ao_channel', default="OutA", missing='warn')
+    _trigger_channel = ConfigOption(name='trigger_channel', default=3, missing='warn')
     # max = ConfigOption(name='maxpower', default=0.250, missing='warn')
-   
-
+    channel_mapping = {
+       "OutA": 20,
+       "OutB": 21
+    }
+    _ao_channel = None
     def on_activate(self):
         """ Activate module.
         """
@@ -197,3 +210,69 @@ class DlProLaser(SimpleLaserInterface):
           @return str: diagnostic info as a string
         """
         pass
+
+    @connect_laser
+    def set_setpoint(self, channel: str, value) -> None:
+        """ Set new setpoint for a single channel """
+        pass
+
+
+    def get_setpoint(self, channel: str):
+        """ Get current setpoint for a single channel """
+        pass
+    
+    @connect_laser 
+    def set_scan_parameters(self, 
+                            voltage_start: _Real, 
+                            voltage_stop: _Real,
+                            sweep_duration: _Real,
+                            )->None:
+        """
+            voltages in Volts
+            sweep in seconds
+        """
+        self.dlc.laser1.wide_scan.scan_begin.set(voltage_start)
+        self.dlc.laser1.wide_scan.scan_end.set(voltage_stop)
+        self.dlc.laser1.wide_scan.duration.set(sweep_duration)
+
+    @connect_laser 
+    def get_scan_parameters(self):
+        """ Get current setpoint for a single channel """
+        voltage_start = self.dlc.laser1.wide_scan.scan_begin.get()
+        voltage_stop = self.dlc.laser1.wide_scan.scan_end.get()
+        sweep_duration = self.dlc.laser1.wide_scan.duration.get()
+        return voltage_start, voltage_stop, sweep_duration
+
+    @connect_laser 
+    def start_scan(self) -> None:
+        """ Get current setpoint for a single channel """
+        self.enable_trigger()
+        self.dlc.laser1.scan.enabled.set(True)
+        self.dlc.laser1.wide_scan.start.set(True)
+    
+    @connect_laser
+    def stop_scan(self) -> None:
+        """ Get current setpoint for a single channel """
+        # self.dlc.laser1.scan.enabled.set(True)
+        self.dlc.laser1.wide_scan.start.set(False)
+    
+    @connect_laser
+    def enable_trigger(self):
+        self.dlc.laser1.wide_scan.trigger.output_channel.set(self._trigger_channel)
+        self.dlc.laser1.wide_scan.trigger.output_enabled.set(True)
+
+    @connect_laser
+    def is_scanning(self):
+        return self.dlc.laser1.scan.enabled.get()
+    
+    
+    @connect_laser
+    @property
+    def ao_channel(self):
+        return get_key_by_value(self.channel_mapping, self.dlc.laser1.wide_scan.output_channel.get())
+    
+    @connect_laser
+    @ao_channel.setter
+    def ao_channel(self, ao_channel: str) -> None:
+        self._ao_channel = self.channel_mapping[ao_channel]
+        self.dlc.laser1.wide_scan.output_channel.set(self._ao_channel)
