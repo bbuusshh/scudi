@@ -353,7 +353,7 @@ class PLEScannerLogic(ScanningProbeLogic):
     def start_scan(self, scan_axes, caller_id=None):
         self._curr_caller_id = self.module_uuid if caller_id is None else caller_id
         self.display_repeated = self._repeated
-        
+        self._scanner().lines_to_scan = self._number_of_repeats
         with self._thread_lock:
 
             if self.module_state() != 'idle':
@@ -466,13 +466,13 @@ class PLEScannerLogic(ScanningProbeLogic):
                 #         # self.sigRepeatScan.emit(True, self._toggled_scan_axes) 
                 #     # else:
                       
-                #     # if self._scanner()._scanned_lines > self._scanner().lines_to_scan or self._number_of_repeats == 0:
-                #     #     self.sigScanningDone.emit()
-                #     #     self.sigRepeatScan.emit(False, self._toggled_scan_axes)
-                #     #     self._repeated = 0 
-                # return
+                #     if self._scanner()._scanned_lines > self._scanner().lines_to_scan or self._number_of_repeats == 0:
+                #         self.sigScanningDone.emit()
+                #         self.sigRepeatScan.emit(False, self._toggled_scan_axes)
+                #         self._repeated = 0 
+                return
             # TODO Added the following line as a quick test; Maybe look at it with more caution if correct
-            self._scanner().sigNextDataChunk.emit()
+            # self._scanner().sigNextDataChunk.emit()
             self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)
 
             # Queue next call to this slot
