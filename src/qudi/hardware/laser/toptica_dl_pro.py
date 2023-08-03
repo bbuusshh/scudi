@@ -270,6 +270,8 @@ class DlProLaser(SimpleLaserInterface, TriggeredAOInterface):
             sweep in seconds
         """
         self.dlc.laser1.wide_scan.scan_begin.set(voltage_start)
+        self.dlc.laser1.wide_scan.trigger.output_threshold.set(voltage_start)
+
         self.dlc.laser1.wide_scan.scan_end.set(voltage_stop)
         self.dlc.laser1.wide_scan.duration.set(sweep_duration)
 
