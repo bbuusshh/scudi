@@ -461,14 +461,15 @@ class PLEScannerLogic(ScanningProbeLogic):
                     self._repeated += 1
                     self.display_repeated += 1
                     
-                    self.stack_data()
-                    if self._number_of_repeats > self._repeated or self._number_of_repeats == 0:
-                        self.sigRepeatScan.emit(True, self._toggled_scan_axes) 
-                    else:
+                    # self.stack_data()
+                    # if self._number_of_repeats > self._repeated or self._number_of_repeats == 0:
+                        # self.sigRepeatScan.emit(True, self._toggled_scan_axes) 
+                    # else:
                       
-                        self.sigScanningDone.emit()
-                        self.sigRepeatScan.emit(False, self._toggled_scan_axes)
-                        self._repeated = 0 
+                    # if self._scanner()._scanned_lines > self._scanner().lines_to_scan or self._number_of_repeats == 0:
+                    #     self.sigScanningDone.emit()
+                    #     self.sigRepeatScan.emit(False, self._toggled_scan_axes)
+                    #     self._repeated = 0 
                 return
             # TODO Added the following line as a quick test; Maybe look at it with more caution if correct
             self._scanner().sigNextDataChunk.emit()

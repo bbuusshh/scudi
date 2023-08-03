@@ -28,7 +28,8 @@ class DLProTTPLEScanner(ScanningProbeInterface):
     __max_move_velocity = ConfigOption(name='maximum_move_velocity', default=400e-6)
     _ao_trigger_channel = ConfigOption(name="ao_trigger_channel", missing='error') #trigger from AO to timetagger
     _threaded = True  # Interfuse is by default not threaded.
-
+    _scanned_lines = 0
+    lines_to_scan = 4
     sigNextDataChunk = QtCore.Signal()
     sigStartScanner = QtCore.Signal()
 
@@ -162,7 +163,7 @@ class DLProTTPLEScanner(ScanningProbeInterface):
             (min(r), max(r)) for r in scan_settings.get('range', self._current_scan_ranges)
         )
         resolution = scan_settings.get('resolution', self._current_scan_resolution)
-        lines_to_scan = scan_settings.get('lines_to_scan', 1)
+        lines_to_scan = scan_settings.get('lines_to_scan', 4)
         frequency = float(scan_settings.get('frequency', self._current_scan_frequency))
         if self._backwards_line_resolution is None:
             self._backwards_line_resolution = int(resolution[0])
@@ -226,13 +227,18 @@ class DLProTTPLEScanner(ScanningProbeInterface):
             #Workaround for the old time tagger version at the praktikum
 
             #configure the time tagger
-            self._time_differences_tasks = [self._timetagger().time_differences(
+            self._time_differences_tasks = []
+            for channel in channels_tt:
+                td_task = self._timetagger().time_differences(
                             click_channel = channel, 
                             start_channel = self._ao_trigger_channel,
                             next_channel = self._ao_trigger_channel,
                             binwidth=int(1e12/frequency),
-                            n_bins=int(resolution[0]),
-                            n_histograms=lines_to_scan) for channel in channels_tt]
+                            n_bins=int(resolution[0]) * 2,
+                            n_histograms=1)
+                # td_task.setMaxCounts(0)
+                self._time_differences_tasks.append(td_task)
+            
             #configure the time tagger
             self._histogram_tasks = [self._timetagger().histogram(
                             channel = channel, 
@@ -241,6 +247,7 @@ class DLProTTPLEScanner(ScanningProbeInterface):
                             number_of_bins=int(resolution[0]) * 2,
                            ) for channel in channels_tt]
 
+            self.sample_rate = frequency
 
             volts = self._position_to_voltage("a", ranges)
             voltage_start = volts[0][0]
@@ -497,8 +504,8 @@ class DLProTTPLEScanner(ScanningProbeInterface):
     def _check_scan_end_reached(self):
         # not thread safe, call from thread_lock protected code only
         #FIx this shit
-        
-        return self.raw_data_container.is_full and self._histogram_tasks[0].ready()
+        return False
+
     
 
 
@@ -508,23 +515,23 @@ class DLProTTPLEScanner(ScanningProbeInterface):
         data_hist_forward = {}
         data_hist_backwards = {}
         for num, di_channel in enumerate(self.__active_channels['di_channels']):
-            data_td_forward[di_channel] = self._time_differences_tasks[num].getData()#[:self._current_scan_resolution[0], :]
-            data_hist_forward[di_channel] = self._histogram_tasks[num].getData()[:self._current_scan_resolution[0]]
-            data_hist_backwards[di_channel] = self._histogram_tasks[num].getData()[self._current_scan_resolution[0]:]
-            
+            # data_td_forward[di_channel] = self._time_differences_tasks[num].getData()[:,:self._current_scan_resolution[0]] * self.sample_rate#
+            # data_td_backwards[di_channel] = self._time_differences_tasks[num].getData()[:,self._current_scan_resolution[0]:] * self.sample_rate#
+            data_hist_forward[di_channel] = self._time_differences_tasks[num].getData()[0, :self._current_scan_resolution[0]] * self.sample_rate
+            data_hist_backwards[di_channel] = self._time_differences_tasks[num].getData()[0, self._current_scan_resolution[0]:] * self.sample_rate
+            # data_td_forward[di_channel] = np.vstack((data_td_forward[di_channel], data_hist_forward[di_channel])) if self._scanned_lines > 0 else data_hist_forward[di_channel]
 
         reverse_routing = {val.lower(): key for key, val in self._channel_mapping.items()}
 
         new_data_forward = {reverse_routing[key]: samples for key, samples in data_hist_forward.items()}
         new_data_backwards = {reverse_routing[key]: samples for key, samples in data_hist_backwards.items()}
-        new_data_cum_forward = {reverse_routing[key]: samples for key, samples in data_td_forward.items()}
+        new_data_cum_forward = {reverse_routing[key]: samples[:self._current_scan_resolution[0], :] for key, samples in data_td_forward.items()}
+        new_data_cum_backwards = {reverse_routing[key]: samples[:self._current_scan_resolution[0], :] for key, samples in data_td_forward.items()}
         if len(self._sum_channels) > 1:
             new_data_forward["sum"] = np.sum([samples for key, samples in data_hist_forward.items() if key in self._sum_channels], axis=0)
-        if len(self._sum_channels) > 1:
             new_data_backwards["sum"] = np.sum([samples for key, samples in data_hist_backwards.items() if key in self._sum_channels], axis=0)
-
-        if len(self._sum_channels) > 1:
             new_data_cum_forward["sum"] = np.sum([samples for key, samples in data_td_forward.items() if key in self._sum_channels], axis=0)
+            new_data_cum_backwards["sum"] = np.sum([samples for key, samples in data_td_backwards.items() if key in self._sum_channels], axis=0)
         # self.log.debug(f'new data: {new_data}')
         
         with self._thread_lock_data:
@@ -534,6 +541,7 @@ class DLProTTPLEScanner(ScanningProbeInterface):
             # if self._backwards_line_resolution == len(self.raw_data_container.backwards_data()):
             self._scan_data.retrace_data = new_data_backwards#self.raw_data_container.backwards_data()
             self._scan_data.accumulated = new_data_cum_forward
+            self._scan_data.retrace_accumulated = new_data_cum_backwards
             if self._check_scan_end_reached():
 
                 # if self._scan_data.accumulated is None:

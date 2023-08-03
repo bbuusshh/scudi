@@ -820,7 +820,7 @@ class PLEScanGui(GuiBase):
         """
         self._mw.ple_retrace_widget.set_scan_data(scan_data)
         self._mw.ple_widget.set_scan_data(scan_data)
-        
+        self._mw.matrix_widget.set_scan_data(scan_data)
        
 
     @QtCore.Slot(object)
