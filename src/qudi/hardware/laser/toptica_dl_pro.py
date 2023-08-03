@@ -61,7 +61,7 @@ class DlProLaser(SimpleLaserInterface, TriggeredAOInterface):
        "OutA": 20,
        "OutB": 21
     }
-
+    detune_for_trigger = 0.01
     def on_activate(self):
         """ Activate module.
         """
@@ -269,7 +269,7 @@ class DlProLaser(SimpleLaserInterface, TriggeredAOInterface):
             voltages in Volts
             sweep in seconds
         """
-        self.dlc.laser1.wide_scan.scan_begin.set(voltage_start)
+        self.dlc.laser1.wide_scan.scan_begin.set(voltage_start - self.detune_for_trigger) # fix the 0.01
         self.dlc.laser1.wide_scan.trigger.output_threshold.set(voltage_start)
 
         self.dlc.laser1.wide_scan.scan_end.set(voltage_stop)
