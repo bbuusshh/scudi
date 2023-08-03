@@ -385,13 +385,13 @@ class PLEScannerLogic(ScanningProbeLogic):
             self.__scan_poll_interval = max(self._min_poll_interval,
                                             line_points / self._scan_frequency[scan_axes[0]])
             self.__scan_poll_timer.setInterval(int(round(self.__scan_poll_interval * 1000)))
-
+            
             if ret:=self._scanner().start_scan() < 0:  # TODO Current interface states that bool is returned from start_scan
                 
                 self.module_state.unlock()
                 self.sigScanStateChanged.emit(False, None, self._curr_caller_id)
                 return -1
-            # print("Scanner state", ret)
+            
             self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)
             self.__start_timer()
             return 0
@@ -452,8 +452,9 @@ class PLEScannerLogic(ScanningProbeLogic):
             
             if self.module_state() == 'idle':
                 return
-
+            
             if self._scanner().module_state() == 'idle':
+                
                 self.stop_scan()
                 
                 if (self._curr_caller_id == self._scan_id) or (self._curr_caller_id == self.module_uuid):
@@ -470,6 +471,7 @@ class PLEScannerLogic(ScanningProbeLogic):
                         self._repeated = 0 
                 return
             # TODO Added the following line as a quick test; Maybe look at it with more caution if correct
+            self._scanner().sigNextDataChunk.emit()
             self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)
 
             # Queue next call to this slot

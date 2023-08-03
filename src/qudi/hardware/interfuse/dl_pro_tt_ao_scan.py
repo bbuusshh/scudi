@@ -14,7 +14,7 @@ from qudi.util.helpers import in_range
 
 class DLProTTPLEScanner(ScanningProbeInterface):
     _timetagger = Connector(name='tt', interface = "TT")
-    _triggered_ao = Connector(name='triggered_ao', interface='TriggeredAnalogOutputInterface')
+    _triggered_ao = Connector(name='triggered_ao', interface='TriggeredAOInterface')
 
     _channel_mapping = ConfigOption(name='channel_mapping', missing='error')
 
@@ -26,12 +26,11 @@ class DLProTTPLEScanner(ScanningProbeInterface):
     _scan_units = ConfigOption(name='scan_units', missing='error')
     _backwards_line_resolution = ConfigOption(name='backwards_line_resolution', default=50)
     __max_move_velocity = ConfigOption(name='maximum_move_velocity', default=400e-6)
-    _ao_trigger_channel = ConfigOption(name="ao_trigger_channel", missing='error')
+    _ao_trigger_channel = ConfigOption(name="ao_trigger_channel", missing='error') #trigger from AO to timetagger
     _threaded = True  # Interfuse is by default not threaded.
 
     sigNextDataChunk = QtCore.Signal()
-    sigChangeTemperatureRegime = QtCore.Signal(bool)
-
+    sigStartScanner = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -48,12 +47,11 @@ class DLProTTPLEScanner(ScanningProbeInterface):
         
         self._target_pos = dict()
         self._stored_target_pos = dict()
-        self._start_scan_after_cursor = False
-        self._abort_cursor_move = False
 
-        self.__ao_write_timer = None
         self._min_step_interval = 1e-3
         self._scanner_distance_atol = 1e-9
+
+        self._ao_trigger_channel = int(self._ao_trigger_channel[2:])
 
         self._thread_lock_cursor = Mutex()
         self._thread_lock_data = Mutex()
@@ -89,7 +87,8 @@ class DLProTTPLEScanner(ScanningProbeInterface):
             channels.append(ScannerChannel(name=channel,
                                            unit=unit,
                                            dtype=np.float64))
-
+        self.__active_channels = {}
+        self.__active_channels['di_channels'] = [value for key, value in self._channel_mapping.items() if "APD" in key]
         self._constraints = ScanConstraints(axes=axes,
                                             channels=channels,
                                             backscan_configurable=False,  # TODO incorporate in scanning_probe toolchain
@@ -100,9 +99,8 @@ class DLProTTPLEScanner(ScanningProbeInterface):
         self._toggle_ao_setpoint_channels(False)  # And free ao resources after that
         self._t_last_move = time.perf_counter()
         self.__t_last_follow = None
-        self.sigChangeTemperatureRegime.connect(self._change_temperature_regime, QtCore.Qt.QueuedConnection)
         self.sigNextDataChunk.connect(self._fetch_data_chunk, QtCore.Qt.QueuedConnection)
-
+        self.sigStartScanner.connect(lambda: self._triggered_ao().start_scan(), QtCore.Qt.QueuedConnection)
     def _toggle_ao_setpoint_channels(self, enable: bool) -> None:
         triggered_ao = self._triggered_ao()
         for channel in triggered_ao.constraints.setpoint_channels:
@@ -216,7 +214,7 @@ class DLProTTPLEScanner(ScanningProbeInterface):
                                                             resolution[
                                                                 1] if self._scan_data.scan_dimension == 2 else 1,
                                                             resolution[0],
-                                                            self._backwards_line_resolution)
+                                                            resolution[0])#self._backwards_line_resolution)
                 # self.log.debug(f"New scanData created: {self._scan_data.data}")
 
             except:
@@ -224,42 +222,45 @@ class DLProTTPLEScanner(ScanningProbeInterface):
                 return True, self.scan_settings
 
             channels_tt = [int(ch[2:]) for ch in self.__active_channels['di_channels'] if "tt" in ch]
-            clock_tt = int(self._tt_ni_clock_input[2:])
+        
             #Workaround for the old time tagger version at the praktikum
 
-            voltage_start = ranges[0]
-            voltage_stop = ranges[1]
-            sweep_duration = int(resolution[0]) / frequency # in sec
-
-            #configure the scanner
-            self._triggered_ao.set_scan_parameters(
-                voltage_start = voltage_start,
-                voltage_stop = voltage_stop,
-                sweep_duration = sweep_duration
-            )
-
             #configure the time tagger
-            self._time_differences_tasks = [self._tt.time_differences(
+            self._time_differences_tasks = [self._timetagger().time_differences(
                             click_channel = channel, 
                             start_channel = self._ao_trigger_channel,
                             next_channel = self._ao_trigger_channel,
-                            binwidth=frequency,
+                            binwidth=int(1e12/frequency),
                             n_bins=int(resolution[0]),
                             n_histograms=lines_to_scan) for channel in channels_tt]
             #configure the time tagger
-            self._histogram_tasks = [self._tt.histogram(
+            self._histogram_tasks = [self._timetagger().histogram(
                             channel = channel, 
                             trigger_channel = self._ao_trigger_channel,
-                            bin_width=frequency,
-                            number_of_bins=int(resolution[0]),
+                            bin_width=int(1e12/frequency),
+                            number_of_bins=int(resolution[0]) * 2,
                            ) for channel in channels_tt]
+
+
+            volts = self._position_to_voltage("a", ranges)
+            voltage_start = volts[0][0]
+            voltage_stop = volts[0][1]
+            sweep_duration = int(resolution[0]) / frequency # in sec
+         
+            #configure the scanner
+            self._triggered_ao().set_scan_parameters(
+                voltage_start = float(voltage_start),
+                voltage_stop = float(voltage_stop),
+                sweep_duration = sweep_duration * 2
+            )
+         
 
             self._current_scan_resolution = tuple(resolution)
             self._current_scan_ranges = ranges
             self._current_scan_axes = tuple(axes)
             self._current_scan_frequency = frequency
             self._current_lines_to_scan = lines_to_scan
-
+            
             return False, self.scan_settings
 
     def move_absolute(self, position, velocity=None, blocking=False):
@@ -279,13 +280,27 @@ class DLProTTPLEScanner(ScanningProbeInterface):
             return self.get_target()
 
         try:
-            self._prepare_movement(position, velocity=velocity)
+            #prepare the movement
+            constr = self.get_constraints()
 
-            self.__start_ao_write_timer()
-            if blocking:
-                self.__wait_on_move_done()
+            for axis, pos in position.items():
+                in_range_flag, _ = in_range(pos, *constr.axes[axis].value_range)
+                if not in_range_flag:
+                    position[axis] = float(constr.axes[axis].clip_value(position[axis]))
+                    self.log.warning(f'Position {pos} out of range {constr.axes[axis].value_range} '
+                                     f'for axis {axis}. Value clipped to {position[axis]}')
+                # TODO Adapt interface to use "in_range"?
+                self._target_pos[axis] = position[axis]
 
-            self._t_last_move = time.perf_counter()
+            
+            for ax, pos in position.items():
+                v = self._position_to_voltage(ax, pos)
+                self._triggered_ao().set_setpoint(self._channel_mapping[ax], v)
+
+            # if blocking:
+            #     self.__wait_on_move_done()
+
+            # self._t_last_move = time.perf_counter()
 
             return self.get_target()
         except:
@@ -340,10 +355,11 @@ class DLProTTPLEScanner(ScanningProbeInterface):
             if not self._ao_setpoint_channels_active:
                 self._toggle_ao_setpoint_channels(True)
 
-            pos = self._voltage_dict_to_position_dict(self._ni_ao().setpoints)
+            pos = self._voltage_dict_to_position_dict(self._triggered_ao().setpoints)
             return pos
 
     def start_scan(self):
+        
         try:
 
             #self.log.debug(f"Start scan in thread {self.thread()}, QT.QThread {QtCore.QThread.currentThread()}... ")
@@ -366,32 +382,35 @@ class DLProTTPLEScanner(ScanningProbeInterface):
 
         @return (bool): Failure indicator (fail=True)
         """
-        try:
-            if self._scan_data is None:
-                # todo: raising would be better, but from this delegated thread exceptions get lost
-                self.log.error('Scan Data is None. Scan settings need to be configured before starting')
+      
+        if self._scan_data is None:
+            # todo: raising would be better, but from this delegated thread exceptions get lost
+            self.log.error('Scan Data is None. Scan settings need to be configured before starting')
 
-            if self.is_scan_running:
-                self.log.error('Cannot start a scan while scanning probe is already running')
+        if self.is_scan_running:
+            self.log.error('Cannot start a scan while scanning probe is already running')
 
-            with self._thread_lock_data:
-                self._scan_data.new_scan()
-                #self.log.debug(f"New scan data: {self._scan_data.data}, position {self._scan_data._position_data}")
-                self._stored_target_pos = self.get_target().copy()
-                self._scan_data.scanner_target_at_start = self._stored_target_pos
+        with self._thread_lock_data:
+            self._scan_data.new_scan()
+            #self.log.debug(f"New scan data: {self._scan_data.data}, position {self._scan_data._position_data}")
+            self._stored_target_pos = self.get_target().copy()
+            self._scan_data.scanner_target_at_start = self._stored_target_pos
 
-            # todo: scanning_probe_logic exits when scanner not locked right away
-            # should rather ignore/wait until real hw timed scanning starts
-            self.module_state.lock()
+        # todo: scanning_probe_logic exits when scanner not locked right away
+        # should rather ignore/wait until real hw timed scanning starts
+        
+        first_scan_position = {ax: pos[0] for ax, pos
+                                in zip(self.scan_settings['axes'], self.scan_settings['range'])}
+        self._move_to_and_start_scan(first_scan_position)
 
-            first_scan_position = {ax: pos[0] for ax, pos
-                                   in zip(self.scan_settings['axes'], self.scan_settings['range'])}
-            self._move_to_and_start_scan(first_scan_position)
+        self.module_state.lock()
 
-        except Exception:
-            self.module_state.unlock()
-            self.log.exception("Starting scan failed: ")
 
+    def _move_to_and_start_scan(self, position):
+        self.move_absolute(position)
+        self._start_scan_after_cursor = True
+        #self.log.debug("Starting timer to move to scan position")
+        self.sigStartScanner.emit()
 
     def stop_scan(self):
         """
@@ -413,17 +432,10 @@ class DLProTTPLEScanner(ScanningProbeInterface):
 
         # self.log.debug("Stopping scan...")
         self._start_scan_after_cursor = False  # Ensure Scan HW is not started after movement
-        if self._ao_setpoint_channels_active:
-            self._abort_cursor_movement()
-            # self.log.debug("Move aborted")
 
-        if self._ni_finite_sampling_io().is_running:
-            self._ni_finite_sampling_io().stop_buffered_frame()
-            # self.log.debug("Frame stopped")
-
-        self.module_state.unlock()
         # self.log.debug("Module unlocked")
-
+        self._triggered_ao().stop_scan()
+        self.module_state.unlock()
         self.move_absolute(self._stored_target_pos)
         self._stored_target_pos = dict()
 
@@ -486,53 +498,63 @@ class DLProTTPLEScanner(ScanningProbeInterface):
         # not thread safe, call from thread_lock protected code only
         #FIx this shit
         
-        return self.raw_data_container.is_full and self._ni_finite_sampling_io()._scanner_ready
+        return self.raw_data_container.is_full and self._histogram_tasks[0].ready()
+    
+
 
     def _fetch_data_chunk(self):
-        try:
-            data_td = {}
-            data_hist = {}
-            for num, di_channel in enumerate(self.__active_channels['di_channels']):
-                data_td[di_channel] = self._time_differences_tasks[num].getData()
-                data_hist[di_channel] = self._histogram_tasks[num].getData()
-                
+        data_td_forward = {}
+        data_td_backwards = {}
+        data_hist_forward = {}
+        data_hist_backwards = {}
+        for num, di_channel in enumerate(self.__active_channels['di_channels']):
+            data_td_forward[di_channel] = self._time_differences_tasks[num].getData()#[:self._current_scan_resolution[0], :]
+            data_hist_forward[di_channel] = self._histogram_tasks[num].getData()[:self._current_scan_resolution[0]]
+            data_hist_backwards[di_channel] = self._histogram_tasks[num].getData()[self._current_scan_resolution[0]:]
+            
 
-            reverse_routing = {val.lower(): key for key, val in self._channel_mapping.items()}
+        reverse_routing = {val.lower(): key for key, val in self._channel_mapping.items()}
 
-            new_data = {reverse_routing[key]: samples for key, samples in data_hist.items()}
-            if len(self._sum_channels) > 1:
-                new_data["sum"] = np.sum([samples for key, samples in data_hist.items() if key in self._sum_channels], axis=0)
-            # self.log.debug(f'new data: {new_data}')
+        new_data_forward = {reverse_routing[key]: samples for key, samples in data_hist_forward.items()}
+        new_data_backwards = {reverse_routing[key]: samples for key, samples in data_hist_backwards.items()}
+        new_data_cum_forward = {reverse_routing[key]: samples for key, samples in data_td_forward.items()}
+        if len(self._sum_channels) > 1:
+            new_data_forward["sum"] = np.sum([samples for key, samples in data_hist_forward.items() if key in self._sum_channels], axis=0)
+        if len(self._sum_channels) > 1:
+            new_data_backwards["sum"] = np.sum([samples for key, samples in data_hist_backwards.items() if key in self._sum_channels], axis=0)
 
-            with self._thread_lock_data:
-                self.raw_data_container.fill_container(new_data)
-                self._scan_data.data = self.raw_data_container.forwards_data()
-                # if self._backwards_line_resolution == len(self.raw_data_container.backwards_data()):
-                self._scan_data.retrace_data = self.raw_data_container.backwards_data()
-                if self._check_scan_end_reached():
+        if len(self._sum_channels) > 1:
+            new_data_cum_forward["sum"] = np.sum([samples for key, samples in data_td_forward.items() if key in self._sum_channels], axis=0)
+        # self.log.debug(f'new data: {new_data}')
+        
+        with self._thread_lock_data:
+            self.raw_data_container.fill_container(new_data_forward)
+            self._scan_data.data = new_data_forward
+            # self.raw_data_container.fill_container(new_data_backwards)
+            # if self._backwards_line_resolution == len(self.raw_data_container.backwards_data()):
+            self._scan_data.retrace_data = new_data_backwards#self.raw_data_container.backwards_data()
+            self._scan_data.accumulated = new_data_cum_forward
+            if self._check_scan_end_reached():
 
-                    # if self._scan_data.accumulated is None:
-                    #     self._scan_data.accumulated = self._scan_data.data
-                    # else:
-                    #     self._scan_data.accumulated = {channel : 
-                    #             np.vstack((self._scan_data.accumulated[channel], data_i)) \
-                    #             for channel, data_i in self._scan_data.data.items() if len(data_i) > 0}
-                        
-                    # if self._scan_data.retrace_accumulated is None:
-                    #     self._scan_data.retrace_accumulated = self._scan_data.retrace_data
-                    # else:
-                    #     self._scan_data.retrace_accumulated = {channel : 
-                    #             np.vstack((self._scan_data.retrace_accumulated[channel], data_i)) \
-                    #                 for channel, data_i in self._scan_data.retrace_data.items() if len(data_i) > 0}
-                    self.stop_scan()
-                elif not self.is_scan_running:
-                    return
-                else:
-                    self.sigNextDataChunk.emit()
+                # if self._scan_data.accumulated is None:
+                #     self._scan_data.accumulated = self._scan_data.data
+                # else:
+                #     self._scan_data.accumulated = {channel : 
+                #             np.vstack((self._scan_data.accumulated[channel], data_i)) \
+                #             for channel, data_i in self._scan_data.data.items() if len(data_i) > 0}
+                    
+                # if self._scan_data.retrace_accumulated is None:
+                #     self._scan_data.retrace_accumulated = self._scan_data.retrace_data
+                # else:
+                #     self._scan_data.retrace_accumulated = {channel : 
+                #             np.vstack((self._scan_data.retrace_accumulated[channel], data_i)) \
+                #                 for channel, data_i in self._scan_data.retrace_data.items() if len(data_i) > 0}
+                self.stop_scan()
+            elif not self.is_scan_running:
+                return
+            else:
+                self.sigNextDataChunk.emit()
 
-        except:
-            self.log.exception("")
-            self.stop_scan()
 
     def _position_to_voltage(self, axis, positions):
         """
@@ -545,7 +567,7 @@ class DLProTTPLEScanner(ScanningProbeInterface):
         """
 
         channel = self._channel_mapping[axis]
-        voltage_range = self._triggered_ao.constraints.output_channel_limits[channel]
+        voltage_range = self._triggered_ao().constraints._channel_limits[channel]
         position_range = self.get_constraints().axes[axis].value_range
 
         slope = np.diff(voltage_range) / np.diff(position_range)
@@ -587,20 +609,17 @@ class DLProTTPLEScanner(ScanningProbeInterface):
         # TODO check voltages given correctly checking?
         positions_data = dict()
         for channel in voltages:
-            try:
-                axis = reverse_routing[channel]
-                voltage_range = self._triggered_ao.constraints.output_channel_limits[channel]
-                position_range = self.get_constraints().axes[axis].value_range
+            axis = reverse_routing[channel.lower()]
+            voltage_range = self._triggered_ao().constraints._channel_limits[channel]
+            position_range = self.get_constraints().axes[axis].value_range
 
-                slope = np.diff(position_range) / np.diff(voltage_range)
-                intercept = position_range[1] - voltage_range[1] * slope
+            slope = np.diff(position_range) / np.diff(voltage_range)
+            intercept = position_range[1] - voltage_range[1] * slope
 
-                converted = voltages[channel] * slope + intercept
-                # round position values to 100 pm. Avoids float precision errors
-                converted = np.around(converted, 10)
-            except KeyError:
-                # if one of the AO channels is not used for confocal
-                continue
+            converted = voltages[channel] * slope + intercept
+            # round position values to 100 pm. Avoids float precision errors
+            converted = np.around(converted, 10)
+
 
             try:
                 # In case of single value, use just this value
@@ -609,6 +628,7 @@ class DLProTTPLEScanner(ScanningProbeInterface):
                 positions_data[axis] = converted
 
         return positions_data
+
 
 
     def _update_position_ranges(self, new_position_ranges):
@@ -693,3 +713,26 @@ class RawDataContainer:
         return self.number_of_non_nan_values == self.frame_size
     
 
+    def __init_ao_timer(self):
+        self.__ao_write_timer = QtCore.QTimer(parent=self)
+
+        self.__ao_write_timer.setSingleShot(True)
+        self.__ao_write_timer.timeout.connect(self.__ao_cursor_write_loop, QtCore.Qt.QueuedConnection)
+        self.__ao_write_timer.setInterval(1e3*self._min_step_interval)  # (ms), dynamically calculated during write loop
+    def __start_ao_write_timer(self):
+        #self.log.debug(f"ao start write timer in thread {self.thread()}, QT.QThread {QtCore.QThread.currentThread()} ")
+        try:
+            if not self.is_move_running:
+                #self.log.debug("Starting AO write timer...")
+                if self.thread() is not QtCore.QThread.currentThread():
+                    QtCore.QMetaObject.invokeMethod(self.__ni_ao_write_timer,
+                                                    'start',
+                                                    QtCore.Qt.BlockingQueuedConnection)
+                else:
+                    self.__ni_ao_write_timer.start()
+            else:
+                pass
+                #self.log.debug("Dropping timer start, already running")
+
+        except:
+            self.log.exception("")
