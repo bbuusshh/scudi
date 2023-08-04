@@ -818,10 +818,22 @@ class PLEScanGui(GuiBase):
         """
         @param ScanData scan_data:
         """
-        self._mw.ple_retrace_widget.set_scan_data(scan_data)
-        self._mw.ple_widget.set_scan_data(scan_data)
-        self._mw.matrix_widget.set_scan_data(scan_data)
-        self._mw.ple_averaged_widget.set_scan_data(scan_data)
+    
+        self._mw.ple_retrace_widget.set_scan_data(scan_data.retrace_data, scan_data)
+        self._mw.ple_widget.set_scan_data(scan_data.data, scan_data)
+        
+
+        if scan_data.accumulated is not None:
+            self._mw.matrix_widget.set_scan_data(scan_data.accumulated, scan_data)
+            averaged_data = {channel: data.mean(axis=0)  for channel, data in scan_data.accumulated.items()}
+            # averaged_retrace_data = {channel: data.mean(axis=0)  for channel, data in scan_data.accumulated.items()}
+            self._mw.ple_averaged_widget.set_scan_data(averaged_data, scan_data)
+        if scan_data._retrace_accumulated is not None:
+            self._mw.retrace_matrix_widget.set_scan_data(scan_data._retrace_accumulated, scan_data)
+            averaged_data = {channel: data.mean(axis=0)  for channel, data in scan_data._retrace_accumulated.items()}
+            # averaged_retrace_data = {channel: data.mean(axis=0)  for channel, data in scan_data.accumulated.items()}
+            self._mw.ple_retrace_averaged_widget.set_scan_data(averaged_data, scan_data)
+
        
 
     @QtCore.Slot(object)

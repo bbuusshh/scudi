@@ -121,7 +121,7 @@ class DLProTTPLEScanner(ScanningProbeInterface):
         """
         Deactivate the module
         """
-        self._abort_cursor_movement()
+       
         self._triggered_ao.stop_scan()
 
     def get_constraints(self):
@@ -521,19 +521,21 @@ class DLProTTPLEScanner(ScanningProbeInterface):
             data_hist_forward = {}
             data_hist_backwards = {}
             for num, di_channel in enumerate(self.__active_channels['di_channels']):
-                data_td_forward[di_channel] = self._time_differences_tasks[num].getData()[:,:self._current_scan_resolution[0]] * self.sample_rate#
-                data_td_backwards[di_channel] = self._time_differences_tasks[num].getData()[:,self._current_scan_resolution[0]:] * self.sample_rate#
-                idx = self._time_differences_tasks[num].getHistogramIndex()
-                data_hist_forward[di_channel] = self._time_differences_tasks[num].getData()[idx, :self._current_scan_resolution[0]] * self.sample_rate
-                data_hist_backwards[di_channel] = self._time_differences_tasks[num].getData()[idx, self._current_scan_resolution[0]:] * self.sample_rate
+                td_data = self._time_differences_tasks[num].getData()
+                idx = self._time_differences_tasks[num].getHistogramIndex() #current histogram
+                data_td_forward[di_channel] = td_data[:,:self._current_scan_resolution[0]] * self.sample_rate#
+                data_td_backwards[di_channel] =td_data[:,self._current_scan_resolution[0]:] * self.sample_rate#
+                
+                data_hist_forward[di_channel] = td_data[idx, :self._current_scan_resolution[0]] * self.sample_rate
+                data_hist_backwards[di_channel] = td_data[idx, self._current_scan_resolution[0]:] * self.sample_rate
                 # data_td_forward[di_channel] = self._time_differences_tasks[num].getData() * self.sample_rate #np.vstack((data_td_forward[di_channel], data_hist_forward[di_channel])) if self._scanned_lines > 0 else data_hist_forward[di_channel]
 
             reverse_routing = {val.lower(): key for key, val in self._channel_mapping.items()}
 
             new_data_forward = {reverse_routing[key]: samples for key, samples in data_hist_forward.items()}
             new_data_backwards = {reverse_routing[key]: samples for key, samples in data_hist_backwards.items()}
-            new_data_cum_forward = {reverse_routing[key]: samples[:self._current_scan_resolution[0], :] for key, samples in data_td_forward.items()}
-            new_data_cum_backwards = {reverse_routing[key]: samples[:self._current_scan_resolution[0], :] for key, samples in data_td_forward.items()}
+            new_data_cum_forward = {reverse_routing[key]: samples for key, samples in data_td_forward.items()}
+            new_data_cum_backwards = {reverse_routing[key]: samples for key, samples in data_td_backwards.items()}
             if len(self._sum_channels) > 1:
                 new_data_forward["sum"] = np.sum([samples for key, samples in data_hist_forward.items() if key in self._sum_channels], axis=0)
                 new_data_backwards["sum"] = np.sum([samples for key, samples in data_hist_backwards.items() if key in self._sum_channels], axis=0)
@@ -548,7 +550,7 @@ class DLProTTPLEScanner(ScanningProbeInterface):
                 # if self._backwards_line_resolution == len(self.raw_data_container.backwards_data()):
                 self._scan_data.retrace_data = new_data_backwards#self.raw_data_container.backwards_data()
                 self._scan_data.accumulated = new_data_cum_forward
-                self._scan_data.retrace_accumulated = new_data_cum_backwards
+                self._scan_data._retrace_accumulated = new_data_cum_backwards
                 
 
                 if self._check_scan_end_reached():

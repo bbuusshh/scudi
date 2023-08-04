@@ -75,7 +75,7 @@ class PLEScannerLogic(ScanningProbeLogic):
     # config options
     _fit_config = StatusVar(name='fit_config', default=None)
     _fit_region = StatusVar(name='fit_region', default=[0, 1])
-    _scan_poll_interval = 1000
+    _scan_poll_interval = 50
     _default_fit_configs = (
         {'name'             : 'Lorentzian',
         'model'            : 'Lorentzian',
