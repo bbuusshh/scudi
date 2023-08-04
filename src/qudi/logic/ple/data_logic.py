@@ -260,11 +260,12 @@ class PleDataLogic(LogicBase):
                           data/si_factor_data)
         
         if channel == self.current_channel:
-            if self.fit_container.last_fit is not None:
-                ax.plot(x_axis/si_factor_x, 
-                        self.fit_container.last_fit[1].best_fit/si_factor_data, 
-                        marker='None')
-                self.add_fit_params_to_figure(ax, self.fit_container)
+            if self.fit_container is not None:
+                if (fit_result:= self.fit_container.last_fit) is not None and fit_result[1] is not None:
+                    ax.plot(x_axis/si_factor_x, 
+                            self.fit_container.last_fit[1].best_fit/si_factor_data, 
+                            marker='None')
+                    self.add_fit_params_to_figure(ax, self.fit_container)
 
         # Axes labels
         if scan_data.axes_units[axis]:
@@ -334,15 +335,15 @@ class PleDataLogic(LogicBase):
 
                 
                 self.fit_container = fit_container
-                
+                if fit_container is not None:
 
-                if (fit_result:= fit_container.last_fit) is not None:
+                    if (fit_result:= fit_container.last_fit) is not None and fit_result[1] is not None:
+                        
                     
+                        fit_params_meta = {key: value for key, value in dict(fit_result[1].params).items()}
+                        fit_params_meta["Fit function name"] = fit_result[0]
+                        parameters.update(fit_params_meta)
                 
-                    fit_params_meta = {key: value for key, value in dict(fit_result[1].params).items()}
-                    fit_params_meta["Fit function name"] = fit_result[0]
-                    parameters.update(fit_params_meta)
-               
                 # add meta data for axes in full target, but not scan axes
                 if scan_data.scanner_target_at_start:
                     for new_ax in scan_data.scanner_target_at_start.keys():
