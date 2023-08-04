@@ -90,7 +90,8 @@ class PLEScanGui(GuiBase):
 
     _n_save_tasks = 0
     scan_data = None
-    sigDoFit = QtCore.Signal(str, str)
+    sigDoFit = QtCore.Signal(str, str, bool)
+    _fit_averaged = False
     fit_result = None
 
     
@@ -476,7 +477,7 @@ class PLEScanGui(GuiBase):
     def _fit_clicked(self, fit_config):
         channel = self._scanning_logic.scanner_channels[self._scanning_logic._channel]#self._scan_control_dockwidget.selected_channel
         # range_index = #self._scan_control_dockwidget.selected_range
-        self.sigDoFit.emit(fit_config, channel)
+        self.sigDoFit.emit(fit_config, channel, self._fit_averaged)
 
     def _update_fit_result(self, fit_cfg_result, channel):
         current_channel = channel#self._scan_control_dockwidget.selected_channel
@@ -489,6 +490,14 @@ class PLEScanGui(GuiBase):
             else:
                 self._fit_dockwidget.fit_widget.update_fit_result(*fit_cfg_result)
                 self._mw.ple_widget.set_fit_data(*fit_cfg_result[1].high_res_best_fit)
+            
+            if self._fit_averaged:
+                if fit_cfg_result is None:
+                    self._fit_dockwidget.fit_widget.update_fit_result('No Fit', None)
+                    self._mw.ple_averaged_widget.set_fit_data(None, None)
+                else:
+                    self._fit_dockwidget.fit_widget.update_fit_result(*fit_cfg_result)
+                    self._mw.ple_averaged_widget.set_fit_data(*fit_cfg_result[1].high_res_best_fit)
 
 
     @QtCore.Slot(bool)
@@ -882,7 +891,7 @@ class PLEScanGui(GuiBase):
                 meta_params = dict()
 
             self.sigSaveScan.emit(self.scan_data, 
-                                  self._accumulated_data, 
+                                  self._scanning_logic._channel,
                                   self._scanning_logic._fit_container,
                                   cbar_range, 
                                   name_tag, 

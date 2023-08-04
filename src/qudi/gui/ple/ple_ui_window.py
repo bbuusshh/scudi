@@ -15,15 +15,7 @@ try:
     importlib.reload(ple_data_widget)
 except NameError:
     import qudi.gui.ple.ple_data_widget as ple_data_widget
-try:
-    importlib.reload(ple_retrace_widget)
-except NameError:
-    import qudi.gui.ple.ple_retrace_widget as ple_retrace_widget
 
-try:
-    importlib.reload(ple_averaged_widget)
-except NameError:
-    import qudi.gui.ple.ple_averaged_widget as ple_averaged_widget
 try:
     importlib.reload(matrix_widget)
 except NameError:

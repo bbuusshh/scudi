@@ -29,7 +29,8 @@ class DLProTTPLEScanner(ScanningProbeInterface):
     _ao_trigger_channel = ConfigOption(name="ao_trigger_channel", missing='error') #trigger from AO to timetagger
     _threaded = True  # Interfuse is by default not threaded.
     _scanned_lines = 0
-    lines_to_scan = 4
+    _max_rollovers = 1
+    lines_to_scan = 1
     sigNextDataChunk = QtCore.Signal()
     sigStartScanner = QtCore.Signal()
 
@@ -239,7 +240,7 @@ class DLProTTPLEScanner(ScanningProbeInterface):
                             binwidth=int(1e12/frequency),
                             n_bins=int(resolution[0]) * 2,
                             n_histograms=self.lines_to_scan)
-                td_task.setMaxCounts(1)
+                td_task.setMaxCounts(self._max_rollovers)
                 self._time_differences_tasks.append(td_task)
             
             #configure the time tagger
@@ -509,7 +510,7 @@ class DLProTTPLEScanner(ScanningProbeInterface):
         # not thread safe, call from thread_lock protected code only
         #FIx this shit
        
-        return self._time_differences_tasks[0].ready()
+        return self._time_differences_tasks[0].ready() if self._max_rollovers != 0 else False
 
     
 

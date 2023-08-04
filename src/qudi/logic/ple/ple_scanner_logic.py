@@ -221,7 +221,7 @@ class PLEScannerLogic(ScanningProbeLogic):
         return 0, self.wavelength_stop - self.wavelength_start
 
     @QtCore.Slot(str, str)
-    def do_fit(self, fit_config, channel):
+    def do_fit(self, fit_config, channel, averaged=False):
         """
         Execute the currently configured fit on the measurement data. Optionally on passed data
         """
@@ -232,7 +232,8 @@ class PLEScannerLogic(ScanningProbeLogic):
 
         if self.scan_data is None:
             return
-        y_data = self.scan_data.data[self._channel]
+        
+        y_data = self.scan_data.accumulated[self._channel].mean(axis=0) if averaged else self.scan_data.data[self._channel] 
         x_range = self.scan_ranges[self._scan_axis]
         x_data = np.linspace(*x_range, self.scan_resolution[self._scan_axis])
         try:
