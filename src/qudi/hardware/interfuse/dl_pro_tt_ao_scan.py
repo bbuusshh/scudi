@@ -549,10 +549,10 @@ class DLProTTPLEScanner(ScanningProbeInterface):
                 self._scan_data.retrace_data = new_data_backwards#self.raw_data_container.backwards_data()
                 self._scan_data.accumulated = new_data_cum_forward
                 self._scan_data.retrace_accumulated = new_data_cum_backwards
-                print(self._time_differences_tasks[0].ready())
+                
 
                 if self._check_scan_end_reached():
-                    print("Hi")
+                    
                     # if self._scan_data.accumulated is None:
                     #     self._scan_data.accumulated = self._scan_data.data
                     # else:

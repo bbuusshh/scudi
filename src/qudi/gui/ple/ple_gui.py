@@ -821,13 +821,14 @@ class PLEScanGui(GuiBase):
         self._mw.ple_retrace_widget.set_scan_data(scan_data)
         self._mw.ple_widget.set_scan_data(scan_data)
         self._mw.matrix_widget.set_scan_data(scan_data)
+        self._mw.ple_averaged_widget.set_scan_data(scan_data)
        
 
     @QtCore.Slot(object)
     def _update_accumulated_scan(self, accumulated_data, scan_data):
          if accumulated_data is not None:
-            self._mw.matrix_widget.set_scan_data(accumulated_data, scan_data)
-            self._mw.ple_averaged_widget.set_scan_data(accumulated_data, scan_data)
+            # self._mw.matrix_widget.set_scan_data(accumulated_data, scan_data)
+            # self._mw.ple_averaged_widget.set_scan_data(accumulated_data, scan_data)
             self._accumulated_data = accumulated_data
            
 

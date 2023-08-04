@@ -75,7 +75,7 @@ class PLEScannerLogic(ScanningProbeLogic):
     # config options
     _fit_config = StatusVar(name='fit_config', default=None)
     _fit_region = StatusVar(name='fit_region', default=[0, 1])
-
+    _scan_poll_interval = 1000
     _default_fit_configs = (
         {'name'             : 'Lorentzian',
         'model'            : 'Lorentzian',
@@ -382,9 +382,9 @@ class PLEScannerLogic(ScanningProbeLogic):
 
             # Calculate poll time to check for scan completion. Use line scan time estimate.
             line_points = self._scan_resolution[scan_axes[0]] if len(scan_axes) > 1 else 1
-            self.__scan_poll_interval = max(self._min_poll_interval,
-                                            line_points / self._scan_frequency[scan_axes[0]])
-            self.__scan_poll_timer.setInterval(int(round(self.__scan_poll_interval * 1000)))
+            # self.__scan_poll_interval = max(self._min_poll_interval,
+            #                                 line_points / self._scan_frequency[scan_axes[0]])
+            self.__scan_poll_timer.setInterval(int(round(self._scan_poll_interval)))# * 1000)))
             
             if ret:=self._scanner().start_scan() < 0:  # TODO Current interface states that bool is returned from start_scan
                 

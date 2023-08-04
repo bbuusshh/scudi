@@ -82,14 +82,15 @@ class PLEAveragedDataWidget(QtWidgets.QWidget):
 
         self._scan_data = None
 
-    def set_scan_data(self,  accumulated_data, scan_data: ScanData) -> None:
+    def set_scan_data(self,  scan_data: ScanData) -> None:
         # Save reference for channel changes
         update_range = (self._scan_data is None) or (self._scan_data.scan_range != scan_data.scan_range) \
                         or (self._scan_data.scan_resolution != scan_data.scan_resolution)
-        self._scan_data = scan_data
-        self._averaged_data = {channel: data.mean(axis=0)  for channel, data in accumulated_data.items()}
-        # Set data
-        self._update_scan_data(update_range=update_range)
+        if scan_data is not None and scan_data.accumulated is not None:
+            self._scan_data = scan_data
+            self._averaged_data = {channel: data.mean(axis=0)  for channel, data in scan_data.accumulated.items()}
+            # Set data
+            self._update_scan_data(update_range=update_range)
     
     @property
     def channel(self):
