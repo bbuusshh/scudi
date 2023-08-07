@@ -471,10 +471,6 @@ class TimeTaggerScanningProbeInterfuse(ScanningProbeInterface):
             self._abort_cursor_movement()
             # self.log.debug("Move aborted")
 
-        if self._ni_finite_sampling_io().is_running:
-            self._ni_finite_sampling_io().stop_buffered_frame()
-            # self.log.debug("Frame stopped")
-
         self.module_state.unlock()
         # self.log.debug("Module unlocked")
 
