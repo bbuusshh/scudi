@@ -54,8 +54,8 @@
   <widget class="QDockWidget" name="dockWidget_6">
    <property name="minimumSize">
     <size>
-     <width>753</width>
-     <height>95</height>
+     <width>0</width>
+     <height>0</height>
     </size>
    </property>
    <property name="maximumSize">
@@ -751,7 +751,7 @@
      <x>0</x>
      <y>0</y>
      <width>838</width>
-     <height>18</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>
