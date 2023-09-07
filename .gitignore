@@ -38,4 +38,9 @@ ok.py
 # configs
 **/config
 
+*.TB2
+*.TB3
+*.TB1
+
+
 
