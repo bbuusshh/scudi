@@ -205,15 +205,17 @@ class PleDataLogic(LogicBase):
             'resolution': {ax: data.scan_resolution[i] for i, ax in enumerate(data.scan_axes)},
             'frequency': {data.scan_axes[0]: data.scan_frequency}
         }
-
+        
         with self._thread_lock:
             if not running and caller_id is self._logic_id:
                 #self.log.debug(f"Adding to data history with settings {settings}")
-                self._scan_history.append(data)
-                self._shrink_history()
+                # self._scan_history.append(data)
+                # self._shrink_history()
+                
                 self._curr_data_per_scan[data.scan_axes] = data
-                self._curr_history_index = len(self._scan_history) - 1
-                self.sigHistoryScanDataRestored.emit(data)
+                # self._curr_history_index = len(self._scan_history) - 1
+                # self.sigHistoryScanDataRestored.emit(data)
+                
 
     def _shrink_history(self):
         while len(self._scan_history) > self._max_history_length:
@@ -257,11 +259,13 @@ class PleDataLogic(LogicBase):
         xy_plot = ax.plot(x_axis/si_factor_x,
                           data/si_factor_data)
         
-        if self.fit_container is not None:
-            ax.plot(x_axis/si_factor_x, 
-                    self.fit_container.last_fit[1].best_fit/si_factor_data, 
-                    marker='None')
-            self.add_fit_params_to_figure(ax, self.fit_container)
+        if channel == self.current_channel:
+            if self.fit_container is not None:
+                if (fit_result:= self.fit_container.last_fit) is not None and fit_result[1] is not None:
+                    ax.plot(x_axis/si_factor_x, 
+                            self.fit_container.last_fit[1].best_fit/si_factor_data, 
+                            marker='None')
+                    self.add_fit_params_to_figure(ax, self.fit_container)
 
         # Axes labels
         if scan_data.axes_units[axis]:
@@ -294,8 +298,8 @@ class PleDataLogic(LogicBase):
                         arrowprops={'facecolor': '#17becf', 'shrink': 0.05})
         return fig
 
-    def save_scan(self, scan_data, accumulated_data, fit_container=None, color_range=None, tag='', root_dir=None, control_parameters = dict()):
-        
+    def save_scan(self, scan_data, current_channel=None, fit_container=None, color_range=None, tag='', root_dir=None, control_parameters = dict()):
+        self.current_channel = current_channel
         with self._thread_lock:
             if self.module_state() != 'idle':
                 self.log.error('Unable to save 2D scan. Saving still in progress...')
@@ -328,16 +332,18 @@ class PleDataLogic(LogicBase):
                 parameters[f"scanner target at start"] = scan_data.scanner_target_at_start
                 parameters['measurement start'] = str(scan_data._timestamp)
                 
-                self.fit_container = fit_container
-                
 
-                if fit_container is not None:
-                    fit_result = fit_container.last_fit
                 
-                    fit_params_meta = {key: value for key, value in dict(fit_result[1].params).items()}
-                    fit_params_meta["Fit function name"] = fit_result[0]
-                    parameters.update(fit_params_meta)
-               
+                self.fit_container = fit_container
+                if fit_container is not None:
+
+                    if (fit_result:= fit_container.last_fit) is not None and fit_result[1] is not None:
+                        
+                    
+                        fit_params_meta = {key: value for key, value in dict(fit_result[1].params).items()}
+                        fit_params_meta["Fit function name"] = fit_result[0]
+                        parameters.update(fit_params_meta)
+                
                 # add meta data for axes in full target, but not scan axes
                 if scan_data.scanner_target_at_start:
                     for new_ax in scan_data.scanner_target_at_start.keys():
@@ -364,15 +370,15 @@ class PleDataLogic(LogicBase):
                         {f"scan_ch_{channel}": file_path},
                     )
                     if len(scan_data.scan_axes) == 1:
-                        figure = self.draw_1d_scan_figure(scan_data, channel)
+                        figure = self.draw_1d_scan_figure(scan_data, channel) 
                         ds.save_thumbnail(figure, file_path=file_path.rsplit('.', 1)[0])
                     elif len(scan_data.scan_axes) == 2:
-                        figure = self.draw_2d_scan_figure(scan_data, accumulated_data, channel, cbar_range=color_range)
+                        figure = self.draw_2d_scan_figure(scan_data, channel, cbar_range=color_range)
                         ds.save_thumbnail(figure, file_path=file_path.rsplit('.', 1)[0])
                     else:
                         self.log.warning('No figure saved for data with more than 2 dimensions.')
 
-                for channel, data in accumulated_data.items():
+                for channel, data in scan_data.accumulated.items():
                     # data
                     # nametag = '{0}_{1}_image_scan'.format(channel, scan_data.scan_axes[0])
                     
@@ -384,7 +390,7 @@ class PleDataLogic(LogicBase):
                                                    timestamp=timestamp,
                                                    column_headers='Image (columns is X, rows is Y)')
 
-                    figure = self.draw_2d_scan_figure(scan_data, accumulated_data, channel, cbar_range=color_range)
+                    figure = self.draw_2d_scan_figure(scan_data, channel, cbar_range=color_range)
                     ds.save_thumbnail(figure, file_path=file_path.rsplit('.', 1)[0])
                     
                     self.last_saved_files_paths.update(
@@ -421,12 +427,12 @@ class PleDataLogic(LogicBase):
         tag = f"{axis_dim}D-scan with {axes_code} axes from channel {channel}"
         return tag
 
-    def draw_2d_scan_figure(self, scan_data, accumulated_data, channel, cbar_range=None):
+    def draw_2d_scan_figure(self, scan_data, channel, cbar_range=None):
         """ Create a 2-D color map figure of the scan image.
 
         @return fig: a matplotlib figure object to be saved to file.
         """
-        image_arr = accumulated_data[channel].T
+        image_arr = scan_data.accumulated[channel].T
         scan_axes = scan_data.scan_axes
         scanner_pos = self._scan_logic().scanner_target
 

@@ -87,6 +87,14 @@ class ANC300(Base):
             self.port.close()
             #traceback.print_exc()  # print the exception
 
+    def get_axis_output_voltage(self, axis=1):
+        self.portClear()
+        self.port.write((f"geto {axis}\r\n").encode())
+        info = b""
+        for line in self.port.readlines():
+            print(line)
+            info += line
+        return info
     
     def inWaiting(self):
         """ See how many characters are input buffer.

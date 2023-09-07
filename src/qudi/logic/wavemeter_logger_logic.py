@@ -41,7 +41,7 @@ from qudi.util.datafitting import FitContainer, FitConfigurationsModel
 from qudi.core.statusvariable import StatusVar
 
 COUNT_DTYPE =  np.dtype([('wavelength', np.float64), ('counts', np.float64)])
-WAVELENGTH_DTYPE = np.dtype([('time', np.float64), ('wavelength', np.float64)])
+WAVELENGTH_DTYPE = np.dtype([('wavelength', np.float64), ('time', np.float64)])
 class WavemeterLoggerLogic(LogicBase):
     """This logic module gathers data from wavemeter and the counter logic.
     """
@@ -85,8 +85,8 @@ class WavemeterLoggerLogic(LogicBase):
     accumulated_data = []
 
     # config opts
-    _logic_update_timing = ConfigOption('logic_query_timing', 400.0, missing='warn') # has to be larger than the count time
-    sig_query_wavemeter = QtCore.Signal()
+    _logic_update_timing = ConfigOption('logic_query_timing', 400, missing='warn') # has to be larger than the count time
+    #sig_query_wavemeter = QtCore.Signal()
     sig_update_current_wavelength = QtCore.Signal(float)
     sig_update_data = QtCore.Signal(object,object)
     sig_toggle_log = QtCore.Signal(bool)
@@ -95,7 +95,7 @@ class WavemeterLoggerLogic(LogicBase):
         """ Create WavemeterLoggerLogic object with connectors.
         """
         super().__init__(config=config, **kwargs)
-        
+        self.start_toggled = False
         self.counter = 0
         # locking for thread safety
         self._thread_lock = RecursiveMutex()
@@ -109,27 +109,29 @@ class WavemeterLoggerLogic(LogicBase):
         self._wavemeter = self.wavemeter()
         self._wavemeter.start_acquisition()
         self.count_time = self._wavemeter._measurement_timing
-        self.wavelengths = np.array(self._wavemeter.get_wavelength_buffer(), dtype = WAVELENGTH_DTYPE)
-        #self.determine_count_time()
-        self.recalculate_histogram()
+        self._get_new_wavelength_data = lambda :  np.rec.array(np.array(self._wavemeter.get_wavelength_buffer()), dtype = WAVELENGTH_DTYPE)
+        self.wavelengths = self._get_new_wavelength_data()
+        self.determine_count_time()
         self.configure_counter()
+        self.recalculate_histogram()#
 
-        # self.sig_query_wavemeter.connect(self.query_wavemeter, QtCore.Qt.QueuedConnection)
+        
+
+        #self.sig_query_wavemeter.connect(self.query_wavemeter, QtCore.Qt.QueuedConnection)
         # connect the signals in and out of the threaded object
 
         self.sigUpdateSettings.connect(self._udpate_settings)
         
         self._queryTimer = QtCore.QTimer()
-        self._queryTimer.setInterval(self._logic_update_timing)
+        #self._queryTimer.setInterval(self._logic_update_timing)
         self._queryTimer.setSingleShot(False)
         self._queryTimer.timeout.connect(self.update_data, QtCore.Qt.QueuedConnection)     
         
+        self._wavemeter.start_acquisition()
         self._acquisition_start_time = time.time()
-        # self._wavemeter.start_acquisition()
-        # self._acquisition_start_time = time.time()
 
         self._queryTimer.start()
-        # self.sig_query_wavemeter.emit()
+        #self.sig_query_wavemeter.emit()
 
         
 
@@ -141,27 +143,21 @@ class WavemeterLoggerLogic(LogicBase):
 
     @QtCore.Slot()
     def update_data(self):
-        self.wavelengths = self._wavemeter.get_wavelength_buffer() # calling for wavelengths with callback
-        count_data = None
-        self.wavelengths = np.array(self.wavelengths)
-        wavelengths = self.wavelengths[self.wavelengths > 0]
+        self.wavelengths = self._get_new_wavelength_data() # calling for wavelengths with callback
+        
+        wavelengths = self.wavelengths[self.wavelengths.wavelength > 0]
         if len(wavelengths) > 0:   
-            self.current_wavelength = wavelengths.mean() *1e12 
+            self.current_wavelength = wavelengths.wavelength.mean() *1e12 
         
         self._time_elapsed = time.time() - self._acquisition_start_time
         
-        if self.wavelengths_log is None:
-            self.wavelengths_log = np.array([(self._time_elapsed, self.current_wavelength)], dtype=WAVELENGTH_DTYPE)
-        else:
-            self.wavelengths_log = np.append(self.wavelengths_log, np.array([(time.time() - self._acquisition_start_time, self.current_wavelength)], dtype=WAVELENGTH_DTYPE))
-        self.wavelengths_log = self.wavelengths_log[-self.wavelength_buffer:]
-
-        self._time_elapsed = time.time() - self._acquisition_start_time
-            
-
+        
+        wavelengths = wavelengths[-self.wavelength_buffer:]
+       
+        count_data = None
         if self.start_toggled:
             count_data = self.update_histogram()
-            self.sig_update_data.emit(self.wavelengths_log, count_data)
+        self.sig_update_data.emit(wavelengths, count_data)
 
     @QtCore.Slot()
     def start_scan(self):
@@ -169,16 +165,19 @@ class WavemeterLoggerLogic(LogicBase):
         #emit scan next line
 
     def empty_buffer(self):
-        self.wavelengths_log = None
+        self.wavelengths = None
         self._wavemeter.empty_buffer()
+        self._acquisition_start_time = time.time()
+        
 
     def determine_count_time(self):
         #OBSOLETE
         #get average time for the wavemeter server to send signal to the client
         for i in range(self.average_times):
-            self.wavelengths, count_time = self._wavemeter.get_wavelengths() # calling for wavelengths with callback
-            self.count_time = (self.count_time + count_time) / 2 # determine the average counting time
-            print(count_time)
+            self.wavelengths = self._get_new_wavelength_data()
+            count_time = self.wavelengths.time # calling for wavelengths with callback
+            self.count_time = (self.count_time + count_time[-1]) / 2 # determine the average counting time
+            print(count_time[-1])
             #!TODO delay from utils istead of sleep
             time.sleep(0.2 + self._logic_update_timing/1000) #! TODO safely determine the count time (update time should be for this function larget than the count time)
         if self.count_time > self._logic_update_timing / 1000 + 0.1:
@@ -222,8 +221,8 @@ class WavemeterLoggerLogic(LogicBase):
             if start:
                 self.module_state.lock()
                 self.recalculate_histogram()
-                self._queryTimer.start(self._logic_update_timing)
-                
+                self._queryTimer.start(int(self._logic_update_timing))
+                self._acquisition_start_time = time.time()
                 # self.sig_query_wavemeter.emit()
             else:
                 self._queryTimer.stop()

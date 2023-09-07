@@ -61,19 +61,20 @@ class PLEOptimizeScannerLogic(LogicBase):
     _scan_frequency = StatusVar(name='scan_frequency', default=None)
     _scan_range = StatusVar(name='scan_range', default=None)
     _scan_resolution = StatusVar(name='scan_resolution', default=None)
-
+    _min_r_squared = StatusVar(name='min_r_squared', default=0.02)
+    _tracking_period = StatusVar(name='tracking_period', default=5000)
     # signals
     sigOptimizeStateChanged = QtCore.Signal(bool, dict, object)
     sigOptimizeSettingsChanged = QtCore.Signal(dict)
     sigOptimizeDone = QtCore.Signal()
-
+    sigTrackPle = QtCore.Signal(bool)
     _sigNextSequenceStep = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
         self._thread_lock = RecursiveMutex()
-
+        self.stopRequested = False
         self._stashed_scan_settings = dict()
         self._sequence_index = 0
         self._optimal_position = dict()
@@ -125,6 +126,12 @@ class PLEOptimizeScannerLogic(LogicBase):
         self._scan_logic().sigScanStateChanged.connect(
             self._scan_state_changed, QtCore.Qt.QueuedConnection
         )
+        self._ple_tracking_timer = QtCore.QTimer()
+        self._ple_tracking_timer.setSingleShot(False)
+        self._ple_tracking_timer.timeout.connect(self.start_optimize, 
+                                                 QtCore.Qt.QueuedConnection)
+        self.sigTrackPle.connect(self.enable_ple_tracking, 
+                                 QtCore.Qt.QueuedConnection)
         return
 
     def on_deactivate(self):
@@ -132,7 +139,7 @@ class PLEOptimizeScannerLogic(LogicBase):
         """
         self._scan_logic().sigScanStateChanged.disconnect(self._scan_state_changed)
         self._sigNextSequenceStep.disconnect()
-        self.stop_optimize()
+        # self.stop_optimize()
         return
 
     @property
@@ -180,7 +187,8 @@ class PLEOptimizeScannerLogic(LogicBase):
                 'data_channel': self._data_channel,
                 'scan_range': self.scan_range,
                 'scan_resolution': self.scan_resolution,
-                'scan_sequence': self.scan_sequence}
+                'scan_sequence': self.scan_sequence,
+                "tracking_period": self._tracking_period,}
 
     def check_sanity_optimizer_settings(self, settings=None):
         # shaddows scanning_probe_logic::check_sanity. Unify code somehow?
@@ -219,7 +227,8 @@ class PLEOptimizeScannerLogic(LogicBase):
                                                   in hw_axes.values()}
                 if key == 'data_channel':
                     settings['data_channel'] = list(sig_channels.keys())[0]
-
+                if key == "tracking_period":
+                    settings["tracking_period"] = self._tracking_period
 
         # scan_sequence check, only sensibel if plot dimensions (eg. from confocal gui) are available
         if 'scan_sequence' in settings:
@@ -264,6 +273,9 @@ class PLEOptimizeScannerLogic(LogicBase):
                 if 'scan_sequence' in settings:
                     self.scan_sequence = settings['scan_sequence']
                     settings_update['scan_sequence'] = self.scan_sequence
+                if 'tracking_period' in settings:
+                    self._tracking_period = settings['tracking_period']
+                    settings_update['tracking_period'] = self._tracking_period
                     
                     # self._optimizer_dim = [len(i) for i in self.scan_sequence]
                     
@@ -366,7 +378,7 @@ class PLEOptimizeScannerLogic(LogicBase):
                 try:
                     if data.scan_dimension == 1:
                         x = np.linspace(*data.scan_range[0], data.scan_resolution[0])
-                        opt_pos, fit_data, fit_res = self._get_pos_from_1d_gauss_fit(
+                        opt_pos, fit_data, fit_res = self._get_pos_from_1d_lorentian_fit(
                             x,
                             data.data[self._data_channel]
                         )
@@ -378,24 +390,28 @@ class PLEOptimizeScannerLogic(LogicBase):
                             xy,
                             data.data[self._data_channel].ravel()
                         )
-
+                    #!ADD CHECK THE Rsquared VALUE OF THE FIT
                     position_update = {ax: opt_pos[ii] for ii, ax in enumerate(data.scan_axes)}
+                                        # Abort optimize if fit failed
+                    self._last_fit_results = fit_res
+                    if ((fit_data is None) 
+                        or (fit_res is None) or (fit_res is not None and fit_res.rsquared < self._min_r_squared)):
+                        self.log.warning("Stopping optimization due to failed fit.")
+                        self.stop_optimize()
+                        return
+                    
                     if fit_data is not None:
                         new_pos = self._scan_logic().set_target_position(position_update)
                         for ax in tuple(position_update):
                             position_update[ax] = new_pos[ax]
 
                         fit_data = {'fit_data':fit_data, 'full_fit_res':fit_res}
+                        
+                        self.log.debug(f"Optimizer issuing position update: {position_update}")
+                        self._optimal_position.update(position_update)
+                        self.sigOptimizeStateChanged.emit(True, position_update, fit_data)
 
-                    self.log.debug(f"Optimizer issuing position update: {position_update}")
-                    self._optimal_position.update(position_update)
-                    self.sigOptimizeStateChanged.emit(True, position_update, fit_data)
 
-                    # Abort optimize if fit failed
-                    if fit_data is None:
-                        self.log.warning("Stopping optimization due to failed fit.")
-                        self.stop_optimize()
-                        return
 
                 except:
                     self.log.exception()
@@ -409,12 +425,26 @@ class PLEOptimizeScannerLogic(LogicBase):
                 self._sigNextSequenceStep.emit()
             return
 
+    def toggle_ple_tracking(self, enable, tracking_period=None):
+        if tracking_period is not None:
+            self._tracking_period = tracking_period
+        self.sigTrackPle.emit(enable)
+
+           
+    @QtCore.Slot(bool)
+    def enable_ple_tracking(self, enable):
+        if enable:
+            self._ple_tracking_timer.setInterval(self._tracking_period * 1000) #in secs
+            self._ple_tracking_timer.start()
+        else:
+            self._ple_tracking_timer.stop()
+
+        
+
     def stop_optimize(self):
         with self._thread_lock:
             if self.module_state() == 'idle':
                 self.sigOptimizeStateChanged.emit(False, dict(), None)
-                
-
             if self._scan_logic().module_state() != 'idle':
                 # optimizer scans are never saved in scanning history
                 err = self._scan_logic().stop_scan()
@@ -425,7 +455,7 @@ class PLEOptimizeScannerLogic(LogicBase):
             self.module_state.unlock()
             self.sigOptimizeStateChanged.emit(False, dict(), None)
             self.sigOptimizeDone.emit()
-            print('stop_optimize, sig sent')
+       
             return err
 
     def _get_pos_from_2d_gauss_fit(self, xy, data):
@@ -456,6 +486,7 @@ class PLEOptimizeScannerLogic(LogicBase):
 
         return (fit_result.best_values['center'],), fit_result.best_fit, fit_result
 
+    
 
 class OptimizerScanSequence():
     def __init__(self, axes, sequence=None):

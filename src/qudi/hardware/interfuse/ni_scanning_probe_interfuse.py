@@ -97,7 +97,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
     _threaded = True  # Interfuse is by default not threaded.
 
     sigNextDataChunk = QtCore.Signal()
-
+    sigChangeTemperatureRegime = QtCore.Signal(bool)
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -140,7 +140,8 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         assert set(mapped_channels).issubset(specified_ni_finite_io_channels_set), \
             f'Channel mapping does not coincide with ni finite sampling io.'
         self._sum_channels = [ch.lower() for ch in self._sum_channels]
-        self._input_channel_units["sum"] = list(self._input_channel_units.values())[1]
+        if len(self._sum_channels) > 1:
+            self._input_channel_units["sum"] = list(self._input_channel_units.values())[1]
 
         # Constraints
         axes = list()
@@ -169,7 +170,7 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         self._t_last_move = time.perf_counter()
         self.__init_ao_timer()
         self.__t_last_follow = None
-
+        self.sigChangeTemperatureRegime.connect(self._change_temperature_regime, QtCore.Qt.QueuedConnection)
         self.sigNextDataChunk.connect(self._fetch_data_chunk, QtCore.Qt.QueuedConnection)
 
     def _toggle_ao_setpoint_channels(self, enable: bool) -> None:
@@ -235,7 +236,10 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         )
         resolution = scan_settings.get('resolution', self._current_scan_resolution)
         frequency = float(scan_settings.get('frequency', self._current_scan_frequency))
-        self._backwards_line_resolution = int(scan_settings.get('backward_resolution', self._backwards_line_resolution))
+        if self._backwards_line_resolution is None:
+            self._backwards_line_resolution = int(resolution[0])
+        else:
+            self._backwards_line_resolution = int(scan_settings.get('backward_resolution', self._backwards_line_resolution)) 
 
         if not set(axes).issubset(self._position_ranges):
             self.log.error('Unknown axes names encountered. Valid axes are: {0}'
@@ -558,14 +562,30 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
             reverse_routing = {val.lower(): key for key, val in self._ni_channel_mapping.items()}
 
             new_data = {reverse_routing[key]: samples for key, samples in samples_dict.items()}
-            new_data["sum"] = np.sum([samples for key, samples in samples_dict.items() if key in self._sum_channels], axis=0)
+            if len(self._sum_channels) > 1:
+                new_data["sum"] = np.sum([samples for key, samples in samples_dict.items() if key in self._sum_channels], axis=0)
             # self.log.debug(f'new data: {new_data}')
 
             with self._thread_lock_data:
                 self.raw_data_container.fill_container(new_data)
                 self._scan_data.data = self.raw_data_container.forwards_data()
-
+                # if self._backwards_line_resolution == len(self.raw_data_container.backwards_data()):
+                self._scan_data.retrace_data = self.raw_data_container.backwards_data()
                 if self._check_scan_end_reached():
+
+                    # if self._scan_data.accumulated is None:
+                    #     self._scan_data.accumulated = self._scan_data.data
+                    # else:
+                    #     self._scan_data.accumulated = {channel : 
+                    #             np.vstack((self._scan_data.accumulated[channel], data_i)) \
+                    #             for channel, data_i in self._scan_data.data.items() if len(data_i) > 0}
+                        
+                    # if self._scan_data.retrace_accumulated is None:
+                    #     self._scan_data.retrace_accumulated = self._scan_data.retrace_data
+                    # else:
+                    #     self._scan_data.retrace_accumulated = {channel : 
+                    #             np.vstack((self._scan_data.retrace_accumulated[channel], data_i)) \
+                    #                 for channel, data_i in self._scan_data.retrace_data.items() if len(data_i) > 0}
                     self.stop_scan()
                 elif not self.is_scan_running:
                     return
@@ -893,6 +913,36 @@ class NiScanningProbeInterfuse(ScanningProbeInterface):
         except:
             self.log.exception("")
 
+    @QtCore.Slot(bool)
+    def _change_temperature_regime(self, is_LT_regime):
+        self._scan_data = None
+        self._ni_ao().set_new_ao_limits(is_LT_regime)
+        self._ni_finite_sampling_io().set_new_io_limits(is_LT_regime)
+    
+    def _update_position_ranges(self, new_position_ranges):
+        self._position_ranges = new_position_ranges
+        # Constraints
+        axes = list()
+        for axis in self._position_ranges:
+            axes.append(ScannerAxis(name=axis,
+                                    unit=self._scan_units,
+                                    value_range=self._position_ranges[axis],
+                                    step_range=(0, abs(np.diff(self._position_ranges[axis]))),
+                                    resolution_range=self._resolution_ranges[axis],
+                                    frequency_range=self._frequency_ranges[axis])
+                        )
+        channels = list()
+        for channel, unit in self._input_channel_units.items():
+            channels.append(ScannerChannel(name=channel,
+                                           unit=unit,
+                                           dtype=np.float64))
+
+        self._constraints = ScanConstraints(axes=axes,
+                                            channels=channels,
+                                            backscan_configurable=False,  # TODO incorporate in scanning_probe toolchain
+                                            has_position_feedback=False,  # TODO incorporate in scanning_probe toolchain
+                                            square_px_only=False)  # TODO incorporate in scanning_probe toolchain
+        self._scan_data = None
 
 class RawDataContainer:
 

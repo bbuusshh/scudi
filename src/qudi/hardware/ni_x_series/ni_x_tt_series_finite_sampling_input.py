@@ -72,6 +72,7 @@ class NIXTTSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
     _tt_falling_edge_clock_input = ConfigOption(name = "tt_falling_edge_clock_input",
                                                 default=None)
     _scanner_ready = False
+    _sum_channels = ConfigOption(name='sum_channels', default=list(), missing='info')
     _device_name = ConfigOption(name='device_name', default='Dev1', missing='warn')
     _digital_channel_units = ConfigOption(name='digital_channel_units', default=dict(), missing='info')
     _analog_channel_units = ConfigOption(name='analog_channel_units', default=dict(), missing='info')
@@ -210,6 +211,10 @@ class NIXTTSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
             self._physical_counter_sample_clock_output = self._extract_terminal(self._physical_counter_sample_clock_output)
             assert self._physical_counter_sample_clock_output in self.__all_digital_terminals, \
                 f'Physical sample clock terminal specified in config is invalid'
+        
+        self._sum_channels = [ch.lower() for ch in self._sum_channels]
+        if len(self._sum_channels)>1:
+            self._digital_channel_units["sum"] = self._digital_channel_units[self._sum_channels[0]]
         # Create constraints object and perform sanity/type checking
         self._channel_units = self._digital_channel_units.copy()
         self._channel_units.update(self._analog_channel_units)
@@ -492,6 +497,8 @@ class NIXTTSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
         except ni.DaqError:
             self.log.exception('Getting samples from streamer failed.')
             return data
+        if len(self._sum_channels)>1:
+            data["sum"] = np.sum([samples for ch, samples in data.items() if ch in self._sum_channels], axis=0)
         return data
 
     def acquire_frame(self, frame_size=None):

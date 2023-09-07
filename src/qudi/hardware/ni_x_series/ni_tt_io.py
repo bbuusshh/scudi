@@ -82,6 +82,8 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
     # config options
     _timetagger = Connector(name='tt', interface = "TT")
     _device_name = ConfigOption(name='device_name', default='Dev1', missing='warn')
+    
+    _device_handle = Connector(name='device_handle', interface = "NI_DeviceHandle", optional = True)
     _rw_timeout = ConfigOption('read_write_timeout', default=10, missing='nothing')
 
     # Finite Sampling #TODO What are the frame size hardware limits?
@@ -105,7 +107,7 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
     
     _tt_falling_edge_clock_input = ConfigOption(name = "tt_falling_edge_clock_input",
                                                 default=None)
-
+    _sum_channels = ConfigOption(name='sum_channels', default=[], missing='nothing')
     _adc_voltage_ranges = ConfigOption(name='adc_voltage_ranges',
                                        default={'ai{}'.format(channel_index): [-10, 10]
                                                 for channel_index in range(0, 10)},  # TODO max 10 some what arbitrary
@@ -115,6 +117,10 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
                                           default={'ao{}'.format(channel_index): [-10, 10]
                                                    for channel_index in range(0, 4)},
                                           missing='warn')
+    _output_voltage_ranges_LT = ConfigOption(name='output_voltage_ranges_LT',
+                                          default={'ao{}'.format(channel_index): [-10, 10]
+                                                   for channel_index in range(0, 4)},
+                                          missing='nothing')
 
     _scanner_ready = False
     # Hardcoded data type
@@ -124,7 +130,7 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         super().__init__(*args, **kwargs)
 
         # NIDAQmx device handle
-        self._device_handle = None
+        # self._device_handle = None
         # Task handles for NIDAQmx tasks
         self._di_task_handles = list()
 
@@ -186,7 +192,12 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             if dev.lower() == self._device_name.lower():
                 self._device_name = dev
                 break
-        self._device_handle = ni.system.Device(self._device_name)
+        
+        if self._device_handle():
+            self._device_handle = self._device_handle()
+        else:
+            self._device_handle = ni.system.Device(self._device_name)
+
 
         self.__all_counters = tuple(
             self._extract_terminal(ctr) for ctr in self._device_handle.co_physical_chans.channel_names if
@@ -246,6 +257,11 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
             raise ValueError(
                 f'The channels "{", ".join(invalid_channels)}", specified in the config, were not recognized.'
             )
+        
+
+        self._sum_channels = [ch.lower() for ch in self._sum_channels]
+        if len(self._sum_channels) > 1:
+            self._input_channel_units["sum"] = self._input_channel_units[self._sum_channels[0]]
 
         # Check Physical clock output if specified
         if self._physical_sample_clock_output is not None:
@@ -278,7 +294,9 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
         if digital_sources:
             input_limits.update({key: [0, int(1e8)]
                                  for key in digital_sources})  # TODO Real HW constraint?
-
+        if len(self._sum_channels) > 1:
+            input_limits["sum"] = [0, int(1e8)]
+            
         if analog_sources:
             adc_voltage_ranges = {self._extract_terminal(key): value
                                   for key, value in self._adc_voltage_ranges.items()}
@@ -1010,6 +1028,42 @@ class NI_TT_XSeriesFiniteSamplingIO(FiniteSamplingIOInterface):
 
         self._ao_task_handle = ao_task
         return 0
+
+    def set_new_io_limits(self, is_LT_regime):
+
+        if is_LT_regime:
+            limits = self._output_voltage_ranges_LT
+        else:
+            limits = self._output_voltage_ranges
+
+        digital_sources = tuple(src for src in self._input_channel_units)
+        input_limits = dict()
+
+        if digital_sources:
+            input_limits.update({self._extract_terminal(key): [0, int(1e8)]
+                                for key in digital_sources})  # TODO Real HW constraint?
+
+        sample_rate_limits = (self._device_handle.ao_min_rate, min(self._device_handle.ao_max_rate, self._device_handle.ci_max_timebase))
+
+        # output_voltage_ranges = {self._extract_terminal(key): value
+        #                                 for key, value in self._output_voltage_ranges.items()}
+        output_voltage_ranges = limits
+        output_voltage_ranges = dict(sorted(output_voltage_ranges.items()))
+        self._output_channel_units = dict(sorted(self._output_channel_units.items()))
+
+        self._input_channel_units = dict(sorted(self._input_channel_units.items()))
+        input_limits = dict(sorted(input_limits.items()))
+
+        self._constraints = FiniteSamplingIOConstraints(
+                    supported_output_modes=(SamplingOutputMode.JUMP_LIST, SamplingOutputMode.EQUIDISTANT_SWEEP),
+                    input_channel_units=dict(self._input_channel_units),
+                    output_channel_units=dict(self._output_channel_units),
+                    frame_size_limits=self._frame_size_limits,
+                    sample_rate_limits=sample_rate_limits,
+                    output_channel_limits=output_voltage_ranges,
+                    input_channel_limits=input_limits
+                )
+
 
     def reset_hardware(self):
         """

@@ -67,17 +67,18 @@ class PLE2DWidget(QtWidgets.QWidget):
         vb = self.image_item.getViewBox()
         vb.setRange(xRange=x_range, yRange=y_range)
 
-    def set_scan_data(self, accumulated_data, scan_data: ScanData) -> None:
+    def set_scan_data(self, plot_data, scan_data: ScanData) -> None:
         self._scan_data = scan_data
-        self._accumulated_data = accumulated_data
+        self._plot_data = plot_data
         self._update_scan_data()
 
     def _update_scan_data(self) -> None:
        
         current_channel = self._channel.name 
-        if self._scan_data is not None:
-            self.image_widget.set_image(self._accumulated_data[current_channel].T)    
-            matrix_range = (self._scan_data.scan_range[0], (0, self._accumulated_data[current_channel].shape[0]))
+        
+        if self._scan_data is not None and (self._plot_data is not None):
+            self.image_widget.set_image(self._plot_data[current_channel].T)    
+            matrix_range = (self._scan_data.scan_range[0], (0, self._plot_data[current_channel].shape[0]))
             self.image_widget.set_image_extent(matrix_range,
                             adjust_for_px_size=True)
             self.image_widget.autoRange()

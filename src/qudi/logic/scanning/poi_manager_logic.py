@@ -339,16 +339,16 @@ class PointOfInterest:
     def position(self):
         return self._position
     
-    @property
-    def ple_position(self):
-        return self._ple_position
+    # @property
+    # def ple_position(self):
+    #     return self._ple_position
 
-    @ple_position.setter
-    def ple_position(self, pos):
-        if len(pos) != 3:
-            raise ValueError('POI position to set must be 1 float')
-        self._ple_position = pos
-        return
+    # @ple_position.setter
+    # def ple_position(self, pos):
+    #     if len(pos) != 3:
+    #         raise ValueError('POI position to set must be 1 float')
+    #     self._ple_position = pos
+    #     return
 
     @position.setter
     def position(self, pos):
@@ -358,7 +358,7 @@ class PointOfInterest:
         return
 
     def to_dict(self):
-        return {'name': self.name, 'position': tuple(self.position), 'ple_position': tuple(self.ple_position)}
+        return {'name': self.name, 'position': tuple(self.position)}#, 'ple_position': tuple(self.ple_position)}
 
     @classmethod
     def from_dict(cls, dict_repr):
@@ -454,8 +454,8 @@ class PoiManagerLogic(LogicBase):
             self.stop_periodic_refocus, QtCore.Qt.QueuedConnection)
 
         # Initialise the ROI scan image (xy confocal image) if not present
-        if self._roi.scan_image is None:
-            self.set_scan_image(False)
+        # if self._roi.scan_image is None:
+        #     self.set_scan_image(False)
 
         self.sigRoiUpdated.emit({'name': self.roi_name,
                                  'poi_nametag': self.poi_nametag,

@@ -75,7 +75,7 @@ class PLEScannerLogic(ScanningProbeLogic):
     # config options
     _fit_config = StatusVar(name='fit_config', default=None)
     _fit_region = StatusVar(name='fit_region', default=[0, 1])
-
+    _scan_poll_interval = 100
     _default_fit_configs = (
         {'name'             : 'Lorentzian',
         'model'            : 'Lorentzian',
@@ -221,18 +221,19 @@ class PLEScannerLogic(ScanningProbeLogic):
         return 0, self.wavelength_stop - self.wavelength_start
 
     @QtCore.Slot(str, str)
-    def do_fit(self, fit_config, channel):
+    def do_fit(self, fit_config, channel, averaged=False):
         """
         Execute the currently configured fit on the measurement data. Optionally on passed data
         """
-        print(fit_config)
+       
         if fit_config != 'No Fit' and fit_config not in self._fit_config_model.configuration_names:
             self.log.error(f'Unknown fit configuration "{fit_config}" encountered.')
             return
 
         if self.scan_data is None:
             return
-        y_data = self.scan_data.data[self._channel]
+        
+        y_data = self.scan_data.accumulated[self._channel].mean(axis=0) if averaged else self.scan_data.data[self._channel] 
         x_range = self.scan_ranges[self._scan_axis]
         x_data = np.linspace(*x_range, self.scan_resolution[self._scan_axis])
         try:
@@ -275,6 +276,7 @@ class PLEScannerLogic(ScanningProbeLogic):
     @property
     def fit_results(self):
         return self._fit_results.copy()
+    
     def stack_data(self):
         if (self.scan_data is not None) and (self.scan_data.scan_dimension == 1):
            
@@ -344,15 +346,15 @@ class PLEScannerLogic(ScanningProbeLogic):
         self._toggled_scan_axes = scan_axes
         with self._thread_lock:
             if start:
-                if self._repeated == 0:
-                    self.display_repeated = 0
+                # if self._repeated == 0:
+                #     self.display_repeated = 0
                 return self.start_scan(self._toggled_scan_axes, caller_id)
             return self.stop_scan()
 
     def start_scan(self, scan_axes, caller_id=None):
         self._curr_caller_id = self.module_uuid if caller_id is None else caller_id
         self.display_repeated = self._repeated
-        
+        self._scanner().lines_to_scan = self._number_of_repeats
         with self._thread_lock:
 
             if self.module_state() != 'idle':
@@ -371,6 +373,7 @@ class PLEScannerLogic(ScanningProbeLogic):
             fail, new_settings = self._scanner().configure_scan(settings)
             if fail:
                 self.module_state.unlock()
+                self.stop_scan() 
                 self.sigScanStateChanged.emit(False, None, self._curr_caller_id)
                 return -1
 
@@ -380,16 +383,16 @@ class PLEScannerLogic(ScanningProbeLogic):
 
             # Calculate poll time to check for scan completion. Use line scan time estimate.
             line_points = self._scan_resolution[scan_axes[0]] if len(scan_axes) > 1 else 1
-            self.__scan_poll_interval = max(self._min_poll_interval,
-                                            line_points / self._scan_frequency[scan_axes[0]])
-            self.__scan_poll_timer.setInterval(int(round(self.__scan_poll_interval * 1000)))
-
+            # self.__scan_poll_interval = max(self._min_poll_interval,
+            #                                 line_points / self._scan_frequency[scan_axes[0]])
+            self.__scan_poll_timer.setInterval(int(round(self._scan_poll_interval)))# * 1000)))
+            
             if ret:=self._scanner().start_scan() < 0:  # TODO Current interface states that bool is returned from start_scan
                 
                 self.module_state.unlock()
                 self.sigScanStateChanged.emit(False, None, self._curr_caller_id)
                 return -1
-            # print("Scanner state", ret)
+            
             self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)
             self.__start_timer()
             return 0
@@ -402,7 +405,7 @@ class PLEScannerLogic(ScanningProbeLogic):
             if self.module_state() == 'idle':
                 self.sigScanStateChanged.emit(False, self.scan_data, self._curr_caller_id)
                 return 0
-
+            
             self.__stop_timer()
 
             err = self._scanner().stop_scan() if self._scanner().module_state() != 'idle' else 0
@@ -450,24 +453,27 @@ class PLEScannerLogic(ScanningProbeLogic):
             
             if self.module_state() == 'idle':
                 return
-
+            
             if self._scanner().module_state() == 'idle':
+                
                 self.stop_scan()
                 
-                if (self._curr_caller_id == self._scan_id) or (self._curr_caller_id == self.module_uuid):
-                    self._repeated += 1
-                    self.display_repeated += 1
+                # if (self._curr_caller_id == self._scan_id) or (self._curr_caller_id == self.module_uuid):
+                #     self._repeated += 1
+                #     self.display_repeated += 1
                     
-                    self.stack_data()
-                    if self._number_of_repeats > self._repeated or self._number_of_repeats == 0:
-                        self.sigRepeatScan.emit(True, self._toggled_scan_axes) 
-                    else:
+                #     # self.stack_data()
+                #     # if self._number_of_repeats > self._repeated or self._number_of_repeats == 0:
+                #         # self.sigRepeatScan.emit(True, self._toggled_scan_axes) 
+                #     # else:
                       
-                        self.sigScanningDone.emit()
-                        self.sigRepeatScan.emit(False, self._toggled_scan_axes)
-                        self._repeated = 0 
+                #     if self._scanner()._scanned_lines > self._scanner().lines_to_scan or self._number_of_repeats == 0:
+                #         self.sigScanningDone.emit()
+                #         self.sigRepeatScan.emit(False, self._toggled_scan_axes)
+                #         self._repeated = 0 
                 return
             # TODO Added the following line as a quick test; Maybe look at it with more caution if correct
+            # self._scanner().sigNextDataChunk.emit()
             self.sigScanStateChanged.emit(True, self.scan_data, self._curr_caller_id)
 
             # Queue next call to this slot

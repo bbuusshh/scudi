@@ -32,7 +32,7 @@ from qudi.interface.wavemeter_interface import WavemeterInterface
 from qudi.core.module import Base
 from qudi.core.configoption import ConfigOption
 from qudi.util.mutex import Mutex
-
+import time
 import numpy as np
 
 class HardwarePull(QtCore.QObject):
@@ -92,6 +92,7 @@ class HighFinesseWavemeter(WavemeterInterface):
     # config options
     _measurement_timing = ConfigOption('measurement_timing', default=0.2)
     _active_channels = ConfigOption('active_channels', default=[0])
+    _selected_channels = ConfigOption('selected_channels', default=[2,4])
     _default_channel = ConfigOption('default_channel', default=0)
     _buffer_size = 3000
     # signals
@@ -108,7 +109,8 @@ class HighFinesseWavemeter(WavemeterInterface):
         # the current wavelength read by the wavemeter in nm (vac)
         self._current_wavelengths = {ch: 0 for ch in self._active_channels}
         
-        self._wavelength_buffer = []
+        self._wavelength_buffer = np.array([])
+      
 
 
     def on_activate(self):
@@ -154,13 +156,26 @@ class HighFinesseWavemeter(WavemeterInterface):
     def handle_wavelength(self, wavelengths):
         """ Function to save the wavelength, when it comes in with a signal.
         """
-        if len(self._wavelength_buffer) < 1 :
-            self._wavelength_buffer.append(wavelengths[self._default_channel]) 
+        elapsed_time = time.time() - self.start_time
+        row = [wavelengths[ch] for ch in self._selected_channels]
+        row.append(elapsed_time)
+        if len(self._wavelength_buffer) < 1:
+            
+            self._wavelength_buffer = np.array(
+                row
+                )
+        elif len(self._wavelength_buffer) > 2:
+            if (np.abs(np.round(wavelengths[self._default_channel], 5) - np.round(self._wavelength_buffer[-1][0], 5))) > 0:
+                self._wavelength_buffer = np.vstack((self._wavelength_buffer, row))
+            else:
+                pass
         else:
-            if (np.abs(np.round(wavelengths[self._default_channel], 5) - np.round(self._wavelength_buffer[-1], 5))) > 0:
-                self._wavelength_buffer.append(wavelengths[self._default_channel]) 
+            self._wavelength_buffer = np.vstack((self._wavelength_buffer, row))
+
         self._wavelength_buffer = self._wavelength_buffer[-self._buffer_size:]
         self._current_wavelengths = wavelengths
+    def empty_buffer(self):
+        self._wavelength_buffer = np.array([])
 
     def start_acquisition(self):
         """ Method to start the wavemeter software.
@@ -178,7 +193,7 @@ class HighFinesseWavemeter(WavemeterInterface):
 
         # self.module_state.run()
         self._wavemeter.start_measurements()
-
+        self.start_time = time.time()
         # start the measuring thread
         self.sig_handle_timer.emit(True)
 
@@ -205,10 +220,11 @@ class HighFinesseWavemeter(WavemeterInterface):
         return 0
 
     def get_wavelength_buffer(self):
+      
         if len(self._wavelength_buffer) > 0:
             return np.array(self._wavelength_buffer)
         else:
-            return np.array([self.get_current_wavelength()])
+            return np.array([self.get_current_wavelength(), 0])
 
     def get_current_wavelengths(self):
         """ This method returns the current wavelength.
@@ -216,6 +232,8 @@ class HighFinesseWavemeter(WavemeterInterface):
         """
 
         return self._current_wavelengths
+    def get_selected_channels(self):
+        return self._selected_channels
     
     def get_current_wavelength(self):
     

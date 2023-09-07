@@ -82,11 +82,12 @@ class PLEDataWidget(QtWidgets.QWidget):
 
         self._scan_data = None
 
-    def set_scan_data(self, data: ScanData) -> None:
+    def set_scan_data(self, plot_data, data: ScanData) -> None:
         # Save reference for channel changes
         update_range = (self._scan_data is None) or (self._scan_data.scan_range != data.scan_range) \
                         or (self._scan_data.scan_resolution != data.scan_resolution)
         self._scan_data = data
+        self._plot_data = plot_data
         # Set data
         self._update_scan_data(update_range=update_range)
     
@@ -110,18 +111,19 @@ class PLEDataWidget(QtWidgets.QWidget):
     #!! TODO choose CHANNEL
     def _update_scan_data(self, update_range: bool) -> None:
         current_channel = self._channel.name #or APD events ?? or time tagger #!TODO!
-        if (self._scan_data is None) or (self._scan_data.data is None):
+        if (self._scan_data is None) or (self._plot_data is None):
             self.data_curve.clear()
+
         else:
-            if update_range:
-                x_data = np.linspace(*self._scan_data.scan_range[0],
+            x_data = np.linspace(*self._scan_data.scan_range[0],
                                      self._scan_data.scan_resolution[0])
-                self.data_curve.setData(y=self._scan_data.data[current_channel], x=x_data)
+            if update_range:
+                self.data_curve.setData(y=self._plot_data[current_channel], x=x_data)
                 self.selected_region.setRegion(self._scan_data.scan_range[0])
                 # self.target_point.setValue(self._scan_data.scan_range[0][0])
             else:
-                self.data_curve.setData(y=self._scan_data.data[current_channel],
-                                       x=self.data_curve.xData)
+                self.data_curve.setData(y=self._plot_data[current_channel],
+                                       x=x_data)#self.data_curve.xData)
 
 class CustomAxis(pg.AxisItem):
     """ This is a CustomAxis that extends the normal pyqtgraph to be able to nudge the axis labels.

@@ -196,7 +196,8 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
                 f'Physical sample clock terminal specified in config is invalid'
         
         self._sum_channels = [ch.lower() for ch in self._sum_channels]
-        self._digital_channel_units["sum"] = self._digital_channel_units[self._sum_channels[0]]
+        if len(self._sum_channels)>1:
+            self._digital_channel_units["sum"] = self._digital_channel_units[self._sum_channels[0]]
 
         # Create constraints object and perform sanity/type checking
         self._channel_units = self._digital_channel_units.copy()
@@ -445,7 +446,8 @@ class NIXSeriesFiniteSamplingInput(FiniteSamplingInputInterface):
         except ni.DaqError:
             self.log.exception('Getting samples from streamer failed.')
             return data
-        data["sum"] = np.sum([samples for ch, samples in data.items() if ch in self._sum_channels], axis=0)
+        if len(self._sum_channels)>1:
+            data["sum"] = np.sum([samples for ch, samples in data.items() if ch in self._sum_channels], axis=0)
         return data
 
     def acquire_frame(self, frame_size=None):

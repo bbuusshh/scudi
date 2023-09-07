@@ -11,6 +11,7 @@ class PleFitDockWidget(QtWidgets.QDockWidget):
     def __init__(self, *args, fit_container=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.setWindowTitle('PLE Fit')
+        self.setObjectName('ple_fit_dockwidget')
         self.setFeatures(self.DockWidgetFloatable | self.DockWidgetMovable)
 
         self.fit_widget = FitWidget(fit_container=fit_container)

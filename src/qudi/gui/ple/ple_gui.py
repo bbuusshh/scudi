@@ -89,8 +89,9 @@ class PLEScanGui(GuiBase):
     sigShowSaveDialog = QtCore.Signal(bool)
 
     _n_save_tasks = 0
-
-    sigDoFit = QtCore.Signal(str, str)
+    scan_data = None
+    sigDoFit = QtCore.Signal(str, str, bool)
+    _fit_averaged = False
     fit_result = None
 
     
@@ -107,8 +108,9 @@ class PLEScanGui(GuiBase):
 
 
         self._mw = PLEScanMainWindow(self.axis, channel)
+        
         self._save_dialog = SaveDialog(self._mw)
-        self._mw.show()
+        # self._mw.show()
         self.scan_state_updated(self._scanning_logic.module_state() != 'idle')
         # Connect signals
         self.sigScannerTargetChanged.connect(
@@ -150,6 +152,7 @@ class PLEScanGui(GuiBase):
         self._mw.ple_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing) #set_scanner_target_position
         self._mw.ple_widget.target_point.sigPositionChangeFinished.connect(self.set_scanner_target_position)
         self._mw.ple_widget.selected_region.sigRegionChangeFinished.connect(self.region_value_changed) 
+        
 
         self._mw.ple_averaged_widget.target_point.sigPositionChanged.connect(self.sliders_values_are_changing_averaged_data)
         self._mw.ple_averaged_widget.selected_region.sigRegionChangeFinished.connect(self.region_value_changed_averaged_data) 
@@ -170,10 +173,11 @@ class PLEScanGui(GuiBase):
             self._microwave_logic = self._microwave_logic()
             self._mw.add_dock_widget('Microwave')
             self._init_microwave()
-
-        if self._repump_logic() is not None:
-
-            self._scanning_logic.sigRepeatScan.connect(self. _repump_logic.repump_before_scan)
+        self._repump_logic = self._repump_logic()
+        if self._repump_logic is not None:
+            
+            self._scanning_logic.sigRepeatScan.connect(self. _repump_logic.repump_before_scan, 
+                                                         QtCore.Qt.QueuedConnection)
             
             self._mw.add_dock_widget('Pulsed')
             self._mw.Pulsed_widget.sig_pulser_params_updated.connect(self._repump_logic.pulser_updated, QtCore.Qt.QueuedConnection)
@@ -181,14 +185,19 @@ class PLEScanGui(GuiBase):
             self._mw.Pulsed_widget.sig_prescan_repump.connect(self.setup_repump_before_scan)
             self._repump_logic.sigGuiParamsUpdated.emit(self._repump_logic.parameters)
 
-        if self._controller_logic() is not None:
-            self._controller_logic = self._controller_logic()
+        self._controller_logic = self._controller_logic()
+        if self._controller_logic is not None:
+            
             
             self._mw.add_dock_widget('Controller')
             self._mw.Controller_widget.sig_controller_params_updated.connect(self._controller_logic.params_updated, QtCore.Qt.QueuedConnection)
             self._controller_logic.sigGuiParamsUpdated.connect(self._mw.Controller_widget.update_gui, QtCore.Qt.QueuedConnection)
             self._controller_logic.sigGuiParamsUpdated.emit(self._controller_logic.parameters)
-
+        
+        #PLE tracking
+        self._mw.actionTrackPLE.triggered.connect(
+            lambda: self._optimize_logic().toggle_ple_tracking(self._mw.actionTrackPLE.isChecked()), 
+            QtCore.Qt.QueuedConnection)
         self.scanner_target_updated()
         # self.scan_state_updated(
         #     self._scanning_logic.module_state() != 'idle'
@@ -224,8 +233,8 @@ class PLEScanGui(GuiBase):
 
         self._mw.action_Save.triggered.connect(lambda x: self.save_scan_data(scan_axes=None))
         self._mw.actionSave.triggered.connect(lambda x: self.save_scan_data(scan_axes=None))
-
-        self.load_view()
+        self._restore_window_geometry(self._mw)
+        # self.load_view()
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -253,12 +262,12 @@ class PLEScanGui(GuiBase):
             self._microwave_logic().sigCwStateUpdated.disconnect()
         
 
-        if self._repump_logic() is not None:
-            self._scanning_logic.sigRepeatScan.disconnect()
-            self._repump_logic().sigGuiParamsUpdated.disconnect()
+        # if self._repump_logic is not None:
+        #     self._scanning_logic.sigRepeatScan.disconnect()
+        #     self._repump_logic().sigGuiParamsUpdated.disconnect()
 
-        if self._controller_logic() is not None:
-            self._controller_logic().sigGuiParamsUpdated.disconnect()
+        if self._controller_logic is not None:
+            self._controller_logic.sigGuiParamsUpdated.disconnect()
 
 
 
@@ -271,7 +280,7 @@ class PLEScanGui(GuiBase):
         self._mw.action_Save.triggered.disconnect()
         self._mw.actionSave.triggered.disconnect()
 
-
+        self._save_window_geometry(self._mw)
         self._mw.close()
 
         return 0
@@ -460,6 +469,7 @@ class PLEScanGui(GuiBase):
         
         ch = self._scanning_logic.scanner_channels[value]
         self._mw.ple_widget.channel = ch
+        self._mw.ple_retrace_widget.channel = ch
         self._mw.ple_averaged_widget.channel = ch
         self._mw.matrix_widget.channel = ch
         # self.optimizer_dockwidget.
@@ -467,7 +477,7 @@ class PLEScanGui(GuiBase):
     def _fit_clicked(self, fit_config):
         channel = self._scanning_logic.scanner_channels[self._scanning_logic._channel]#self._scan_control_dockwidget.selected_channel
         # range_index = #self._scan_control_dockwidget.selected_range
-        self.sigDoFit.emit(fit_config, channel)
+        self.sigDoFit.emit(fit_config, channel, self._fit_averaged)
 
     def _update_fit_result(self, fit_cfg_result, channel):
         current_channel = channel#self._scan_control_dockwidget.selected_channel
@@ -480,6 +490,14 @@ class PLEScanGui(GuiBase):
             else:
                 self._fit_dockwidget.fit_widget.update_fit_result(*fit_cfg_result)
                 self._mw.ple_widget.set_fit_data(*fit_cfg_result[1].high_res_best_fit)
+            
+            if self._fit_averaged:
+                if fit_cfg_result is None:
+                    self._fit_dockwidget.fit_widget.update_fit_result('No Fit', None)
+                    self._mw.ple_averaged_widget.set_fit_data(None, None)
+                else:
+                    self._fit_dockwidget.fit_widget.update_fit_result(*fit_cfg_result)
+                    self._mw.ple_averaged_widget.set_fit_data(*fit_cfg_result[1].high_res_best_fit)
 
 
     @QtCore.Slot(bool)
@@ -519,7 +537,10 @@ class PLEScanGui(GuiBase):
         )
 
     def toggle_scan(self):
+
         self._mw.elapsed_lines_DisplayWidget.display(self._scanning_logic._repeated)
+        self._mw.constDoubleSpinBox.setValue(self._mw.startDoubleSpinBox.value())
+        self._mw.constDoubleSpinBox.editingFinished.emit()
         self._scanning_logic.sigToggleScan.emit(self._mw.actionToggle_scan.isChecked(), [self.scan_axis], self.module_uuid)
 
     def show(self):
@@ -618,6 +639,10 @@ class PLEScanGui(GuiBase):
             self._mw.ple_widget.selected_region.setRegion(x_range)
             self._mw.ple_widget.target_point.setValue(self._scanning_logic.scanner_target[self._scanning_logic._scan_axis])
             self._mw.ple_widget.plot_widget.setRange(xRange = x_range)
+            
+            self._mw.ple_retrace_widget.selected_region.setRegion(x_range)
+            self._mw.ple_retrace_widget.target_point.setValue(self._scanning_logic.scanner_target[self._scanning_logic._scan_axis])
+            self._mw.ple_retrace_widget.plot_widget.setRange(xRange = x_range)
 
             self._mw.ple_averaged_widget.selected_region.setRegion(x_range)
             self._mw.ple_averaged_widget.target_point.setValue(self._scanning_logic.scanner_target[self._scanning_logic._scan_axis])
@@ -716,7 +741,7 @@ class PLEScanGui(GuiBase):
                                                                 axs=scan_data.scan_axes)
             else:
                 self._update_scan_data(scan_data)
-        
+            self.scan_data = scan_data
         if not self._optimizer_state['is_running']:
             self._toggle_enable_actions(not is_running, exclude_action=self._mw.action_optimize_position)
         else:
@@ -770,7 +795,10 @@ class PLEScanGui(GuiBase):
                 self._mw.ple_averaged_widget.target_point.setValue(optimal_position[self._scanning_logic._scan_axis])
                 self._mw.constDoubleSpinBox.setValue(optimal_position[self._scanning_logic._scan_axis])
 
-        if fit_data is not None and isinstance(optimal_position, dict):
+        if (fit_data is not None and
+            np.any('full_fit_res' in fit_data) and
+            np.any('fit_data' in fit_data) 
+            and isinstance(optimal_position, dict)):
             data = fit_data['fit_data']
             fit_res = fit_data['full_fit_res']
             if data.ndim == 1:
@@ -799,14 +827,29 @@ class PLEScanGui(GuiBase):
         """
         @param ScanData scan_data:
         """
-        self._mw.ple_widget.set_scan_data(scan_data)
+    
+        self._mw.ple_retrace_widget.set_scan_data(scan_data.retrace_data, scan_data)
+        self._mw.ple_widget.set_scan_data(scan_data.data, scan_data)
+        
+
+        if scan_data.accumulated is not None:
+            self._mw.matrix_widget.set_scan_data(scan_data.accumulated, scan_data)
+            averaged_data = {channel: data.mean(axis=0)  for channel, data in scan_data.accumulated.items()}
+            # averaged_retrace_data = {channel: data.mean(axis=0)  for channel, data in scan_data.accumulated.items()}
+            self._mw.ple_averaged_widget.set_scan_data(averaged_data, scan_data)
+        if scan_data._retrace_accumulated is not None:
+            self._mw.retrace_matrix_widget.set_scan_data(scan_data._retrace_accumulated, scan_data)
+            averaged_data = {channel: data.mean(axis=0)  for channel, data in scan_data._retrace_accumulated.items()}
+            # averaged_retrace_data = {channel: data.mean(axis=0)  for channel, data in scan_data.accumulated.items()}
+            self._mw.ple_retrace_averaged_widget.set_scan_data(averaged_data, scan_data)
+
        
 
     @QtCore.Slot(object)
     def _update_accumulated_scan(self, accumulated_data, scan_data):
          if accumulated_data is not None:
-            self._mw.matrix_widget.set_scan_data(accumulated_data, scan_data)
-            self._mw.ple_averaged_widget.set_scan_data(accumulated_data, scan_data)
+            # self._mw.matrix_widget.set_scan_data(accumulated_data, scan_data)
+            # self._mw.ple_averaged_widget.set_scan_data(accumulated_data, scan_data)
             self._accumulated_data = accumulated_data
            
 
@@ -834,21 +877,21 @@ class PLEScanGui(GuiBase):
             self.save_path_widget.currPathLabel.setText('Default')
 
         try:
-            data_logic = self._data_logic()
-            scans = data_logic.get_all_current_scan_data()
+            #data_logic = self._data_logic()
+            #scans = data_logic.get_all_current_scan_data()
 
             # if scan_axes is None:
             #     scan_axes = [scan.scan_axes for scan in data_logic.get_all_current_scan_data()]
             # else:
             #     scan_axes = [scan_axes]
             cbar_range = self._mw.matrix_widget.image_widget.levels
-            if self._controller_logic() is not None:
+            if self._controller_logic is not None:
                 meta_params = self._mw.Controller_widget.params
             else:
                 meta_params = dict()
 
-            self.sigSaveScan.emit(scans[0], 
-                                  self._accumulated_data, 
+            self.sigSaveScan.emit(self.scan_data, 
+                                  self._scanning_logic._channel,
                                   self._scanning_logic._fit_container,
                                   cbar_range, 
                                   name_tag, 
@@ -858,19 +901,19 @@ class PLEScanGui(GuiBase):
         finally:
             pass
 
-    def save_view(self):
-        """Saves the current GUI state as a QbyteArray.
-           The .data() function will transform it to a bytearray, 
-           which can be saved as a StatusVar and read by the load_view method. 
-        """
-        self._save_display_view = self._mw.saveState().data() 
+    # def save_view(self):
+    #     """Saves the current GUI state as a QbyteArray.
+    #        The .data() function will transform it to a bytearray, 
+    #        which can be saved as a StatusVar and read by the load_view method. 
+    #     """
+    #     self._save_display_view = self._mw.saveState().data() 
         
-    def load_view(self):
-        """Loads the saved state from the GUI and can read a QbyteArray
-            or a simple byteArray aswell.
-        """
-        if self._save_display_view is None:
-            pass
-        else:
-            self._mw.restoreState(self._save_display_view)
+    # def load_view(self):
+    #     """Loads the saved state from the GUI and can read a QbyteArray
+    #         or a simple byteArray aswell.
+    #     """
+    #     if self._save_display_view is None:
+    #         pass
+    #     else:
+    #         self._mw.restoreState(self._save_display_view)
 
