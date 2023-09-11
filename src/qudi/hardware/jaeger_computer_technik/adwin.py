@@ -34,7 +34,7 @@ import ctypes
 
 processes_path = os.path.join(os.path.dirname(__file__), 'processes')
 
-class adwin(Base, ConfocalScannerInterface):
+class Adwin(Base, ConfocalScannerInterface):
 
     ########################## I dont know :-) ##################################
     # signals to interfuse
