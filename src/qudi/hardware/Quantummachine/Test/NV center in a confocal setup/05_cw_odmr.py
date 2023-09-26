@@ -49,24 +49,24 @@ with program() as cw_odmr:
             # Play the mw pulse...
             play("cw" * amp(1), "NV", duration=readout_len * u.ns)
             # ... and the laser pulse simultaneously (the laser pulse is delayed by 'laser_delay_1')
-            play("laser_ON", "AOM1", duration=readout_len * u.ns)
+            #play("laser_ON", "AOM1", duration=readout_len * u.ns)
             # Measure and detect the photons on SPCM1
             measure("long_readout", "SPCM1", None, time_tagging.analog(times, readout_len, counts))
             save(counts, counts_st)  # save counts on stream
 
             # Wait and align all elements before measuring the dark events
-            wait(wait_between_runs * u.ns)
+            #wait(wait_between_runs * u.ns)
             align()  # align all elements
             # Play the mw pulse with zero amplitude...
             play("cw" * amp(0), "NV", duration=readout_len * u.ns)
             # ... and the laser pulse simultaneously (the laser pulse is delayed by 'laser_delay_1')
-            play("laser_ON", "AOM1", duration=readout_len * u.ns)
-            wait(1_000 * u.ns, "SPCM1")  # so readout don't catch the first part of spin reinitialization
+            #play("laser_ON", "AOM1", duration=readout_len * u.ns)
+            #wait(1_000 * u.ns, "SPCM1")  # so readout don't catch the first part of spin reinitialization
             measure("long_readout", "SPCM1", None, time_tagging.analog(times, readout_len, counts))
 
             save(counts, counts_dark_st)  # save counts on stream
 
-            wait(wait_between_runs * u.ns)
+            #wait(wait_between_runs * u.ns)
 
             save(n, n_st)  # save number of iteration inside for_loop
 
@@ -84,7 +84,7 @@ qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
 #######################
 # Simulate or execute #
 #######################
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration

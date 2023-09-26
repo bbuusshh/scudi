@@ -18,15 +18,15 @@ readout_len = long_meas_len_1
 with program() as hello_QUA:
     a = declare(fixed)
     with infinite_loop_():
-        #play("cw" * amp(1), "NV", duration=readout_len * u.ns)
+        play("cw" * amp(1), "NV", duration=readout_len * u.ns)
         '''
         with for_(a, 0, a < 1.1, a + 0.05):
             play("x180" * amp(a), "NV")
         '''
-        align()
-        play("x180" * amp(1), "NV")
-        play("laser_ON", "AOM1", duration=readout_len * u.ns)
-        wait(100, "NV")
+        #align()
+        #play("x180" * amp(1), "NV")
+        #play("laser_ON", "AOM1", duration=readout_len * u.ns)
+        #wait(100, "NV")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -37,7 +37,7 @@ qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name)
 # Run or Simulate Program #
 ###########################
 
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
