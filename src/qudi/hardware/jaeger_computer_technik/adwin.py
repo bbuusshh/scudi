@@ -534,6 +534,8 @@ class Adwin(ScanningProbeInterface):
         return offset + amp * np.exp(
             -(a * x_prime ** 2 + 2 * b * x_prime * y_prime + c * y_prime ** 2))
 
+    ##################################################################################################
+
     def load_processes(self):
         self.adw.Load_Process(os.path.join(processes_path, "sweeping_1D.TB1"))
         self.adw.Load_Process(os.path.join(processes_path, "control_green.TB2"))
@@ -541,6 +543,67 @@ class Adwin(ScanningProbeInterface):
 
 
     def boot_adwin(self):
-            self.adw = ADwin.ADwin(0x1, 1)
-            self.BTL = self.adw.ADwindir + "adwin" + "11" + ".btl"
-            self.adw.Boot(self.BTL)
+        self.adw = ADwin.ADwin(0x1, 1)
+        self.BTL = self.adw.ADwindir + "adwin" + "11" + ".btl"
+        self.adw.Boot(self.BTL)
+
+    def close_scanner(self):
+        self.stop_all()
+        return 0
+
+    def reset_hardware(self):
+        self.stop_all()
+        self.boot_adwin()
+        return 1
+
+    def stop_all(self):
+        for i in range(1, 4):
+            self.adw.Stop_Process(i)
+
+    def check_stautus(self, process):
+        self.pro = self.adw.Process_Status(process)
+        while self.pro == 1:
+            self.pro = self.adw.Process_Status(process)
+            time.sleep(0.2)
+
+    def turn_on_laser(self, green, blue):
+        self.conlist = []
+        if green == True:
+            self.conlist.append(1.0)
+        elif green == False:
+            self.conlist.append(0.0)
+        else:
+            raise Exception('No Laser with this color')
+        if blue == True:
+            self.conlist.append(1.0)
+        elif blue == False:
+            self.conlist.append(0.0)
+        else:
+            raise Exception('No Laser with this color')
+        self.adw.SetData_Float(self.conlist, 5, 1, 2)
+        self.stop_all()
+        self.adw.Start_Process(2)
+
+    def scan_line(self, line_path=None, pixel_clock=False):
+        self._line_length= len(line_path[0])
+        self.adw.SetData_Float(line_path[0], 1, 1, len(line_path[0]))
+        self.adw.SetData_Float(line_path[1], 2, 1, len(line_path[1]))
+        self.adw.SetData_Float(line_path[2], 3, 1, len(line_path[2]))
+        self.adw.SetData_Float(line_path[3], 4, 1, len(line_path[3]))
+
+        if pixel_clock==False:
+            self.adw.Set_Par(22, 0)
+            self.adw.Set_Par(21, len(line_path[0])+1)
+            self.adw.Set_Par(20, 100)
+            self.adw.Start_Process(1)
+
+
+        elif pixel_clock==True:
+            self.adw.Set_Par(22, 1)
+            self.adw.Set_Par(21, len(line_path[0]) + 3)
+            self.adw.Set_Par(20, int(1/self.clock_frequency*100000000))
+            self.adw.Start_Process(1)
+            self.check_stautus(1)
+
+        self._current_position = np.array(line_path[:, -1])
+        return 0
