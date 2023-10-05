@@ -54,10 +54,10 @@ class MagnetWindow(GuiBase):
         ## connect buttons
         self._mw.start_scan_pushButton.clicked.connect(self.start_scan_pressed)
         self._mw.stop_scan_pushButton.clicked.connect(self.stop_scan_pressed)
-        self._mw.heat_psw_pushButton.clicked.connect(self.heat_psw_pressed)
-        self._mw.cool_psw_pushButton.clicked.connect(self.cool_psw_pressed)
+        #self._mw.heat_psw_pushButton.clicked.connect(self.heat_psw_pressed)
+        #self._mw.cool_psw_pushButton.clicked.connect(self.cool_psw_pressed)
         self._mw.pause_ramp_pushButton.clicked.connect(self.pause_ramp_pressed)
-        self._mw.continue_ramp_pushButton.clicked.connect(self.continue_ramp_pressed)
+        #self._mw.continue_ramp_pushButton.clicked.connect(self.continue_ramp_pressed)
         self._mw.ramp_to_zero_pushButton.clicked.connect(self.ramp_to_zero_pressed)
         self._mw.start_ramp_pushButton.clicked.connect(self.ramp_pressed)
 

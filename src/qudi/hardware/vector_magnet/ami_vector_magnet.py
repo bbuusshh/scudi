@@ -1,11 +1,13 @@
 import numpy as np
 from qtpy import QtCore
 from datetime import datetime
-
+import ADwin
 from qudi.core.module import Base
 from qudi.core.connector import Connector
 from qudi.core.configoption import ConfigOption
-
+import time
+import os
+processes_path = os.path.join(os.path.dirname(__file__), 'processes')
 
 class magnet_3d(Base):
     # declare connector
@@ -13,9 +15,9 @@ class magnet_3d(Base):
     # magnet_x = Connector(interface='Magnet1DInterface')
     # magnet_y = Connector(interface='Magnet1DInterface')
     # magnet_z = Connector(interface='Magnet1DInterface')
-    magnet_x = Connector(interface='AMI430')
-    magnet_y = Connector(interface='AMI430')
-    magnet_z = Connector(interface='AMI430')
+    #magnet_x = Connector(interface='AMI430')
+    #magnet_y = Connector(interface='AMI430')
+    #magnet_z = Connector(interface='AMI430')
 
     constraints = ConfigOption(name='constraints', missing='warn')
     timerIntervals = ConfigOption(name='timerIntervals', missing='warn')
@@ -27,9 +29,15 @@ class magnet_3d(Base):
 
 
     def on_activate(self):
+        '''
         self._magnet_x = self.magnet_x()
         self._magnet_y = self.magnet_y()
         self._magnet_z = self.magnet_z()
+        '''
+        #########################################################
+        self.boot_adwin()
+        self.load_processes()
+        #########################################################
 
         self.debug = True
 
@@ -80,25 +88,36 @@ class magnet_3d(Base):
         self.pswTimer.timeout.disconnect()
         self.equalizeCurrentsTimer.stop()
         self.equalizeCurrentsTimer.timeout.disconnect()
+
+        #########################################################
+        self.boot_adwin()
+        #########################################################
         return
 
 
     def get_magnet_currents(self):
+        '''
         curr_x = self._magnet_x.get_magnet_current()
         curr_y = self._magnet_y.get_magnet_current()
         curr_z = self._magnet_z.get_magnet_current()
+        '''
+        curr_x, curr_y, curr_z = self.check_voltage()
         return [curr_x,curr_y,curr_z]
 
 
     def get_supply_currents(self):
+        '''
         curr_x = self._magnet_x.get_supply_current()
         curr_y = self._magnet_y.get_supply_current()
         curr_z = self._magnet_z.get_supply_current()
+        '''
+        curr_x, curr_y, curr_z = self.check_voltage()
         return [curr_x,curr_y,curr_z]
 
 
     def ramp(self, field_target=[None,None,None], enter_persistent=False):
         """Ramps the magnet."""
+        self.wait_for_pro()
         # check if the target field is within constraints
         if self.check_field_amplitude(field_target) != 0:
             raise RuntimeError('Entered field is too strong.')
@@ -131,8 +150,8 @@ class magnet_3d(Base):
             # start ramping of the first axis
             self.current_axis = self.order_axes.pop(0)
             self.current_axis_field_target = self.field_target_reordered.pop(0)
-            cmd = f'self._magnet_{self.current_axis}.ramp(field_target={self.current_axis_field_target})'
-            eval(cmd)
+            #cmd = f'self._magnet_{self.current_axis}.ramp(field_target={self.current_axis_field_target})'
+            #eval(cmd)
             self._start_slowRampTimer()
             return
 
@@ -149,10 +168,13 @@ class magnet_3d(Base):
 
     def get_field(self):
         """Returns field in x,y,z direction."""
+        '''
         field_x = self._magnet_x.get_field()
         field_y = self._magnet_y.get_field()
         field_z = self._magnet_z.get_field()
-        return[field_x,field_y,field_z]
+        '''
+        field_x, field_y, field_z = self.check_voltage()
+        return[field_x, field_y, field_z]
 
 
     def check_field_amplitude(self,target_field):
@@ -238,9 +260,13 @@ class magnet_3d(Base):
 
 
     def fast_ramp(self, field_target):
+        '''
         self._magnet_y.ramp(field_target = field_target[1])
         self._magnet_x.ramp(field_target = field_target[0])
         self._magnet_z.ramp(field_target = field_target[2])
+        '''
+        self.wait_for_pro()
+        self.set_voltage(field_target[0], field_target[1], field_target[2])
         return 0
 
 
@@ -277,8 +303,8 @@ class magnet_3d(Base):
                 # go to next axis
                 self.current_axis = self.order_axes.pop(0)
                 self.current_axis_field_target = self.field_target_reordered.pop(0)
-                cmd = f'self._magnet_{self.current_axis}.ramp(field_target={self.current_axis_field_target})'
-                eval(cmd)
+                #cmd = f'self._magnet_{self.current_axis}.ramp(field_target={self.current_axis_field_target})'
+                #eval(cmd)
                 return
             else:
                 # ramping done on all three axes
@@ -312,10 +338,23 @@ class magnet_3d(Base):
 
         @return: list of ints with ramping status [status_x,status_y,status_z].
         """
+        '''
         status_x = self._magnet_x.get_ramping_state()
         status_y = self._magnet_y.get_ramping_state()
         status_z = self._magnet_z.get_ramping_state()
-        status = [status_x,status_y,status_z]
+        '''
+        if self.check_status(4) == 0:
+            self.vol1, self.vol2, self.vol3 = self.check_voltage()
+            self.vol = [np.around(self.vol1, decimals=3), np.around(self.vol2, decimals=3), np.around(self.vol3, decimals=3)]
+            print(self.vol)
+            if self.vol == [0, 0, 0]:
+                status_x = 8
+            else:
+                status_x = 2
+        elif self.check_status(4) == 1:
+            status_x = 1
+
+        status = [status_x, status_x, status_x]
         return status
 
 
@@ -324,9 +363,12 @@ class magnet_3d(Base):
         
         Puts the power supply in automatic ramping mode. Ramping resumes until target field/current is reached.
         """
+        '''
         self._magnet_x.continue_ramp()
         self._magnet_y.continue_ramp()
         self._magnet_z.continue_ramp()
+        '''
+
         return
 
 
@@ -335,9 +377,14 @@ class magnet_3d(Base):
         
         The current/field will stay at the level it has now.
         """
+        '''
         self._magnet_x.pause_ramp()
         self._magnet_y.pause_ramp()
         self._magnet_z.pause_ramp()
+        '''
+        self.adw.Stop_Process(4)
+        curr_x, curr_y, curr_z = self.check_voltage()
+        self.set_voltage(curr_x, curr_y, curr_z)
         return
 
 
@@ -353,9 +400,14 @@ class magnet_3d(Base):
         # Set the target field to zero. Not necessary for ramping
         # but without it you will have problems when pausing and unpausing the ramp to zero.
         self.set_target_fields([0,0,0])
+        '''
         self._magnet_y.ramp_to_zero()
         self._magnet_x.ramp_to_zero()
         self._magnet_z.ramp_to_zero()
+        '''
+        self.wait_for_pro()
+        self.adw.Stop_Process(4)
+        self.set_voltage(0, 0, 0)
         self._start_zeroRampTimer()
         return
 
@@ -416,11 +468,14 @@ class magnet_3d(Base):
         This means that the function should return 1.
         So if the above requirements are met (magnet in HOLDING or ZERO, PSW heater off, current less than 100 mA), this function will return 1.
         """
-
+        '''
         mode_x = self._magnet_x.get_pseudo_persistent()
         mode_y = self._magnet_y.get_pseudo_persistent()
         mode_z = self._magnet_z.get_pseudo_persistent()
-
+        '''
+        mode_x = 0
+        mode_y = 0
+        mode_z = 0
         return [mode_x, mode_y, mode_z]
 
     
@@ -430,10 +485,12 @@ class magnet_3d(Base):
         if np.allclose(curr_mag, curr_sup,atol=0.01):
             return 0
         else:
+            '''
             self._magnet_x.equalize_currents()
             self._magnet_y.equalize_currents()
             self._magnet_z.equalize_currents()
             self._start_eualizeCurrentTimer()
+            '''
             return
 
 
@@ -476,11 +533,14 @@ class magnet_3d(Base):
         0 means heater is switched off.
         1 means heateris switched on.
         """
-
+        '''
         status_x = self._magnet_x.get_psw_status()
         status_y = self._magnet_y.get_psw_status()
         status_z = self._magnet_z.get_psw_status()
-
+        '''
+        status_x = 0
+        status_y = 0
+        status_z = 0
         return [status_x, status_y, status_z]
 
 
@@ -493,6 +553,8 @@ class magnet_3d(Base):
         Also, device needs to be in HOLDING mode (ramp has finished).
         Otherwise the magnet might quench.
         """
+
+        '''
         if self.debug:
             print(f'vectormagnet: set_psw_status, setting to {status}')
         # check ramp state
@@ -510,9 +572,11 @@ class magnet_3d(Base):
             if status == 0 or status == 1:
                 if self.debug:
                     print(f'setting psw status to {status}')
+                '
                 self._magnet_x.set_psw_status(status)
                 self._magnet_y.set_psw_status(status)
                 self._magnet_z.set_psw_status(status)
+                
                 psw = self.get_psw_status()
                 self.old_ramping_state = psw
                 self._start_pswTimer()
@@ -520,6 +584,7 @@ class magnet_3d(Base):
                 raise Exception('Status needs to be either 0 or 1.')
         else:
             raise TypeError('Status needs to be integer.')
+        '''
         return
 
 
@@ -564,7 +629,43 @@ class magnet_3d(Base):
 
 
     def set_target_fields(self,target):
+        '''
         self._magnet_x.set_target_field(target[0])
         self._magnet_y.set_target_field(target[1])
         self._magnet_z.set_target_field(target[2])
+        '''
+        self.set_voltage(target[0], target[1], target[2])
         return 0
+
+    def boot_adwin(self):
+            self.adw = ADwin.ADwin(0x1, 1)
+            self.BTL = self.adw.ADwindir + "adwin" + "11" + ".btl"
+            self.adw.Boot(self.BTL)
+
+    def load_processes(self):
+        self.adw.Load_Process(os.path.join(processes_path, "magnetcontroll.TB4"))
+
+    def set_voltage(self, volx, voly, volz):
+        self.adw.Set_FPar(1, volx)
+        self.adw.Set_FPar(2, voly)
+        self.adw.Set_FPar(3, volz)
+        self.adw.Start_Process(4)
+        return volx, voly, volz
+
+    def check_voltage(self):
+        self.volx = self.adw.Get_FPar(4)
+        self.voly = self.adw.Get_FPar(5)
+        self.volz = self.adw.Get_FPar(6)
+        return self.volx, self.voly, self.volz
+
+    def check_status(self, process):
+        self.pro = self.adw.Process_Status(process)
+        return self.pro
+
+    def wait_for_pro(self):
+        self.pro = self.adw.Process_Status(4)
+        while self.pro == 1:
+            self.pro = self.adw.Process_Status(4)
+            time.sleep(0.2)
+        return
+
