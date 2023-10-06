@@ -115,15 +115,23 @@ class magnet_3d(Base):
         return [curr_x,curr_y,curr_z]
 
 
-    def ramp(self, field_target=[None,None,None], enter_persistent=False):
+    def ramp(self, field_target_=[None,None,None], enter_persistent=False):
         """Ramps the magnet."""
         self.wait_for_pro()
+        print('--------------------------------------------------')
+        print('Input: B= ' + str(field_target_[0]) + ', Theta= '+ str(field_target_[1]) + ', Phi= '+ str(field_target_[2]))
+        field_target = self.get_cartesian(field_target_)
+        current_field = self.check_voltage()
+        print('Target voltage: X= ' + str(np.round(field_target[0], decimals=3)) + ', Y= '+ str(np.round(field_target[1], decimals=3)) + ', Z= '+ str(np.round(field_target[2], decimals=3)))
+        print('Current voltage: X= ' + str(np.round(current_field[0], decimals=3)) + ', Y= ' + str(
+            np.round(current_field[1], decimals=3)) + ', Z= ' + str(np.round(current_field[2], decimals=3)))
+        print('--------------------------------------------------')
         # check if the target field is within constraints
         if self.check_field_amplitude(field_target) != 0:
             raise RuntimeError('Entered field is too strong.')
         # check the path between the fields
         current_field = self.get_field()
-        combined_field = self.combine_fields(field_target,current_field)
+        combined_field = self.combine_fields(field_target, current_field)
         ret = self.check_field_amplitude(combined_field)
         # store enter_persistent for later use
         self.enter_persistent = enter_persistent
@@ -133,6 +141,7 @@ class magnet_3d(Base):
         if ret == 0:
             self.fast_ramp(field_target=field_target)
             self._start_fastRampTimer()
+            print('--------------------------------------------------')
             return
         else:
             # order the axes by ascending field strength
@@ -250,12 +259,13 @@ class magnet_3d(Base):
             else:
                 if self.debug:
                     print('fast ramp finished')
-                self.sigRampFinished.emit()
+                    self.sigRampFinished.emit()
                 return
         else:
             if self.debug:
                 print('fast ramping not finished')
             self.fastRampTimer.start()
+
             return
 
 
@@ -346,7 +356,8 @@ class magnet_3d(Base):
         if self.check_status(4) == 0:
             self.vol1, self.vol2, self.vol3 = self.check_voltage()
             self.vol = [np.around(self.vol1, decimals=3), np.around(self.vol2, decimals=3), np.around(self.vol3, decimals=3)]
-            print(self.vol)
+            print('Measured voltage: X= ' + str(np.round(self.vol[0], decimals=3)) + ', Y= ' + str(
+                np.round(self.vol[1], decimals=3)) + ', Z= ' + str(np.round(self.vol[2], decimals=3)))
             if self.vol == [0, 0, 0]:
                 status_x = 8
             else:
@@ -368,7 +379,7 @@ class magnet_3d(Base):
         self._magnet_y.continue_ramp()
         self._magnet_z.continue_ramp()
         '''
-
+        self.ramp()
         return
 
 
@@ -409,6 +420,9 @@ class magnet_3d(Base):
         self.adw.Stop_Process(4)
         self.set_voltage(0, 0, 0)
         self._start_zeroRampTimer()
+        self.wait_for_pro()
+        print('Ramp to zero is done')
+        print('--------------------------------------------------')
         return
 
 
@@ -669,3 +683,8 @@ class magnet_3d(Base):
             time.sleep(0.2)
         return
 
+    def get_cartesian(self, tf):
+        x = tf[0] * np.sin(np.pi/180*tf[2]) * np.cos(np.pi/180*tf[1])
+        y = tf[0] * np.sin(np.pi/180*tf[2]) * np.sin(np.pi/180*tf[1])
+        z = tf[0] * np.cos(np.pi/180*tf[2])
+        return [x, y, z]
