@@ -34,6 +34,7 @@ from PySide2 import QtCore
 
 from qudi.core.module import LogicBase
 from qudi.core.connector import Connector
+from qudi.core.configoption import ConfigOption
 from qudi.core.statusvariable import StatusVar
 from qudi.util.mutex import RecursiveMutex
 from qudi.util.datastorage import TextDataStorage
@@ -338,17 +339,6 @@ class PointOfInterest:
     @property
     def position(self):
         return self._position
-    
-    # @property
-    # def ple_position(self):
-    #     return self._ple_position
-
-    # @ple_position.setter
-    # def ple_position(self, pos):
-    #     if len(pos) != 3:
-    #         raise ValueError('POI position to set must be 1 float')
-    #     self._ple_position = pos
-    #     return
 
     @position.setter
     def position(self, pos):
@@ -358,7 +348,7 @@ class PointOfInterest:
         return
 
     def to_dict(self):
-        return {'name': self.name, 'position': tuple(self.position)}#, 'ple_position': tuple(self.ple_position)}
+        return {'name': self.name, 'position': tuple(self.position)}
 
     @classmethod
     def from_dict(cls, dict_repr):
@@ -373,6 +363,8 @@ class PoiManagerLogic(LogicBase):
 
     poi_manager_logic:
         module.Class: 'poi_manager_logic.PoiManagerLogic'
+        options:
+            data_scan_axes: xy
         connect:
             scanning_logic: <scanning_probe_logic>
             optimize_logic: <scanning_optimize_logic>
@@ -383,12 +375,12 @@ class PoiManagerLogic(LogicBase):
     _optimizelogic = Connector(name='optimize_logic', interface='ScanningOptimizeLogic')
     _scanninglogic = Connector(name='scanning_logic', interface='ScanningProbeLogic')
     _data_logic = Connector(name='data_logic', interface='ScanningDataLogic')
-    _ple_optimize_logic = Connector(name='ple_optimize_logic', interface='PLEOptimizeScannerLogic', optional=True)
-    _pulsed_logic = Connector(name='pulsed_logic', interface='PulsedMasterLogic', optional=True)
-    #savelogic = Connector(interface='SaveLogic')
+
+    # config options
+    _scan_axes = tuple(str(ConfigOption('data_scan_axes', default='xy', missing='info')))
 
     # status vars
-    _roi = StatusVar(default=dict())  # Notice constructor and representer further below
+    _roi = StatusVar(default=RegionOfInterest())  # Notice constructor and representer further below
     _refocus_period = StatusVar(default=120)
     _active_poi = StatusVar(default=None)
     _move_scanner_after_optimization = StatusVar(default=True)
@@ -434,19 +426,9 @@ class PoiManagerLogic(LogicBase):
         self._last_refocus = 0
         self._periodic_refocus_poi = None
 
-        try:
-            # variable name has __ in front of its name --> crap with unique identifier
-            # Will not work out if a file with a different class name is chosen.
-            # No idea how to make it better but i also did not start with this crap.
-            self._max_move_velocity = self._scanninglogic()._scanner().get_max_move_velocity()
-        except:
-            self._max_move_velocity = None
-
         # Connect callback for a finished refocus
         self._optimizelogic().sigOptimizeStateChanged.connect(
             self._optimisation_callback, QtCore.Qt.QueuedConnection)
-        # self._ple_optimize_logic().sigOptimizeStateChanged.connect(
-        #     self._ple_optimisation_callback, QtCore.Qt.QueuedConnection)
         # Connect internal start/stop signals to decouple QTimer from other threads
         self.__sigStartPeriodicRefocus.connect(
             self.start_periodic_refocus, QtCore.Qt.QueuedConnection)
@@ -454,8 +436,8 @@ class PoiManagerLogic(LogicBase):
             self.stop_periodic_refocus, QtCore.Qt.QueuedConnection)
 
         # Initialise the ROI scan image (xy confocal image) if not present
-        # if self._roi.scan_image is None:
-        #     self.set_scan_image(False)
+        if self._roi.scan_image is None:
+            self.set_scan_image(False, self._scan_axes)
 
         self.sigRoiUpdated.emit({'name': self.roi_name,
                                  'poi_nametag': self.poi_nametag,
@@ -583,11 +565,7 @@ class PoiManagerLogic(LogicBase):
 
     @property
     def scanner_position(self):
-        return np.array([
-            self._scanninglogic().scanner_position['x'],
-            self._scanninglogic().scanner_position['y'],
-            self._scanninglogic().scanner_position['z']]
-            )
+        return np.array(list(self._scanninglogic().scanner_position.values()))
 
     @property
     def move_scanner_after_optimise(self):
@@ -636,12 +614,6 @@ class PoiManagerLogic(LogicBase):
             # Get current scanner position from  if no position is provided.
             if position is None:
                 position = self.scanner_position
-            # Get current z position of scanner if none is provided
-            if position[2] == 99999999999:
-                # Would be better to set the position of the scanner at the end of the scan. 
-                # Otherwise you can run into an issue if you add POIs on an "old" confocal while a new one is running.
-                # You would be adding POIs on a scan that was scanned at z_old but the z coordinate that is savwen would actually be z_new.
-                position[2] = self._scanninglogic()._scanner_position_at_start_scan['z']
 
             current_poi_set = set(self.poi_names)
 
@@ -659,28 +631,24 @@ class PoiManagerLogic(LogicBase):
             self.set_active_poi(poi_name)
             return
 
-    @QtCore.Slot(str)
-    def delete_poi(self, name:str = None):
+    @QtCore.Slot()
+    def delete_poi(self, name=None):
         """
-        ! TODO WHY THE F THE NAME IS FALSE and not None ???????????????????????????
-        if printed
         Deletes the given poi from the ROI.
 
         @param str name: Name of the POI to delete. If None (default) delete active POI.
         @param bool emit_change: Flag indicating if the changed POI set should be signaled.
         """
-        #print('Name', name) try this out....
         with self._thread_lock:
             if len(self.poi_names) == 0:
                 self.log.warning('Can not delete POI. No POI present in ROI.')
                 return
-            if (name is None) or (name is False):
+            if name is None:
                 if self.active_poi is None:
                     self.log.error('No POI name to delete and no active POI set.')
                     return
                 else:
                     name = self.active_poi
-
             self._roi.delete_poi(name)
 
             if self.active_poi == name:
@@ -895,7 +863,6 @@ class PoiManagerLogic(LogicBase):
     def set_scan_image(self, emit_change=True, scan_axes=None):
         """ Get the current xy scan data and set as scan_image of ROI. """
         with self._thread_lock:
-
             scan_data = self._data_logic().get_current_scan_data(scan_axes)
             if scan_data:
                 self._roi.set_scan_image(scan_data.data[self._optimizelogic()._data_channel],
@@ -911,7 +878,7 @@ class PoiManagerLogic(LogicBase):
         with self._thread_lock:
             self.stop_periodic_refocus()
             self._roi = RegionOfInterest()
-            self.set_scan_image(False)
+            self.set_scan_image(False, self._scan_axes)
             self.sigRoiUpdated.emit({'name': self.roi_name,
                                      'poi_nametag': self.poi_nametag,
                                      'pois': self.poi_positions,
@@ -1093,34 +1060,6 @@ class PoiManagerLogic(LogicBase):
                             self.move_scanner(position=self._position_update)
                     self.sigOptimizeStateUpdated.emit(False)
         return
-    
-    def _ple_optimisation_callback(self, is_running, optimal_position=None, fit_data=None):
-        """
-        Callback function for a position optimisation.
-        If desired the relative shift of the optimised POI can be used to update the ROI position.
-        The scanner is moved to the optimised POI if desired.
-
-        @param optimal_pos:
-        @param fit_data:
-        """
-        with self._thread_lock:
-            # If the refocus was initiated by poimanager, update POI and ROI position
-            if self.__poi_optimization_running:
-                if is_running:
-                    self._position_update.update(optimal_position)
-                else:
-                    self.__poi_optimization_running = False
-                    poi_name = self._optimize_poi_name
-                    new_pos = np.array(list(self._position_update.values()))
-                    if poi_name in self.poi_names:
-                        if self._update_roi_position:
-                            self.move_roi_from_poi_position(name=poi_name, position=new_pos)
-                        else:
-                            self.set_poi_anchor_from_position(name=poi_name, position=new_pos)
-                        if self._move_scanner_after_optimization:
-                            self.move_scanner(position=self._position_update)
-                    self.sigOptimizeStateUpdated.emit(False)
-        return
 
     def save_roi(self):
         """
@@ -1143,15 +1082,16 @@ class PoiManagerLogic(LogicBase):
                 timestamp.strftime('%Y%m%d-%H%M-%S'), roi_name_no_blanks)
 
             # Metadata to save in both file headers
-            x_extent, y_extent = self.roi_scan_image_extent
             parameters = OrderedDict()
             if self.active_poi:
                 parameters['Active POI'] = self.active_poi
             parameters['roi_name'] = self.roi_name
             parameters['poi_nametag'] = '' if self.poi_nametag is None else self.poi_nametag
             parameters['roi_creation_time'] = self.roi_creation_time_as_str
-            parameters['scan_image_x_extent'] = '{0:.9e},{1:.9e}'.format(*x_extent)
-            parameters['scan_image_y_extent'] = '{0:.9e},{1:.9e}'.format(*y_extent)
+            if self.roi_scan_image is not None:
+                x_extent, y_extent = self.roi_scan_image_extent
+                parameters['scan_image_x_extent'] = '{0:.9e},{1:.9e}'.format(*x_extent)
+                parameters['scan_image_y_extent'] = '{0:.9e},{1:.9e}'.format(*y_extent)
             parameters['data format'] = 'name   X (m)   Y (m)   Z (m)'
 
             ##################################
@@ -1162,7 +1102,8 @@ class PoiManagerLogic(LogicBase):
             data = [[poi_name, poi_positions[ii, 0], poi_positions[ii, 1], poi_positions[ii, 2]] for ii, poi_name in
                     enumerate(list(poi_dict))]
 
-            data_storage.save_data(data, metadata=parameters, nametag=pois_filename, timestamp=timestamp)
+            data_storage.save_data(data, metadata=parameters, nametag=pois_filename, timestamp=timestamp,
+                                   column_dtypes=float)
 
             ############################################
             # Save ROI history to second file (binary) if present
@@ -1214,7 +1155,7 @@ class PoiManagerLogic(LogicBase):
         roi_name = None
         poi_nametag = None
         roi_creation_time = None
-        scan_extent = None
+        scan_extent, scan_x_extent, scan_y_extent = None, None, None
         if is_legacy_format:
             roi_name = filetag
         else:
@@ -1234,8 +1175,11 @@ class PoiManagerLogic(LogicBase):
                     elif line.startswith('# scan_image_y_extent='):
                         scan_y_extent = line.split('# scan_image_y_extent=', 1)[1].strip().split("'")[1].strip().split(
                             ',')
-            scan_extent = ((float(scan_x_extent[0]), float(scan_x_extent[1])),
-                           (float(scan_y_extent[0]), float(scan_y_extent[1])))
+
+            if scan_x_extent is not None and scan_y_extent is not None:
+                scan_extent = ((float(scan_x_extent[0]), float(scan_x_extent[1])),
+                               (float(scan_y_extent[0]), float(scan_y_extent[1])))
+
             poi_nametag = None if not poi_nametag else poi_nametag
 
         # Read ROI position history from binary file
@@ -1261,7 +1205,6 @@ class PoiManagerLogic(LogicBase):
                                      scan_image_extent=scan_extent,
                                      poi_list=poi_list,
                                      poi_nametag=poi_nametag)
-        print(poi_nametag, self.poi_nametag)
         self.sigRoiUpdated.emit({'name': self.roi_name,
                                  'poi_nametag': self.poi_nametag,
                                  'pois': self.poi_positions,
@@ -1273,6 +1216,8 @@ class PoiManagerLogic(LogicBase):
 
     @_roi.constructor
     def dict_to_roi(self, roi_dict):
+        if isinstance(roi_dict, RegionOfInterest):
+            return roi_dict
         return RegionOfInterest.from_dict(roi_dict)
 
     @_roi.representer
