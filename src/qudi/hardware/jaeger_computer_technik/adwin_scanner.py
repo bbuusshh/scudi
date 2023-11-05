@@ -39,7 +39,7 @@ import ctypes
 
 processes_path = os.path.join(os.path.dirname(__file__), 'processes')
 
-class adwin(ScanningProbeInterface):
+class AdwinScanner(ScanningProbeInterface):
 
     ########################## I dont know :-) ##################################
     # signals to interfuse
@@ -186,7 +186,7 @@ class adwin(ScanningProbeInterface):
         self.adw.Start_Process(3)
 
     def scan_line(self, line_path=None, pixel_clock=False):
-        self._line_length = len(line_path[0])
+        self._line_length= len(line_path[0])
         self.adw.SetData_Float(line_path[0], 1, 1, len(line_path[0]))
         self.adw.SetData_Float(line_path[1], 2, 1, len(line_path[1]))
         self.adw.SetData_Float(line_path[2], 3, 1, len(line_path[2]))
